@@ -1,0 +1,5 @@
+{
+  "name": "OFFO (Order Food From Office) - Cafeteria Food Ordering",
+  "description": "OFFO (Order Food From Office) is a mobile-first, responsive web application for office employees to order food online from nearby cafeterias. The app features a complete user flow from onboarding and OTP-based login to menu browsing, cart management, scheduled ordering, payment, and order confirmation.",
+  "requestFramePermissions": []
+}

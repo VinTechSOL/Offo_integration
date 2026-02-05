@@ -1,0 +1,17 @@
+export type Screen =
+  | 'splash'
+  | 'onboarding'
+  | 'login'
+  | 'location'
+  | 'home'
+  | 'menu'
+  | 'cart'
+  | 'schedule'
+  | 'payment'
+  | 'success'
+  | 'orders'
+  | 'help'
+  | 'profile'
+  | 'about'
+  | 'my-account'
+  | 'payment-methods';
