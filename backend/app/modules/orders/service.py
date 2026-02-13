@@ -17,6 +17,9 @@ from datetime import timedelta,datetime,timezone
 from datetime import datetime
 from fastapi import HTTPException
 
+from pytz import timezone as pytz_timezone
+
+IST = pytz_timezone("Asia/Kolkata")
 
 def build_scheduled_datetime(scheduled_date, scheduled_time):
     
@@ -24,7 +27,10 @@ def build_scheduled_datetime(scheduled_date, scheduled_time):
         return None
 
     time_obj = datetime.strptime(scheduled_time, "%I:%M %p").time()
-    return datetime.combine(scheduled_date, time_obj)
+    dt = datetime.combine(scheduled_date, time_obj)
+    dt_ist = IST.localize(dt)
+
+    return dt_ist.astimezone(timezone.utc)
 
 
 class OrderService:
@@ -160,19 +166,19 @@ class VendorOrderService:
         # Strict state transition
         validate_transition(
             OrderStatus(order.order_status),
-            OrderStatus.ACCEPTED,
+            OrderStatus.PREPARING,
         )
 
         if calculate_priority(order) == OrderPriority.EXPIRED:
             raise HTTPException(400, "Order expired")
 
-        order.order_status = OrderStatus.ACCEPTED
-        order.updated_at = datetime.now(timezone.utc)
+        order.order_status = OrderStatus.PREPARING
+        order.updated_at = datetime.now(IST)
 
         OrderRepository.add_status_log(
             db,
             order_id=order.order_id,
-            status=OrderStatus.ACCEPTED,
+            status=OrderStatus.PREPARING,
             changed_by="STAFF",
             changed_by_id=staff.staff_id,
         )
@@ -214,7 +220,7 @@ class VendorOrderService:
         )
 
         order.order_status = OrderStatus.REJECTED
-        order.updated_at = datetime.now(timezone.utc)
+        order.updated_at = datetime.now(IST)
 
         db.commit()
         db.refresh(order)
@@ -237,14 +243,15 @@ class VendorOrderService:
             raise HTTPException(404, "Order not found")
 
         validate_branch_access(staff, order.branch_id)
+        validate_scheduled_visibility(order)
+        current = OrderStatus(order.order_status)
 
         validate_transition(
-            OrderStatus(order.order_status),
-            next_status,
+            current,next_status,
         )
 
         order.order_status = next_status
-        order.updated_at = datetime.now(timezone.utc)
+        order.updated_at = datetime.now(IST)
 
         OrderRepository.add_status_log(
             db,
@@ -253,6 +260,9 @@ class VendorOrderService:
             changed_by="STAFF",
             changed_by_id=staff.staff_id,
         )
+
+
+        
 
         db.commit()
         db.refresh(order)

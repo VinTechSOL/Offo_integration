@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.menu.schemas import (
@@ -8,6 +8,7 @@ from app.modules.menu.schemas import (
     BranchMenuItemUpdate
 )
 from app.modules.menu.service import MenuService
+from app.core.security import get_current_staff
 
 router = APIRouter(prefix="/menu", tags=["Menu"])
 
@@ -31,9 +32,11 @@ def update_branch_item(
 ):
     return MenuService.update_branch_item(db, branch_menu_item_id, data)
 
-@router.get("/branch/{branch_id}")
-def list_branch_menu(branch_id: int, db: Session = Depends(get_db)):
-    return MenuService.list_branch_menu(db, branch_id)
+@router.get("/branchMenu/")
+def list_branch_menu( db: Session = Depends(get_db),staff = Depends(get_current_staff)):
+    if not staff.branch_id:
+        raise HTTPException(403, "staff not assigned to branch")
+    return MenuService.list_branch_menu(db, staff.branch_id)
 
 @router.get("/branch/{branch_id}/public")
 def list_branch_menu_for_users(

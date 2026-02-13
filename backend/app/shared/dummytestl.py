@@ -60,4 +60,27 @@ VALUES (
   1,
   true
 );
+
+
+
+INSERT INTO core.staff (
+  staff_id,
+  first_name,
+  last_name,
+  username,
+  password_hash,
+  role_id,
+  branch_id,
+  is_active
+)
+VALUES (
+  2,
+  'Venkatesh',
+  'Iyer',
+  'vendor_1',
+  '$2b$12$uPU1umlKqIi3Sh1R2mR1.Otc5T/Xm1IgW7RDWCzTIeuNTGhg5MHtm',
+  3,
+  1,
+  true
+);
 '''

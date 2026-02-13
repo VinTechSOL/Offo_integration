@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from sqlalchemy import select
 from app.modules.menu.models import MenuCategory, MenuItem, BranchMenuItem,ItemType
 
@@ -22,6 +23,18 @@ class MenuRepository:
 
     @staticmethod
     def attach_item_to_branch(db: Session, data):
+
+        existing = db.execute(
+            select(BranchMenuItem).where(
+                BranchMenuItem.branch_id == data.branch_id,
+                BranchMenuItem.item_id == data.item_id
+            )
+        ).scalar_one_or_none()
+
+        if existing:
+            raise HTTPException(409, "Item already attached to branch")
+
+
         branch_item = BranchMenuItem(**data.dict())
         db.add(branch_item)
         db.commit()
@@ -31,6 +44,9 @@ class MenuRepository:
     @staticmethod
     def update_branch_item(db: Session, branch_menu_item_id: int, data):
         item = db.get(BranchMenuItem, branch_menu_item_id)
+        if data.price <= 0:
+            raise HTTPException(400, "Price must be greater than zero")
+
         if data.price is not None:
             item.price = data.price
         if data.is_available is not None:
@@ -54,13 +70,15 @@ class MenuRepository:
       rows = db.execute(
         select(
             BranchMenuItem.branch_menu_item_id,
-            BranchMenuItem.item_id,
             BranchMenuItem.price,
             BranchMenuItem.is_available,
-            MenuCategory.category_id,
+
             MenuCategory.category_name,
+
             MenuItem.item_name,
             MenuItem.image_url,
+            MenuItem.item_description,
+
             ItemType.name.label("item_type"),
         )
         .join(MenuItem, MenuItem.item_id == BranchMenuItem.item_id)
@@ -69,36 +87,21 @@ class MenuRepository:
         .where(BranchMenuItem.branch_id == branch_id)
       ).all()
 
-      categories = {}
 
-      for r in rows:
-        if r.category_id not in categories:
-            categories[r.category_id] = {
-                "category_id": r.category_id,
-                "category_name": r.category_name,
-                "items": [],
-            }
+      return [
+          {
+              "branch_menu_item_id": r.branch_menu_item_id,
+              "name": r.item_name,
+              "price": float(r.price),
+              "image_url": r.image_url,
+              "food_type": r.item_type.lower(),
+              "is_available": r.is_available,
+              "category_name": r.category_name,
+              
+          }
+          for r in rows
+      ]
 
-        categories[r.category_id]["items"].append({
-            "branch_menu_item_id": r.branch_menu_item_id,
-            "item_id": r.item_id,
-            "name": r.item_name,
-            "price": float(r.price),
-            "image": r.image_url,
-            "is_veg": r.item_type.lower() == "veg",
-            "is_available": r.is_available,
-            "category_name": r.category_name,
-        })
-
-      return { "categories": list(categories.values()) }
-    
-    
-
-    @staticmethod
-    def list_branch_menu(db: Session, branch_id: int):
-        return db.execute(
-            select(BranchMenuItem).where(BranchMenuItem.branch_id == branch_id)
-        ).scalars().all()
 
         
     @staticmethod

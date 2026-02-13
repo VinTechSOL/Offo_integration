@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFFO Vendor Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        offoOrange: '#FF7A00',
+                        'offoOrange-dark': '#E66A00',
+                        offoDark: '#0D1B2A',
+                        'offoDark-light': '#213F5F',
+                        offoSlate: '#64748B',
+                        offoHeaderBg: '#FF7A00',
+                        offoPrimaryBg: '#F3F4F6',
+                        offoCardBgLight: '#FFFFFF',
+                        offoStatCardBgDark: '#102136',
+                        offoTextDark: '#212121',
+                        offoTextLight: '#FFFFFF',
+                    },
+                },
+            },
+            plugins: [],
+        }
+    </script>
+    <style>
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal-in { animation: modal-in 0.3s ease-out forwards; }
+
+        @keyframes pulse-once {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .animate-pulse-once { animation: pulse-once 1.5s ease-in-out infinite; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #F3F4F6; }
+        ::-webkit-scrollbar-thumb { background: #FF7A00; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #E66A00; }
+
+        ::selection { background: #FF7A00; color: #FFFFFF; }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6"
+      }
+    }
+    </script>
+</head>
+<body class="bg-offoPrimaryBg font-sans antialiased text-offoDark h-full">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

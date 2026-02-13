@@ -1,0 +1,7 @@
+{
+  "name": "OFFO Vendor Dashboard",
+  "description": "A comprehensive dashboard for vendors to manage food orders and menus for the Order Food From Office (OFFO) system. Track live orders, update statuses, and manage menu items seamlessly.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

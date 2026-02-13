@@ -1,0 +1,7 @@
+{
+  "name": "OFFO Vendor Admin Panel",
+  "description": "A modern, responsive admin panel for OFFO vendors.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

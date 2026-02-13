@@ -2,15 +2,19 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from app.modules.orders.repository import OrderRepository
 from app.core.database import SessionLocal
+from pytz import timezone as pytz_timezone
+
+IST = pytz_timezone("Asia/Kolkata")
 
 VISIBILITY_WINDOW_MINUTES = 60
 GRACE_PERIOD_MINUTES = 5
 
 
+
 def scheduled_order_visibility_runner():
     db: Session = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(IST)
 
         # Orders that SHOULD be visible to vendor now
         OrderRepository.mark_visible_for_vendor(
