@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MenuItem } from '../types';
 import { XIcon } from './icons';
+import { MenuItemFormData } from '../types';
 
 const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -14,7 +15,7 @@ const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: Omit<MenuItem, 'id'>) => void;
+  onSave: (item: MenuItemFormData) => void;
   itemToEdit?: MenuItem | null;
   categories: string[];
 }
@@ -26,7 +27,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
   const [newCategory, setNewCategory] = useState('');
   const [price, setPrice] = useState(0);
   const [foodType, setFoodType] = useState<'veg' | 'non-veg'>('veg');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [available] = useState(true);
   
@@ -39,8 +40,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
             setName(itemToEdit.name);
             setDescription(itemToEdit.description || '');
             setPrice(itemToEdit.price);
-            setImageUrl(itemToEdit.imageUrl);
             setImagePreview(itemToEdit.imageUrl);
+            setImageFile(null);
             setFoodType(itemToEdit.foodType);
 
             // Handle category population for editing
@@ -59,7 +60,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
             setCategory('ADD_NEW_CATEGORY');
             setNewCategory('');
             setPrice(0);
-            setImageUrl('');
+            setImageFile(null);
             setImagePreview(null);
             setFoodType('veg');
         }
@@ -69,11 +70,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
+        setImageFile(file);
+
         const reader = new FileReader();
+
         reader.onloadend = () => {
-            const result = reader.result as string;
-            setImagePreview(result);
-            setImageUrl(result);
+            setImagePreview(reader.result as string);
         };
         reader.readAsDataURL(file);
     }
@@ -82,9 +84,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const categoryToSave = isAddingNewCategory ? newCategory.trim() : category;
-    if (!name || !categoryToSave || price <= 0 || !imageUrl) return;
+    if (!name || !categoryToSave || price <= 0 || !imageFile) return;
     
-    onSave({ name, category: categoryToSave, price, imageUrl, available, foodType, description });
+    onSave({ name, category: categoryToSave, price, imageFile, foodType, description });
     onClose();
   };
   
@@ -92,7 +94,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
     onClose();
   };
 
-  const isSaveDisabled = !name || price <= 0 || !imageUrl || (isAddingNewCategory && !newCategory.trim()) || (!isAddingNewCategory && !category);
+  const isSaveDisabled = !name.trim() || price <= 0 || (itemToEdit ? false : !imageFile) || (isAddingNewCategory && !newCategory.trim()) || (!isAddingNewCategory && !category);
 
   if (!isOpen) return null;
 

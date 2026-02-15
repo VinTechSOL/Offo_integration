@@ -31,6 +31,7 @@ export interface Order {
 
 export interface MenuItem {
   id: string;
+  baseItemId?: string;
   name: string;
   imageUrl: string;
   price: number;
@@ -38,6 +39,17 @@ export interface MenuItem {
   available: boolean;
   foodType: 'veg' | 'non-veg';
   description?: string;
+}
+
+export interface MenuItemFormData {
+  name: string;
+  description?: string;
+  category: string;
+  price: number;
+  foodType: 'veg' | 'non-veg';
+  imageFile: File;
+  
+  
 }
 
 export interface Customer {

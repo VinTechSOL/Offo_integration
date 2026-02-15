@@ -18,7 +18,13 @@ from app.modules.payments.api import router as payments_router
 from app.modules.locations.api import router as locations_router
 from app.workers.dev_scheduler import start_scheduler,shutdown_scheduler
 from app.modules.payments.gateways.phonepe.webhook import router as phonepe_webhook_router
+from app.modules.reports.api import router as reports_router
+from app.modules.crm.api import router as crm_router
 
+
+
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 '''
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +54,8 @@ app.include_router(payments_router)
 app.include_router(notifications_router)
 app.include_router(phonepe_webhook_router)
 app.include_router(locations_router)
+app.include_router(reports_router)
+app.include_router(crm_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,7 +69,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/uploads",StaticFiles(directory="uploads"),name="uploads")
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+
+
 

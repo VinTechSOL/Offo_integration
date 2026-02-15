@@ -20,13 +20,35 @@ class MenuRepository:
         db.commit()
         db.refresh(item)
         return item
+    
+    @staticmethod
+    def update_menu_item(db: Session, item_id: int, data):
+        item = db.get(MenuItem, item_id)
+
+        if not item:
+            raise HTTPException(404, "Menu item not found")
+
+        if data.item_name is not None:
+            item.item_name = data.item_name
+
+        if data.item_description is not None:
+            item.item_description = data.item_description
+
+        if data.image_url is not None:
+            item.image_url = data.image_url
+
+        db.commit()
+        db.refresh(item)
+
+        return item
+
 
     @staticmethod
-    def attach_item_to_branch(db: Session, data):
+    def attach_item_to_branch(db: Session, data,branch_id: int):
 
         existing = db.execute(
             select(BranchMenuItem).where(
-                BranchMenuItem.branch_id == data.branch_id,
+                BranchMenuItem.branch_id == branch_id,
                 BranchMenuItem.item_id == data.item_id
             )
         ).scalar_one_or_none()
@@ -35,7 +57,13 @@ class MenuRepository:
             raise HTTPException(409, "Item already attached to branch")
 
 
-        branch_item = BranchMenuItem(**data.dict())
+        branch_item = BranchMenuItem(
+            branch_id=branch_id,
+            item_id=data.item_id,
+            category_id=data.category_id,
+            price=data.price,
+            is_available=True,
+        )
         db.add(branch_item)
         db.commit()
         db.refresh(branch_item)
@@ -44,8 +72,6 @@ class MenuRepository:
     @staticmethod
     def update_branch_item(db: Session, branch_menu_item_id: int, data):
         item = db.get(BranchMenuItem, branch_menu_item_id)
-        if data.price <= 0:
-            raise HTTPException(400, "Price must be greater than zero")
 
         if data.price is not None:
             item.price = data.price
@@ -70,6 +96,7 @@ class MenuRepository:
       rows = db.execute(
         select(
             BranchMenuItem.branch_menu_item_id,
+            BranchMenuItem.item_id,
             BranchMenuItem.price,
             BranchMenuItem.is_available,
 
@@ -91,6 +118,7 @@ class MenuRepository:
       return [
           {
               "branch_menu_item_id": r.branch_menu_item_id,
+              "item_id": r.item_id,
               "name": r.item_name,
               "price": float(r.price),
               "image_url": r.image_url,
@@ -128,3 +156,14 @@ class MenuRepository:
             .where(BranchMenuItem.is_available == True)
             .where(MenuCategory.is_active == True)
         ).all()
+    
+
+    @staticmethod
+    def list_categories_by_branch(db: Session, branch_id: int):
+        return db.execute(
+            select(MenuCategory)
+            .where(MenuCategory.branch_id == branch_id)
+            .where(MenuCategory.is_active == True)
+            .order_by(MenuCategory.category_name.asc())
+        ).scalars().all()
+

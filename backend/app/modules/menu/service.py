@@ -23,18 +23,41 @@ class MenuService:
     @staticmethod
     def create_menu_item(db: Session, data):
         return MenuRepository.create_menu_item(db, data)
+    
+    @staticmethod
+    def update_menu_item(db: Session, item_id: int, data):
+        return MenuRepository.update_menu_item(db, item_id, data)
+
 
     @staticmethod
-    def attach_item_to_branch(db: Session, data):
-        return MenuRepository.attach_item_to_branch(db, data)
+    def attach_item_to_branch(db: Session, data,branch_id: int):
+        if data.price is not None and data.price <= 0:
+            raise HTTPException(status_code=400, detail="price must be greater than zero")
+        
+        return MenuRepository.attach_item_to_branch(db, data,branch_id)
 
     @staticmethod
     def update_branch_item(db: Session, branch_menu_item_id: int, data):
+        if data.price is not None and data.price <= 0:
+            raise HTTPException(status_code=400, detail="price must be greater than zero")
+        
         return MenuRepository.update_branch_item(db, branch_menu_item_id, data)
 
     @staticmethod
     def list_branch_menu(db: Session, branch_id: int):
         return MenuRepository.list_branch_menu(db, branch_id)
+    
+    @staticmethod
+    def list_categories(db: Session, branch_id: int):
+        categories = MenuRepository.list_categories_by_branch(db, branch_id)
+        return [
+            {
+                "category_id": c.category_id,
+                "category_name": c.category_name
+            }
+            for c in categories
+        ]
+
     
     @staticmethod
     def list_branch_menu_for_users(db: Session, branch_id: int):

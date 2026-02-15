@@ -7,17 +7,26 @@ class CategoryCreate(BaseModel):
     category_description: str | None = None
     parent_id: int | None = None
 
+class CategoryCreateRequest(BaseModel):
+    category_name: str
+    category_description: str | None = None
+    parent_id: int | None = None
+
+
 
 class MenuItemCreate(BaseModel):
     item_name: str
     item_description: str | None = None
     item_type_id: int
-    image_url: str | None = None
+    
+
+class MenuItemUpdate(BaseModel):
+    item_name: str | None = None
+    item_description: str | None = None
+
 
 
 class BranchMenuItemCreate(BaseModel):
-    cafe_id: int
-    branch_id: int
     item_id: int
     category_id: int
     price: float

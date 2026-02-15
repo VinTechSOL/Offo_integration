@@ -1,16 +1,37 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MenuItem } from '../types';
-import { initialMenuItems } from '../data';
 import { MenuItemRow } from './MenuItemRow';
 import { AddItemModal } from './AddItemModal';
 import { SearchIcon, PlusIcon } from './icons';
-import { StatCard } from './StatCard'; // Import StatCard
+import { StatCard } from './StatCard'; 
+import { VendorMenuApi } from '@/apis/vendorMenu';
+import { MenuItemFormData } from '../types';
 
 export const MenuDashboard: React.FC = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialMenuItems);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<MenuItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [backendCategories, setBackendCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadMenu = async () => {
+      try {
+        setLoading(true);
+        const data = await VendorMenuApi.getMenu();
+        const cats = await VendorMenuApi.getCategories();
+        setMenuItems(data);
+        setBackendCategories(cats);
+      } catch (err) {
+        console.error(err);
+        alert("failed to load menu");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadMenu();
+  }, []);
 
   const filteredMenuItems = useMemo(() => {
     return menuItems.filter(item => 
@@ -37,34 +58,67 @@ export const MenuDashboard: React.FC = () => {
     setItemToEdit(null);
   };
 
-  const handleSaveItem = (newItemData: Omit<MenuItem, 'id'>) => {
-    if (itemToEdit) {
-      setMenuItems(menuItems.map(item => {
-        if (item.id === itemToEdit.id) {
-          // If category changed to a new one that doesn't exist, add it to the categories list.
-          if (!categories.includes(newItemData.category) && newItemData.category.trim() !== '') {
-            // Note: categories memo is based on menuItems, so this will naturally update after setMenuItems.
-            // For immediate UI update in the modal, a more complex state might be needed,
-            // but for simplicity and correctness with the existing flow, this is sufficient.
-          }
-          return { ...itemToEdit, ...newItemData };
-        }
-        return item;
-      }));
-    } else {
-      setMenuItems([...menuItems, { id: `m${Date.now()}`, ...newItemData }]);
+  const handleSaveItem = async (data: MenuItemFormData) => {
+    
+    try {
+
+      if (itemToEdit) {
+      // EDIT FLOW
+        await VendorMenuApi.updateBranchItem(itemToEdit.id, {
+          price: data.price,
+        });
+
+        await VendorMenuApi.updateMenuItem(itemToEdit.baseItemId, {
+          name: data.name,
+          description: data.description,
+          foodType: data.foodType,
+          imageFile: data.imageFile,
+        });
+
+      } else {
+        await VendorMenuApi.addItem({
+          name: data.name,
+          description: data.description,
+          category: data.category,
+          price: data.price,
+          foodType: data.foodType,
+          imageFile: data.imageFile,
+        });
+      }
+
+      const refreshed = await VendorMenuApi.getMenu();
+      setMenuItems(refreshed);
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save item");
     }
   };
   
-  const handleToggleAvailability = (id: string, available: boolean) => {
-    setMenuItems(menuItems.map(item => item.id === id ? { ...item, available } : item));
+  const handleToggleAvailability = async (id: string, available: boolean) => {
+
+    try {
+      await  VendorMenuApi.updateBranchItem(id, {is_available: available,});
+
+      const refreshed = await VendorMenuApi.getMenu();
+      setMenuItems(refreshed);
+
+    } catch (err){
+      console.error(err);
+      alert("failed to update availability");
+    }
   };
+    
 
   // Calculate statistics for the Order Total Box
   const totalMenuItems = menuItems.length;
   const availableItemsCount = menuItems.filter(item => item.available).length;
   const unavailableItemsCount = menuItems.filter(item => !item.available).length;
   const totalCategories = categories.length;
+
+  if(loading){
+    return<div className="text-center py-20">Loading Menu...</div>
+  }
 
 
   return (
