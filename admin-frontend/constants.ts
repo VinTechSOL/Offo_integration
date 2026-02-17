@@ -6,8 +6,6 @@ export const constants = {
     ORDERS: '/orders',
     MENU: '/menu',
     BRANCHES: '/branches',
-    // STAFF: '/staff',
-    // ROLE_ACCESS: '/roles-access',
     REPORTS: '/reports',
     BRANDING: '/branding',
     SETTINGS: '/settings',

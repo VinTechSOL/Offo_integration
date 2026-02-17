@@ -181,7 +181,7 @@ export const SettingsPage: React.FC = () => {
            <Card className="p-6 max-w-2xl animate-modal-in">
              <h3 className="text-lg font-medium text-gray-900 mb-4">Notification Settings</h3>
              <div className="space-y-4">
-               {['New Order Alert', 'Order Cancelled', 'Daily Report Email', 'Staff Login Alert'].map((setting, i) => (
+               {['New Order Alert', 'Order Cancelled', 'Daily Report Email',].map((setting, i) => (
                  <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <span className="text-gray-700">{setting}</span>
                     <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">

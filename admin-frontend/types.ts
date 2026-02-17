@@ -45,48 +45,6 @@ export interface Branch {
   longitude: string;
 }
 
-export enum StaffRole {
-  SUPER_ADMIN = 'Super Admin',
-  BRANCH_ADMIN = 'Branch Admin',
-  MANAGER = 'Manager',
-  STAFF = 'Staff',
-  KITCHEN = 'Kitchen Staff',
-  BILLING = 'Billing Staff'
-}
-
-export type Permission = 
-  'view dashboard' | 
-  'view orders' |
-  'update orders' |
-  'manage menu' |
-  'manage staff' | 
-  'manage branch settings' |
-  'view reports' |
-  'manage branding';
-
-export const AllPermissions: Permission[] = [
-  'view dashboard',
-  'view orders',
-  'update orders',
-  'manage menu',
-  'manage staff',
-  'manage branch settings',
-  'view reports',
-  'manage branding'
-];
-
-export interface StaffMember {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: StaffRole;
-  branchId: string;
-  branchName: string;
-  isActive: boolean;
-  password?: string;
-  lastActivity?: Date;
-}
 
 export interface MenuCategory {
   id: string;
@@ -166,10 +124,3 @@ export interface UPIAccount {
   accountHolderName: string;
 }
 
-export interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: Permission[];
-  isSystem?: boolean; // New field to lock super admin roles
-}

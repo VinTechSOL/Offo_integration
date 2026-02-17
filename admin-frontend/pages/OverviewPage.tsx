@@ -53,7 +53,7 @@ export const OverviewPage: React.FC = () => {
      // Base values + dynamic modification to look like a real dashboard
      const baseTodayOrders = currentBranchId === '1' ? 42 : currentBranchId === '2' ? 28 : 15;
      const baseRevenue = currentBranchId === '1' ? 15400 : currentBranchId === '2' ? 8200 : 4500;
-     //const activeStaff = currentBranchId === '1' ? 8 : currentBranchId === '2' ? 5 : 3;
+    
      
      const totalRevenue = baseRevenue + revenue;
      const totalOrders = baseTodayOrders + count;
@@ -63,7 +63,7 @@ export const OverviewPage: React.FC = () => {
         { title: 'Today Orders', value: totalOrders, icon: '📦', trend: '+12%', isPositive: true },
         { title: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, icon: '💰', trend: '+8%', isPositive: true },
         { title: 'Avg Order Value', value: `₹${avgOrderValue}`, icon: '📈', trend: '-2%', isPositive: false },
-        //{ title: 'Active Staff', value: activeStaff, icon: '👥', trend: 'On Shift', isPositive: true },
+    
      ];
   }, [recentOrders, currentBranchId]);
 
@@ -271,15 +271,6 @@ export const OverviewPage: React.FC = () => {
                         </div>
                         <span className="text-xs font-bold">Add Item</span>
                     </button>
-                    {/* <button 
-                        onClick={() => navigate(constants.routes.STAFF)}
-                        className="p-4 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors flex flex-col items-center justify-center text-center gap-2 group"
-                    >
-                        <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                        </div>
-                        <span className="text-xs font-bold">Add Staff</span>
-                    </button> */}
                     <button 
                         onClick={() => navigate(constants.routes.REPORTS)}
                         className="p-4 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors flex flex-col items-center justify-center text-center gap-2 group"

@@ -63,10 +63,6 @@ export const BranchesPage: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // const handleViewStaff = (branchId: string) => {
-  //     setCurrentBranchId(branchId);
-  //     navigate(constants.routes.STAFF);
-  // };
 
   const handleViewOrders = (branchId: string) => {
       setCurrentBranchId(branchId);
@@ -167,12 +163,6 @@ export const BranchesPage: React.FC = () => {
                 >
                     View Orders
                 </button>
-                {/* <button 
-                    onClick={() => handleViewStaff(b.id)}
-                    className="w-full px-4 py-2 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors focus:outline-none"
-                >
-                    View Staff
-                </button> */}
              </div>
           </div>
         ))}

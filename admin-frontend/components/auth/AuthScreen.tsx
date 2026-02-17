@@ -18,9 +18,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
          <div className="relative z-20 flex flex-col justify-center px-16 text-white h-full">
             <h1 className="text-6xl font-extrabold mb-6 tracking-tight">OFFO</h1>
-            <h2 className="text-3xl font-bold mb-4">Vendor Admin Panel</h2>
+            <h2 className="text-3xl font-bold mb-4"> Admin Panel</h2>
             <p className="text-lg opacity-90 max-w-md leading-relaxed">
-              Manage your restaurant orders, staff, branches, and analytics all in one place. Streamline your operations efficiently with OFFO.
+              Manage your restaurants, branches, and analytics all in one place. Streamline your operations efficiently.
             </p>
          </div>
       </div>
@@ -31,7 +31,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
            {/* Mobile Header */}
            <div className="lg:hidden text-center mb-10">
               <h1 className="text-5xl font-extrabold text-offoOrange tracking-tight">OFFO</h1>
-              <p className="text-gray-500 mt-2 font-medium">Vendor Admin Panel</p>
+              <p className="text-gray-500 mt-2 font-medium"> Admin Panel</p>
            </div>
            
            <MobileLoginForm onLogin={onLogin} />

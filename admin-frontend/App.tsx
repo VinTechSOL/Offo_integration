@@ -4,8 +4,6 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthScreen } from './components/auth/AuthScreen.tsx';
 import { MainLayout } from './components/layout/MainLayout.tsx';
 import { OverviewPage } from './pages/OverviewPage.tsx';
-//import { StaffPage } from './pages/StaffPage.tsx';
-//import { RoleAccessPage } from './pages/RoleAccessPage.tsx';
 import { ReportsPage } from './pages/ReportsPage.tsx';
 import { BrandingPage } from './pages/BrandingPage.tsx';
 import { SettingsPage } from './pages/SettingsPage.tsx';
@@ -44,8 +42,6 @@ const App: React.FC = () => {
                     <Route path={constants.routes.ORDERS} element={<OrdersPage />} />
                     <Route path={constants.routes.MENU} element={<MenuPage />} />
                     <Route path={constants.routes.BRANCHES} element={<BranchesPage />} />
-                    {/* <Route path={constants.routes.STAFF} element={<StaffPage />} /> */}
-                    {/* <Route path={constants.routes.ROLE_ACCESS} element={<RoleAccessPage />} /> */}
                     <Route path={constants.routes.REPORTS} element={<ReportsPage />} />
                     <Route path={constants.routes.BRANDING} element={<BrandingPage />} />
                     <Route path={constants.routes.SETTINGS} element={<SettingsPage />} />
