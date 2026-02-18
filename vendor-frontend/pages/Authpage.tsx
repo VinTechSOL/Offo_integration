@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 
+
 interface AuthPageProps {
   onLoginSuccess: () => void;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   const [showLogin, setShowLogin] = useState(true);
+  
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4">

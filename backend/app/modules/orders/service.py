@@ -16,10 +16,8 @@ from app.modules.notifications.constants import (
 from datetime import timedelta,datetime,timezone
 from datetime import datetime
 from fastapi import HTTPException
+from app.core.time_utils import ist_to_utc,now_utc
 
-from pytz import timezone as pytz_timezone
-
-IST = pytz_timezone("Asia/Kolkata")
 
 def build_scheduled_datetime(scheduled_date, scheduled_time):
     
@@ -28,9 +26,8 @@ def build_scheduled_datetime(scheduled_date, scheduled_time):
 
     time_obj = datetime.strptime(scheduled_time, "%I:%M %p").time()
     dt = datetime.combine(scheduled_date, time_obj)
-    dt_ist = IST.localize(dt)
 
-    return dt_ist.astimezone(timezone.utc)
+    return ist_to_utc(dt)
 
 
 class OrderService:
@@ -173,7 +170,7 @@ class VendorOrderService:
             raise HTTPException(400, "Order expired")
 
         order.order_status = OrderStatus.PREPARING
-        order.updated_at = datetime.now(IST)
+        order.updated_at = now_utc()
 
         OrderRepository.add_status_log(
             db,
@@ -220,7 +217,7 @@ class VendorOrderService:
         )
 
         order.order_status = OrderStatus.REJECTED
-        order.updated_at = datetime.now(IST)
+        order.updated_at = now_utc()
 
         db.commit()
         db.refresh(order)
@@ -251,7 +248,7 @@ class VendorOrderService:
         )
 
         order.order_status = next_status
-        order.updated_at = datetime.now(IST)
+        order.updated_at = now_utc()
 
         OrderRepository.add_status_log(
             db,

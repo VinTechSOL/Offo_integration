@@ -1,10 +1,6 @@
 from datetime import datetime, timedelta, timezone
+from app.core.time_utils import now_utc
 
-from pytz import timezone as pytz_timezone
-
-IST = pytz_timezone("Asia/Kolkata")
-VISIBLE_BEFORE_MINUTES = 60
-GRACE_MINUTES = 5
 
 
 class OrderPriority:
@@ -15,7 +11,7 @@ class OrderPriority:
 
 
 def calculate_priority(order):
-    now = datetime.now(IST)
+    now = now_utc()
 
     # ---------------------------
     # INSTANT ORDERS

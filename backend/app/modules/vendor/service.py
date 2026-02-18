@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from app.modules.vendor.repository import VendorRepository ,CafeRepository
 from app.modules.locations.repository import LocationRepository
 from datetime import datetime,time
+from app.core.time_utils import now_utc
 
 class VendorService:
 
@@ -46,5 +47,5 @@ class CafeService:
     def is_branch_open(branch):
       if not branch.opens_at or not branch.closes_at:
         return True  # legacy fallback
-      now = datetime.now().time()
+      now = now_utc().time()
       return branch.opens_at <= now <= branch.closes_at

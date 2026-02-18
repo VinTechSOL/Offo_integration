@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthPage } from './pages/Authpage';
 import { Dashboard } from './pages/Dashbord';
 import { IntroSplashPage } from './components/IntroSplashPage';
+import { VendorProvider } from './context/VendorContext';
 
 // Define the screens as an enum for clear state management
 enum AppScreen {
@@ -65,9 +66,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    const SPLASH_DURATION = 3000; // 3 seconds for each splash screen
+    const SPLASH_DURATION = 3000;
 
-    // Function to transition to the next screen
     const advanceScreen = () => {
       setCurrentAppScreen(prevScreen => {
         switch (prevScreen) {
@@ -75,50 +75,53 @@ const App: React.FC = () => {
           case AppScreen.IntroSplash2: return AppScreen.IntroSplash3;
           case AppScreen.IntroSplash3: return AppScreen.BrandSplash;
           case AppScreen.BrandSplash: return AppScreen.AuthOrDashboard;
-          default: return prevScreen; // Stay on AuthOrDashboard if reached
+          default: return prevScreen;
         }
       });
     };
 
-    // Schedule transitions for splash screens
     if (currentAppScreen !== AppScreen.AuthOrDashboard) {
       timer = setTimeout(advanceScreen, SPLASH_DURATION);
     }
 
-    // Cleanup function for setTimeout
     return () => clearTimeout(timer);
-  }, [currentAppScreen]); // Re-run effect when currentAppScreen changes
+  }, [currentAppScreen]);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
-    // Directly navigate to AuthOrDashboard state once logged in, skipping any pending splash screen transitions.
-    setCurrentAppScreen(AppScreen.AuthOrDashboard);
-  };
-  
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    // After logout, usually goes back to AuthPage directly.
     setCurrentAppScreen(AppScreen.AuthOrDashboard);
   };
 
-  // Render the appropriate screen based on currentAppScreen state
-  switch (currentAppScreen) {
-    case AppScreen.IntroSplash1:
-      return <IntroSplashPage key="intro1" {...SPLASH_PAGE_CONFIGS[0]} />;
-    case AppScreen.IntroSplash2:
-      return <IntroSplashPage key="intro2" {...SPLASH_PAGE_CONFIGS[1]} />;
-    case AppScreen.IntroSplash3:
-      return <IntroSplashPage key="intro3" {...SPLASH_PAGE_CONFIGS[2]} />;
-    case AppScreen.BrandSplash:
-      return <BrandSplashScreen />;
-    case AppScreen.AuthOrDashboard:
-      if (!isAuthenticated) {
-        return <AuthPage onLoginSuccess={handleLoginSuccess} />;
-      }
-      return <Dashboard onLogout={handleLogout} />;
-    default:
-      return null; // Should ideally not be reached
-  }
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentAppScreen(AppScreen.AuthOrDashboard);
+  };
+
+  return (
+    <VendorProvider>
+      {currentAppScreen === AppScreen.IntroSplash1 && (
+        <IntroSplashPage key="intro1" {...SPLASH_PAGE_CONFIGS[0]} />
+      )}
+
+      {currentAppScreen === AppScreen.IntroSplash2 && (
+        <IntroSplashPage key="intro2" {...SPLASH_PAGE_CONFIGS[1]} />
+      )}
+
+      {currentAppScreen === AppScreen.IntroSplash3 && (
+        <IntroSplashPage key="intro3" {...SPLASH_PAGE_CONFIGS[2]} />
+      )}
+
+      {currentAppScreen === AppScreen.BrandSplash && (
+        <BrandSplashScreen />
+      )}
+
+      {currentAppScreen === AppScreen.AuthOrDashboard && (
+        !isAuthenticated
+          ? <AuthPage onLoginSuccess={handleLoginSuccess} />
+          : <Dashboard onLogout={handleLogout} />
+      )}
+    </VendorProvider>
+  );
 };
 
 export default App;

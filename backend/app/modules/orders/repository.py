@@ -8,9 +8,8 @@ from app.modules.vendor.models import CafeBranch as Cafe
 from app.modules.users.models import User
 from app.modules.locations.models import Campus,Building
 from app.modules.orders.priority import calculate_priority,OrderPriority
-from pytz import timezone as pytz_timezone
+from app.core.time_utils import now_utc,to_ist
 
-IST = pytz_timezone("Asia/Kolkata")
 
 class OrderRepository:
 
@@ -101,7 +100,7 @@ class OrderRepository:
 
     @staticmethod
     def get_incoming_orders_for_branch(db: Session, branch_id: int):
-        now = datetime.now(IST)
+        now = now_utc()
         scheduled_window = now + timedelta(minutes=60)
 
         rows = (
@@ -164,7 +163,7 @@ class OrderRepository:
     @staticmethod
     def update_status(db: Session, order: Order, status: OrderStatus):
         order.order_status = status
-        order.updated_at = datetime.now(IST)
+        order.updated_at = now_utc()
         db.commit()
         db.refresh(order)
         return order
@@ -173,7 +172,7 @@ class OrderRepository:
     @staticmethod
     def get_all_scheduled_orders(db: Session, branch_id: int):
 
-        now = datetime.now(IST)
+        now = now_utc()
 
         rows = (
             db.query(
@@ -287,7 +286,7 @@ class OrderRepository:
 
     @staticmethod
     def fetch_orders_to_expire(db: Session):
-        grace_limit = datetime.now(IST) - timedelta(minutes=5)
+        grace_limit = now_utc() - timedelta(minutes=5)
 
         stmt = select(Order).where(
             Order.order_type == "SCHEDULED",
@@ -301,7 +300,7 @@ class OrderRepository:
 
     @staticmethod
     def expire_orders(db: Session, orders):
-        now = datetime.now(IST)
+        now = now_utc()
 
         for order in orders:
             order.order_status = OrderStatus.CANCELLED
@@ -317,7 +316,7 @@ class OrderRepository:
 
     @staticmethod
     def expire_unaccepted_scheduled_orders(db, grace_minutes: int):
-        now = datetime.now(IST)
+        now = now_utc()
         expiry_time = now - timedelta(minutes=grace_minutes)
 
         db.query(Order).filter(
@@ -335,7 +334,7 @@ class OrderRepository:
 
     @staticmethod
     def get_live_orders(db: Session, branch_id: int, window_minutes: int = 60):
-        now = datetime.now(IST)
+        now = now_utc()
         visibility_until = now + timedelta(minutes=window_minutes)
 
         rows = (

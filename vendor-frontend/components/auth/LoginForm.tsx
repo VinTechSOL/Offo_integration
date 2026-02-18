@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { LockClosedIcon, UserIcon } from "../icons";
 import { staffLogin } from "../../apis/auth";
+import { useVendor } from "@/context/VendorContext";
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -10,6 +11,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({
   onLoginSuccess,
 }) => {
+  const { refreshProfile } = useVendor();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
         username: username.trim(),
         password,
       });
+
+      await refreshProfile();
 
       onLoginSuccess();
     } catch (err: any) {

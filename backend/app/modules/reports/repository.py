@@ -15,7 +15,7 @@ class ReportsRepository:
             func.coalesce(func.sum(Order.total_amount), 0)
         ).filter(
             Order.branch_id == branch_id,
-            Order.order_status == OrderStatus.COMPLETED
+            Order.order_status == OrderStatus.PICKED_UP
         ).scalar()
 
         total_orders = db.query(func.count(Order.order_id)).filter(
@@ -60,7 +60,7 @@ class ReportsRepository:
             MenuCategory, MenuCategory.category_id == MenuItem.item_id, isouter=True
         ).filter(
             Order.branch_id == branch_id,
-            Order.order_status == OrderStatus.COMPLETED
+            Order.order_status == OrderStatus.PICKED_UP
         ).group_by(
             OrderItem.item_id,
             MenuItem.item_name,
