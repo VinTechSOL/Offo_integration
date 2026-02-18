@@ -24,19 +24,55 @@ def upgrade() -> None:
     
     op.add_column(
         "cafe_branch",
-        sa.Column("city", sa.String(length=100), nullable=False),
+        sa.Column("city_id", sa.BigInteger(), nullable=False),
         schema="core",
     )
+
+    op.create_foreign_key(
+        "fk_cafe_branch_city",
+        source_table="cafe_branch",
+        referent_table="cities",
+        local_cols=["city_id"],
+        remote_cols=["city_id"],
+        source_schema="core",
+        referent_schema="locations",
+    )
+
+
     op.add_column(
         "cafe_branch",
-        sa.Column("campus", sa.String(length=150), nullable=False),
+        sa.Column("campus_id", sa.BigInteger(), nullable=False),
         schema="core",
     )
+
+    op.create_foreign_key(
+        "fk_cafe_branch_campus",
+        source_table="cafe_branch",
+        referent_table="campuses",
+        local_cols=["campus_id"],
+        remote_cols=["campus_id"],
+        source_schema="core",
+        referent_schema="locations",
+    )
+
+
     op.add_column(
         "cafe_branch",
-        sa.Column("building", sa.String(length=150), nullable=False),
+        sa.Column("building", sa.BigInteger(), nullable=False),
         schema="core",
     )
+
+    op.create_foreign_key(
+        "fk_cafe_branch_building",
+        source_table="cafe_branch",
+        referent_table="buildings",
+        local_cols=["building_id"],
+        remote_cols=["building_id"],
+        source_schema="core",
+        referent_schema="locations",
+    )
+
+    
     op.add_column(
         "cafe_branch",
         sa.Column("latitude", sa.Float(), nullable=True),

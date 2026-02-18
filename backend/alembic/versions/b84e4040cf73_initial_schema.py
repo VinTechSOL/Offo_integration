@@ -25,6 +25,7 @@ def upgrade() -> None:
     op.execute("CREATE SCHEMA IF NOT EXISTS catalog")
     op.execute("CREATE SCHEMA IF NOT EXISTS orders")
     op.execute("CREATE SCHEMA IF NOT EXISTS payments")
+    op.execute("CREATE SCHEMA IF NOT EXISTS locations")
     
 
     op.create_table('branch_menu_items',
@@ -110,7 +111,7 @@ def upgrade() -> None:
     sa.Column('cafe_id', sa.Integer(), nullable=True),
     sa.Column('role_name', sa.String(length=50), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('role_id'),
     schema='core'
     )
@@ -170,8 +171,8 @@ def upgrade() -> None:
     sa.Column('payment_status', sa.String(length=30), nullable=False),
     sa.Column('repeat_weekly', sa.Boolean(), nullable=False),
     sa.Column('repeat_remaining', sa.Integer(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=False),
     sa.Column('reminder_sent', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('order_id'),
     schema='orders'
@@ -193,7 +194,7 @@ def upgrade() -> None:
     sa.Column('role_id', sa.BigInteger(), nullable=False),
     sa.Column('branch_id', sa.Integer(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['role_id'], ['core.staff_roles.role_id'], ),
     sa.PrimaryKeyConstraint('staff_id'),
     sa.UniqueConstraint('username'),
@@ -215,7 +216,7 @@ def upgrade() -> None:
     sa.Column('status', sa.String(length=30), nullable=False),
     sa.Column('changed_by', sa.String(length=20), nullable=False),
     sa.Column('changed_by_id', sa.Integer(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['orders.orders.order_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     schema='orders'
@@ -226,8 +227,8 @@ def upgrade() -> None:
     sa.Column('amount', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('currency', sa.String(length=10), nullable=False),
     sa.Column('status', sa.String(length=20), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True),server_default=sa.text('now()'),nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['orders.orders.order_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('intent_id'),
     sa.UniqueConstraint('order_id'),
@@ -243,8 +244,8 @@ def upgrade() -> None:
     sa.Column('status', sa.String(length=20), nullable=False),
     sa.Column('request_payload', sa.JSON(), nullable=True),
     sa.Column('response_payload', sa.JSON(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True),server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['intent_id'], ['payments.payment_intents.intent_id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['parent_payment_id'], ['payments.payment_attempts.attempt_id'], ),
     sa.PrimaryKeyConstraint('attempt_id'),
