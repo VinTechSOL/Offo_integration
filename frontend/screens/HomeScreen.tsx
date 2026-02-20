@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { Screen } from "../types/navigation";
 import type { CartItem, FoodItem, Cafe, CafeForUser } from "../types";
-import { FOOD_ITEMS } from "../constants";
 
 import BottomNav from "../components/BottomNav";
 import CartIcon from "../components/icons/CartIcon";
@@ -9,6 +8,7 @@ import ScrollableContainer from "../components/ScrollableContainer";
 import ChangeLocationModal from "@/components/ChangeLocationModal";
 
 import { getCafesForUser } from "../api/cafes";
+import { getBranchMenuForUser } from "../api/menu";
 import { useUserContext } from "../hooks/useUserContext";
 
 /* ------------------------------------------------------------------ */
@@ -21,7 +21,6 @@ interface HomeScreenProps {
   onViewFoodItem: (item: FoodItem) => void;
 }
 
-
 /* ------------------------------------------------------------------ */
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -31,28 +30,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onViewFoodItem,
   setSelectedCafe,
 }) => {
-  const [isVeg, setIsVeg] = useState(true);
   const [showChangeLocation, setShowChangeLocation] = useState(false);
 
-  /* ---------- USER CONTEXT ---------- */
+  /* ---------------- USER CONTEXT ---------------- */
   const { context, loading: contextLoading, refresh } = useUserContext();
 
-  /* 🔥 FIX: load context on mount */
   useEffect(() => {
     refresh();
   }, []);
 
-  /* ---------- CAFES ---------- */
+  /* ---------------- CAFES ---------------- */
   const [cafes, setCafes] = useState<CafeForUser[]>([]);
   const [cafesLoading, setCafesLoading] = useState(true);
 
-  useEffect(()=> {
-    console.log("cafes from api",cafes);
-
-  }, [cafes]);
-
   useEffect(() => {
-    
     if (!context) return;
 
     setCafesLoading(true);
@@ -61,29 +52,75 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       .finally(() => setCafesLoading(false));
   }, [context]);
 
-  /* ---------- HEADER TEXT ---------- */
+  /* ---------------- FOOD FROM BACKEND ---------------- */
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [foodLoading, setFoodLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFood = async () => {
+      if (!cafes.length) return;
+
+      try {
+        setFoodLoading(true);
+
+        const openCafes = cafes.filter((c) => c.is_open);
+
+        const menus = await Promise.all(
+          openCafes.map((cafe) =>
+            getBranchMenuForUser(cafe.branch_id)
+          )
+        );
+
+        let combined: FoodItem[] = [];
+
+        menus.forEach((menu, index) => {
+          const cafe = openCafes[index];
+
+          menu.categories.forEach((category: any) => {
+            category.items.forEach((item: any) => {
+              combined.push({
+                id: item.branch_menu_item_id,
+                branchId: cafe.branch_id,
+                name: item.name,
+                price: item.price,
+                image: item.imageUrl,
+                cafe: cafe.branch_name,
+                isVeg: item.is_veg,
+                category: category.category_name,
+              });
+            });
+          });
+        });
+
+        setFoodItems(combined);
+      } catch (err) {
+        console.error("Failed to load food items", err);
+      } finally {
+        setFoodLoading(false);
+      }
+    };
+
+    loadFood();
+  }, [cafes]);
+
+  /* ---------------- LOCATION LABEL ---------------- */
   const locationLabel = context
     ? `${context.campus_name}${
         context.building_name ? ` · ${context.building_name}` : ""
       }`
     : "Select your location";
 
-  /* ---------- CART COUNT ---------- */
+  /* ---------------- CART COUNT ---------------- */
   const cartItemCount = cart.reduce(
     (total, current) => total + current.quantity,
     0
   );
 
-  /* ---------- MARQUEE ---------- */
+  /* ---------------- MARQUEE ---------------- */
   const marqueeContentRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const currentTranslateX = useRef(0);
-  const speed = useRef(0.4);
-
-  const filteredFoodItems = FOOD_ITEMS.filter((item) =>
-    isVeg ? item.isVeg : !item.isVeg
-  );
-  const marqueeItems = [...filteredFoodItems, ...filteredFoodItems];
+  const speed = 0.4;
 
   const animateMarquee = useCallback(() => {
     if (!marqueeContentRef.current) return;
@@ -91,7 +128,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     const scrollWidth = marqueeContentRef.current.scrollWidth;
     const resetBoundary = -scrollWidth / 2;
 
-    currentTranslateX.current -= speed.current;
+    currentTranslateX.current -= speed;
+
     if (currentTranslateX.current <= resetBoundary) {
       currentTranslateX.current += scrollWidth / 2;
     }
@@ -101,40 +139,91 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!foodItems.length) return;
     animationFrameRef.current = requestAnimationFrame(animateMarquee);
     return () => {
-      if (animationFrameRef.current) {
+      if (animationFrameRef.current)
         cancelAnimationFrame(animationFrameRef.current);
-      }
     };
-  }, [animateMarquee]);
+  }, [foodItems, animateMarquee]);
 
-  /* ========================= RENDER ========================= */
+  /* ---------------- FOOD CARD ---------------- */
+  const FoodItemCard: React.FC<{ item: FoodItem }> = ({ item }) => (
+    <div
+      className="flex-shrink-0 w-40 bg-white p-3 rounded-xl shadow-sm flex flex-col cursor-pointer transition-transform duration-200 hover:scale-105"
+      onClick={() => onViewFoodItem(item)}
+    >
+      <img
+        src={item.image}
+        alt={item.name}
+        className="w-full h-24 rounded-lg object-cover mb-2"
+      />
+
+      <div className="flex-grow">
+        <p className="font-bold text-gray-800 text-sm truncate">
+          {item.name}
+        </p>
+        <p className="text-xs text-gray-500">({item.cafe})</p>
+      </div>
+
+      <div className="flex justify-between items-center mt-2">
+        <p className="text-sm font-semibold text-gray-800">
+          ₹{item.price.toFixed(2)}
+        </p>
+
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            addToCart({ ...item }, 1);
+          }}
+          className="bg-orange-100 text-orange-600 font-bold px-4 py-1.5 text-sm rounded-lg active:scale-95 transition"
+        >
+          + Add
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ========================== RENDER ========================== */
 
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2]">
       {/* HEADER */}
-      <header className="p-4">
+      <header className="px-4 pt-4 pb-2">
         <div className="flex justify-between items-start">
-          <div>
+          <div className="space-y-2">
+            {/* LOCATION */}
             <button
               onClick={() => setShowChangeLocation(true)}
-              className="flex items-center gap-1 mb-1"
+              className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 hover:shadow-md transition"
             >
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-orange-500 text-sm">📍</span>
+              <span className="text-sm font-medium text-gray-800 max-w-[180px] truncate">
                 {contextLoading ? "Loading..." : locationLabel}
               </span>
-              <span className="text-gray-700 text-sm">⌄</span>
+
+              <svg
+                className="w-4 h-4 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
 
-            <h1 className="font-bold text-xl text-gray-800">
-              Hey, have a tasty day!
+            {/* GREETING */}
+            <h1 className="font-semibold text-lg text-gray-800">
+              Hey, have a tasty day 👋
             </h1>
           </div>
 
-          <div className="relative">
+          {/* CART */}
+          <div className="relative mt-1">
             <button onClick={() => navigateTo("cart")}>
-              <CartIcon className="w-8 h-8 text-gray-700" />
+              <CartIcon className="w-7 h-7 text-gray-700" />
             </button>
             {cartItemCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-orange-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -145,8 +234,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </header>
 
-      {/* CAFES */}
+      {/* FOOD MARQUEE */}
+      {!foodLoading && foodItems.length > 0 && (
+        <div className="px-4">
+          <div className="overflow-hidden whitespace-nowrap relative">
+            <div
+              ref={marqueeContentRef}
+              className="flex space-x-4"
+              style={{ willChange: "transform" }}
+            >
+              {[...foodItems, ...foodItems].map((item, index) => (
+                <FoodItemCard key={`${item.id}-${index}`} item={item} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CONTENT */}
       <ScrollableContainer className="px-4 pb-24">
+        {/* CAFES */}
         <h2 className="font-bold text-lg my-4">Cafes Near You</h2>
 
         {cafesLoading &&
@@ -157,19 +264,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             />
           ))}
 
-        {!cafesLoading && cafes.length === 0 && (
-          <div className="bg-white rounded-2xl p-6 text-center text-gray-600">
-            <p className="text-2xl mb-2">😕</p>
-            <p className="font-semibold">
-              We couldn’t find cafes in this area
-            </p>
-          </div>
-        )}
-
         {!cafesLoading &&
           cafes.map((cafe) => (
             <div
-              key={cafe.branch_name}
+              key={cafe.branch_id}
               onClick={() => {
                 setSelectedCafe({
                   id: cafe.branch_id,
@@ -179,26 +277,32 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                     cafe.building_name ? ", " + cafe.building_name : ""
                   }`,
                   status: cafe.is_open ? "Open" : "Closed",
-                  image:"public/assets/busiesscafe.jpg",
-                  
+                  image: cafe.image_url || "",
                 });
                 navigateTo("menu");
               }}
-              className="bg-white p-4 rounded-2xl mb-3 flex justify-between shadow-sm"
+              className="bg-white p-4 rounded-2xl mb-3 flex items-center justify-between shadow-sm"
             >
-              <div>
-                <p className="font-bold text-gray-800">
-                  {cafe.branch_name}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {cafe.building_name
-                    ? `${cafe.building_name}, `
-                    : ""}
-                  {cafe.campus_name}
-                </p>
+              <div className="flex items-center gap-4">
+                <img
+                  src={cafe.image_url || "/placeholder-food.png"}
+                  className="w-16 h-16 rounded-xl object-cover"
+                />
+                <div>
+                  <p className="font-bold text-gray-800">
+                    {cafe.branch_name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {cafe.building_name
+                      ? `${cafe.building_name}, `
+                      : ""}
+                    {cafe.campus_name}
+                  </p>
+                </div>
               </div>
+
               <span
-                className={`px-3 py-1 text-xs rounded-full text-white h-fit ${
+                className={`px-3 py-1 text-xs rounded-full text-white ${
                   cafe.is_open ? "bg-green-500" : "bg-red-500"
                 }`}
               >
@@ -206,6 +310,52 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               </span>
             </div>
           ))}
+
+        {/* POPULAR SECTION */}
+        {foodItems.length > 0 && (
+          <>
+            <h2 className="font-bold text-lg my-4">
+              Popular Near You
+            </h2>
+
+            <div className="space-y-3">
+              {foodItems.slice(0, 8).map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center bg-white p-3 rounded-xl shadow-sm cursor-pointer"
+                  onClick={() => onViewFoodItem(item)}
+                >
+                  <img
+                    src={item.image}
+                    className="w-20 h-20 rounded-lg object-cover"
+                  />
+
+                  <div className="ml-4 flex-grow">
+                    <p className="font-bold text-sm truncate">
+                      {item.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      ({item.cafe})
+                    </p>
+                    <p className="text-sm font-semibold mt-2">
+                      ₹{item.price.toFixed(2)}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToCart(item);
+                    }}
+                    className="bg-orange-100 text-orange-600 font-bold px-4 py-1.5 text-sm rounded-lg"
+                  >
+                    + Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </ScrollableContainer>
 
       <BottomNav activeScreen="home" navigateTo={navigateTo} />
@@ -217,7 +367,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           onClose={() => setShowChangeLocation(false)}
           onSaved={async () => {
             setShowChangeLocation(false);
-            await refresh(); // 🔥 re-sync
+            await refresh();
           }}
         />
       )}

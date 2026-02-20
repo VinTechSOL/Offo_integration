@@ -38,9 +38,15 @@ class AuthService:
     def verify_otp(db: Session, mobile: str, otp: str):
         redis_key = f"{REDIS_OTP_PREFIX}{mobile}"
         cached_otp = redis_client.get(redis_key)
+        #temporary otp setup for testing,remove if statement in production
 
-        if not cached_otp or cached_otp != otp:
-            raise ValueError("Invalid or expired OTP")
+        if settings.ALLOW_DEV_OTP and otp == settings.DEV_MASTER_OTP:
+            print("[DEV MODE] Master OTP used")
+        else:
+            if not cached_otp or cached_otp != otp:
+               raise ValueError("Invalid or expired OTP")
+
+        
 
         redis_client.delete(redis_key)
 
@@ -89,15 +95,23 @@ class AuthService:
 
     @staticmethod
     def signup_verify(db: Session, mobile: str, otp: str):
-        signup = (
-            db.query(SignupSession)
-            .filter(
+        signup = None
+        # in production,no requirement of if and above signup none thing only use else 
+        if settings.ALLOW_DEV_OTP and otp == settings.DEV_MASTER_OTP:
+            print(f"[dev mode] master otp used for {mobile}")
+            signup = db.query(SignupSession).filter(
+                SignupSession.phone == mobile
+            ).first()
+        else:
+            signup = (
+              db.query(SignupSession)
+              .filter(
                 SignupSession.phone == mobile,
                 SignupSession.otp == otp,
                 SignupSession.expires_at >= datetime.now(timezone.utc),
+              )
+              .first()
             )
-            .first()
-        )
 
         if not signup:
             raise ValueError("Invalid or expired OTP")

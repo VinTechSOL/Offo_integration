@@ -12,8 +12,8 @@ INSERT INTO core.staff_roles (
 )
 VALUES
 (1, NULL, 'SUPER_ADMIN', 'System level administrator'),
-(2, 1, 'BRANCH_MANAGER', 'Manages specific branch'),
-(3, 1, 'STAFF', 'Basic staff role')
+(2, 1, 'VENDOR_ADMIN', 'Manages specific branch'),
+(3, 1, 'VENDOR', 'Basic staff role')
 ON CONFLICT (role_id) DO NOTHING;
 
 
@@ -102,6 +102,11 @@ ON CONFLICT (cafe_id) DO NOTHING;
 
 
 
+insert into locations.cities(city_id,city_name) values (1,'Bangalore');
+insert into locations.campuses(campus_id,city_id,campus_name) values (1,1,'Manyata Tech park');
+insert into locations.buildings(building_id,campus_id,building_name) values (1,1,'vsw data solutions');
+
+
 -- =====================================================
 -- 6️⃣ INSERT BRANCH
 -- =====================================================
@@ -121,7 +126,7 @@ VALUES
 (
     1,
     1,
-    'Tech Park Block A',
+    'Healthy Bites - Manyata',
     1,
     1,
     1,
@@ -161,5 +166,32 @@ VALUES
 )
 ON CONFLICT (staff_id) DO NOTHING;
 
+INSERT INTO core.staff (
+    staff_id,
+    first_name,
+    last_name,
+    username,
+    password_hash,
+    role_id,
+    branch_id,
+    is_active,
+    created_at
+)
+VALUES
+(
+    1,
+    'vishal',
+    'S',
+    'vendor1',
+    '$2b$12$uPU1umlKqIi3Sh1R2mR1.Otc5T/Xm1IgW7RDWCzTIeuNTGhg5MHtm',
+    1,
+    1,
+    true,
+    NOW()
+)
+ON CONFLICT (staff_id) DO NOTHING;
+
 
 COMMIT;
+
+

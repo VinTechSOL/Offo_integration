@@ -1,6 +1,7 @@
 
 export interface FoodItem {
   id: number;
+  branchId: number;
   name: string;
   price: number;
   image: string;
@@ -12,7 +13,7 @@ export interface FoodItem {
 export interface CafeForUser {
   branch_id: number;
   branch_name: string;
-
+  image_url?: string;
   city_name: string;
   campus_name: string;
   building_name: string | null;

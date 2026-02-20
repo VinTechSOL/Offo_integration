@@ -5,7 +5,7 @@ from sqlalchemy import text
 from contextlib import asynccontextmanager
 from app.core.database import get_db, engine
 from app.core.redis import redis_client
-
+import os
 from app.modules.auth.api import router as auth_router
 from app.modules.users.api import router as users_router
 from app.modules.vendor.api import router as vendor_router
@@ -23,8 +23,7 @@ from app.modules.crm.api import router as crm_router
 
 
 
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
+
 '''
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -69,7 +68,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads",StaticFiles(directory="uploads"),name="uploads")
 
 @app.get("/health")
 def health():

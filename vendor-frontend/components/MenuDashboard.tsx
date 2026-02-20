@@ -20,6 +20,7 @@ export const MenuDashboard: React.FC = () => {
       try {
         setLoading(true);
         const data = await VendorMenuApi.getMenu();
+        console.log("menu data:" ,data);
         const cats = await VendorMenuApi.getCategories();
         setMenuItems(data);
         setBackendCategories(cats);

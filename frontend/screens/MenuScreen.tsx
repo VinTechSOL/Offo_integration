@@ -13,7 +13,7 @@ interface MenuItemApi {
   item_id: number;
   name: string;
   price: number;
-  image: string | null;
+  imageUrl: string | null;
   is_veg: boolean;
   is_available: boolean;
   category_name: string;
@@ -203,7 +203,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
               className="bg-white rounded-xl p-3 shadow"
             >
               <img
-                src={item.image || "/placeholder-food.png"}
+                src={item.imageUrl || "/placeholder-food.png"}
                 className="w-full h-24 object-cover rounded-lg mb-2"
               />
               <p className="font-bold text-sm">{item.name}</p>
@@ -212,10 +212,11 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
               <button
                 onClick={() =>
                   addToCart({
-                    id: item.item_id,
+                    id: item.branch_menu_item_id,
+                    branchId: cafe.branch_id,
                     name: item.name,
                     price: item.price,
-                    image: item.image || "",
+                    image: item.imageUrl || "",
                     isVeg: item.is_veg,
                     cafe: cafe.name,
                     category: item.category_name,

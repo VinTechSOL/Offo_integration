@@ -1,14 +1,13 @@
 import api from "./client";
 import { MenuItem } from "@/types";
 
-const VITE_API_BASE_URL = "http://localhost:8000";
 
 const normalizeMenu = (rows: any[]): MenuItem[] => {
   return rows.map((r) => ({
     id: String(r.branch_menu_item_id),        // branch item id
     baseItemId: String(r.item_id),            // real menu item id
     name: r.name,
-    imageUrl: r.image_url ? `${VITE_API_BASE_URL}${r.image_url}` : "",
+    imageUrl: r.image_url,
     price: Number(r.price),
     category: r.category_name,
     available: r.is_available,

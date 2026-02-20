@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { CartItem, OrderDetails, Cafe, Order, FoodItem } from "./types";
-import BootstrapLoader from "./screens/BootStrapLoader";
+import BootstrapLoader from "./screens/BootstrapLoader";
 import ErrorToast from "./components/ErrorToast";
 import SplashScreen from "./screens/SplashScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
@@ -89,10 +89,11 @@ const App: React.FC = () => {
   };
 
   const addToCart = async (item: FoodItem, quantity = 1) => {
-    if (!selectedCafe) return;
+    const branchId = item.branchId ?? selectedCafe?.branch_id;
+    if (!branchId) return;
 
     await addToCartApi({
-      branch_id: selectedCafe.branch_id,
+      branch_id: branchId,
       item_id: item.id,
       quantity,
     });
