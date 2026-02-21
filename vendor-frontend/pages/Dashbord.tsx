@@ -7,7 +7,7 @@ import { SettingsPage } from '../pages/SettingsDashboard';
 import { ConfirmationModal } from '../components/Confirmationsmodal';
 import { CrmDashboard } from '../pages/CrmDashboard'; // Import the new CRM Dashboard
 
-type View = 'orders' | 'scheduled' | 'menu' | 'reports' | 'settings' | 'crm';
+type View = 'orders' | 'today' |'scheduled' | 'menu' | 'reports' | 'settings' | 'crm';
 
 const TopNav: React.FC<{ currentView: View, setCurrentView: (view: View) => void }> = ({ currentView, setCurrentView }) => {
   const baseClasses = "py-2 px-6 rounded-md font-semibold transition-colors duration-200";
@@ -16,6 +16,7 @@ const TopNav: React.FC<{ currentView: View, setCurrentView: (view: View) => void
 
   const navItems: { key: View, label: string }[] = [
     { key: 'orders', label: 'Live Orders' },
+    { key: 'today', label: 'Today Orders'},
     { key: 'scheduled', label: 'Scheduled Orders' },
     { key: 'menu', label: 'Manage Menu' },
     { key: 'reports', label: 'Reports' },
@@ -59,6 +60,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     switch (currentView) {
       case 'orders':
         return <OrdersDashboard isScheduledView={false} />;
+      case 'today':
+        return <OrdersDashboard isTodayView={true}/>;
       case 'scheduled':
         return <OrdersDashboard isScheduledView={true} />;
       case 'menu':

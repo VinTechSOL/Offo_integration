@@ -6,10 +6,14 @@ interface ProfileData {
   cafe_name: string;
   branch_name: string;
   phone_number: string;
+  cafe_image?: string;
+  opens_at?: string;
+  closes_at?: string;
+  is_active: boolean;
 }
 
 const SettingsField: React.FC<{
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   value: string;
 }> = ({ icon, label, value }) => (
@@ -18,14 +22,16 @@ const SettingsField: React.FC<{
       {label}
     </label>
     <div className="mt-1 relative rounded-md shadow-sm">
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-        {icon}
-      </div>
+      {icon && (
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+          {icon}
+        </div>
+      )}
       <input
         type="text"
         value={value}
         readOnly
-        className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 bg-gray-50"
+        className={`block w-full ${icon ? "pl-10" : "pl-3"} sm:text-sm border-gray-300 rounded-md py-2 bg-gray-50`}
       />
     </div>
   </div>
@@ -36,9 +42,14 @@ export const SettingsPage: React.FC = () => {
     cafe_name: "",
     branch_name: "",
     phone_number: "",
+    cafe_image: "",
+    opens_at: "",
+    closes_at: "",
+    is_active: true,
   });
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -54,6 +65,19 @@ export const SettingsPage: React.FC = () => {
 
     loadProfile();
   }, []);
+
+  const handleToggle = async () => {
+    try {
+      setSaving(true);
+      const updated = { ...profile, is_active: !profile.is_active };
+      setProfile(updated);
+      await SettingsApi.updateStatus(updated.is_active);
+    } catch (err) {
+      console.error("Failed to update status", err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -74,6 +98,20 @@ export const SettingsPage: React.FC = () => {
         </p>
       </div>
 
+      {/* Image */}
+      {profile.cafe_image && (
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Café Image
+          </label>
+          <img
+            src={profile.cafe_image}
+            alt="Cafe"
+            className="w-full max-w-md h-56 object-contain rounded-lg border bg-gray-50 p-2"
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6">
         <SettingsField
           icon={<BuildingOfficeIcon className="w-5 h-5" />}
@@ -92,6 +130,42 @@ export const SettingsPage: React.FC = () => {
           label="Contact Phone"
           value={profile.phone_number}
         />
+
+        <SettingsField
+          label="Opens At"
+          value={profile.opens_at || "-"}
+        />
+
+        <SettingsField
+          label="Closes At"
+          value={profile.closes_at || "-"}
+        />
+      </div>
+
+      {/* Active Toggle */}
+      <div className="flex items-center justify-between pt-4 border-t">
+        <div>
+          <h3 className="text-sm font-semibold text-text-primary">
+            Branch Active Status
+          </h3>
+          <p className="text-xs text-text-secondary">
+            If disabled, this branch will not be visible to users.
+          </p>
+        </div>
+
+        <button
+          onClick={handleToggle}
+          disabled={saving}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            profile.is_active ? "bg-green-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              profile.is_active ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
       </div>
     </div>
   );

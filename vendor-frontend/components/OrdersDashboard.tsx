@@ -19,9 +19,10 @@ const SCHEDULED_TABS = [
 
 interface OrdersDashboardProps {
   isScheduledView?: boolean;
+  isTodayView?: boolean;
 }
 
-export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledView = false }) => {
+export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledView = false,isTodayView = false }) => {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,7 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
   const [filterDate, setFilterDate] = useState<string>(''); // YYYY-MM-DD
   const [filterTime, setFilterTime] = useState<string>(''); // HH:MM
   
-  const TABS = isScheduledView ? SCHEDULED_TABS : LIVE_TABS;
+  const TABS = isScheduledView ? SCHEDULED_TABS : isTodayView ? [] : LIVE_TABS;
   
   const displayedOrders = useMemo(() => {
 
@@ -49,6 +50,8 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
 
     if (isScheduledView) {
       filtered = orders.filter(o => o.scheduledAt);
+    } else if (isTodayView) {
+      filtered = orders;
     } else {
       filtered = orders.filter(o => o.status === activeTab);
     }
@@ -98,28 +101,47 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
     let active = true;
 
     const load = async () => {
+
+      try {
+        setLoading(true);
+
+        let data;
+
+        if (isScheduledView) {
+          data = await VendorOrdersApi.getScheduled();
+        } else if (isTodayView) {
+          data = await VendorOrdersApi.getToday();
+        } else {
+          data = await VendorOrdersApi.getLive();
+        }
       
-      setLoading(true);
-      const data = isScheduledView
-        ? await VendorOrdersApi.getScheduled()
-        : await VendorOrdersApi.getLive();
-
-      if (active) {
-        setOrders(data);
-        setLoading(false);
-
-        console.log("fetched orders",data);
+        if (active) {
+          setOrders(data);
+          console.log("fetched orders",data);
+        }
+      } catch (err) {
+        console.error("failed to load orders",err)
+      } finally {
+        if (active) setLoading(false);
       }
+      
     };
 
     load();
-    const poll = setInterval(load, 15000);
+    let poll: number | undefined;
+
+    if (!isScheduledView && !isTodayView) {
+      poll = window.setInterval(load,15000);
+    }
 
     return () => {
       active = false;
-      clearInterval(poll);
+      if(poll !== undefined){
+        clearInterval(poll);
+      }
+      
     };
-  }, [isScheduledView]);
+  }, [isScheduledView, isTodayView]);
 
   useEffect(() => {
     setSelectedOrders([]);
@@ -305,12 +327,30 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
         <div className="text-center py-20 text-text-secondary">Loading Orders...</div>
       )}
       
-           <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-gray-800 p-4 rounded-lg shadow-lg grid grid-cols-2 gap-4 sm:flex sm:flex-nowrap sm:items-center sm:divide-x sm:divide-white/10 text-white">
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-gray-800 p-4 rounded-lg shadow-lg grid grid-cols-2 gap-4 sm:flex sm:flex-nowrap sm:items-center sm:divide-x sm:divide-white/10 text-white">
         {isScheduledView ? (
           <>
             <StatCard title="Total Scheduled" value={scheduledOrders.length} />
             <StatCard title="Upcoming Today" value={upcomingToday} />
             <StatCard title="Upcoming This Week" value={upcomingThisWeek} />
+          </>
+        ) : isTodayView ? (
+          <>
+            <StatCard title="Total Orders Today" value={orders.length} />
+            <StatCard
+              title="Completed"
+              value={orders.filter(o => o.status === OrderStatus.PickedUp).length}
+            />
+            <StatCard
+              title="Cancelled"
+              value={orders.filter(o => o.status === OrderStatus.Cancelled).length}
+            />
+            <StatCard
+              title="Active"
+              value={orders.filter(o =>
+                [OrderStatus.Incoming, OrderStatus.Preparing, OrderStatus.Ready].includes(o.status)
+              ).length}
+            />
           </>
         ) : (
           <>
@@ -323,21 +363,25 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
       </div>
 
       <div className="bg-white p-2 sm:p-4 rounded-lg shadow-sm">
-        <div className="border-b border-gray-200">
-          <div className="flex items-center -mb-px overflow-x-auto">
+        {!isTodayView && (
+          <div className="border-b border-gray-200">
+            <div className="flex items-center -mb-px overflow-x-auto">
               {TABS.map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={`py-3 px-3 md:px-5 text-sm font-semibold transition-colors flex items-center space-x-2 capitalize flex-shrink-0 ${activeTab === tab.key ? 'text-offo-orange border-b-2 border-offo-orange' : 'text-text-secondary hover:text-offo-orange'}`}
                 >
-                  {activeTab === tab.key && tab.key === OrderStatus.Incoming && <ClockIcon className="w-4 h-4" />}
+                  {activeTab === tab.key && tab.key === OrderStatus.Incoming && (<ClockIcon className="w-4 h-4" />)}
                   <span>{tab.label}</span>
-                  {tab.key === OrderStatus.Incoming && incomingOrdersCount > 0 && <span className="bg-offo-red text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{incomingOrdersCount}</span>}
+                  {tab.key === OrderStatus.Incoming && incomingOrdersCount > 0 && (<span className="bg-offo-red text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{incomingOrdersCount}</span>)}
                 </button>
               ))}
+            </div>
           </div>
-        </div>
+
+        )}
+        
 
         {isScheduledView   && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg flex flex-col sm:flex-row items-center gap-4">
@@ -455,6 +499,7 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
                           onToggleSelection={handleToggleSelection}
                           showCheckbox={showCheckboxes}
                           isScheduledView={isScheduledView}
+                          isTodayView={isTodayView}
                           
                       />
                   ))

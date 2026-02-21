@@ -179,13 +179,13 @@ INSERT INTO core.staff (
 )
 VALUES
 (
-    1,
-    'vishal',
+    4,
+    'Rohit',
     'S',
-    'vendor1',
+    'rohit7',
     '$2b$12$uPU1umlKqIi3Sh1R2mR1.Otc5T/Xm1IgW7RDWCzTIeuNTGhg5MHtm',
-    1,
-    1,
+    5,
+    3,
     true,
     NOW()
 )

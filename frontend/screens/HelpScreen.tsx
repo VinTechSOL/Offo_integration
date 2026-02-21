@@ -10,71 +10,172 @@ interface HelpScreenProps {
 
 const faqItems = [
 
-  // 🔒 POLICIES
+
+
 {
   q: "Privacy Policy",
-  a: `Privacy Policy
-Last Updated: October 2025
+  a: (
+    <div className="space-y-3 text-sm text-gray-700">
+      <p className="font-semibold">Last Updated: October 2025</p>
 
-1. Corporate Data Handling
-At OFFO, we respect the privacy of our individual users and our corporate partners. We collect office addresses, corporate email domains, and billing information strictly for the fulfillment of cafeteria pre-booking services.
+      <ol className="list-decimal pl-5 space-y-2">
+        <li>
+          <strong>Corporate Data Handling</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>We collect corporate email addresses, office locations, and billing details.</li>
+            <li>Data is used strictly for cafeteria pre-booking operations.</li>
+          </ul>
+        </li>
 
-2. Use of Professional Information
-We use your data to streamline meal pre-booking, manage corporate billing accounts, and improve vendor demand planning based on order history.
+        <li>
+          <strong>Use of Professional Information</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>To process meal pre-bookings.</li>
+            <li>To manage corporate billing.</li>
+            <li>To improve vendor demand planning.</li>
+          </ul>
+        </li>
 
-3. Workplace Integration
-When using team-ordering features, your name and selected items may be visible to other members of your designated office group to facilitate smooth distribution.
+        <li>
+          <strong>Workplace Integration</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Team orders may be visible to office group members for distribution purposes.</li>
+          </ul>
+        </li>
 
-4. Your Data Control
-You may request access, export, or deletion of your workplace dining history at any time by contacting support@offo.co.in.`
+        <li>
+          <strong>Your Data Control</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>You may request access, export, or deletion of your data at support@offo.co.in.</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  )
 },
 
-  {
+
+
+
+{
   q: "Terms of Service",
-  a: `Terms of Service
-By using the OFFO App, you agree to enter into a legally binding agreement governed by the following terms and conditions.
+  a: (
+    <div className="space-y-3 text-sm text-gray-700">
+      <p className="font-semibold">By using the OFFO App, you agree to the following terms:</p>
 
-1. Order Acceptance and Contract
-Once an order is placed through the App and accepted by the Vendor, a binding contract is formed between you and the Vendor. You will receive a confirmation notification via push notification, SMS, or email specifying the pickup time. It is your responsibility to ensure that your contact details are accurate and up to date.
+      <ol className="list-decimal pl-5 space-y-3">
+        <li>
+          <strong>Order Acceptance and Contract</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>A binding agreement is formed once the Vendor accepts your order.</li>
+            <li>You will receive confirmation via push notification, SMS, or email.</li>
+            <li>You are responsible for ensuring your contact details are accurate.</li>
+          </ul>
+        </li>
 
-2. Limitation of Liability
-OFFO operates as a pickup-only ordering platform and does not provide delivery services. OFFO is not responsible for issues arising from your travel to the Vendor or failure to collect the order within the pickup window. Once the order has been handed over to you, responsibility for maintaining food temperature and safety transfers to you.
+        <li>
+          <strong>Limitation of Liability</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>OFFO operates as a pickup-only platform.</li>
+            <li>We are not responsible for travel-related issues or missed pickups.</li>
+            <li>Responsibility for food safety transfers to you after handover.</li>
+          </ul>
+        </li>
 
-3. Modification of Terms
-OFFO reserves the right to update these terms at any time. Continued use of the platform after changes are published constitutes acceptance of the revised terms.`
+        <li>
+          <strong>Modification of Terms</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>OFFO reserves the right to update these terms at any time.</li>
+            <li>Continued use of the App indicates acceptance of revised terms.</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  )
 },
 
-  {
-  q: "Refunds & Cancellations",
-  a: `Refunds & Cancellations
+{
+  q: "Refund & Cancellations",
+  a: (
+    <div className="space-y-3 text-sm text-gray-700">
+      <ol className="list-decimal pl-5 space-y-3">
+        <li>
+          <strong>Cancellation Policy</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Orders can be cancelled only before preparation begins.</li>
+            <li>No refund will be issued once preparation has started.</li>
+            <li>Vendor cancellations qualify for a full refund.</li>
+          </ul>
+        </li>
 
-1. Cancellation Policy
-Cancellations are permitted only before food preparation begins. Once preparation has started, no cancellation or refund will be issued. OFFO or the Vendor may cancel orders due to operational issues, in which case a full refund will be processed.
+        <li>
+          <strong>Pickup Responsibilities</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Orders must be collected within the assigned pickup window.</li>
+            <li>Uncollected orders after 30 minutes may be disposed of.</li>
+            <li>No refund will be provided for missed pickups.</li>
+          </ul>
+        </li>
 
-2. Pickup Responsibilities
-Users must collect orders within the designated pickup window. Orders not collected within 30 minutes may be disposed of, and no refund will be provided.
-
-3. Refund Policy
-Missing or incorrect items must be reported immediately at pickup. Quality concerns must be raised within 1 hour with supporting evidence. Delays qualify for refund only if exceeding 45 minutes beyond estimated pickup time.`
-
-
-
-
+        <li>
+          <strong>Refund Conditions</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Missing or incorrect items must be reported at pickup.</li>
+            <li>Quality issues must be reported within 1 hour with evidence.</li>
+            <li>Refund for delays applies only if exceeding 45 minutes.</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  )
 },
 
 {
   q: "Pickup Standards",
-  a: `Pickup Standards
+  a: (
+    <div className="space-y-3 text-sm text-gray-700">
+      <ol className="list-decimal pl-5 space-y-3">
+        <li>
+          <strong>Pickup-Only Model</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>OFFO does not provide delivery services.</li>
+            <li>Users must collect orders directly from Vendors.</li>
+          </ul>
+        </li>
 
-1. Pickup-Only Model
-OFFO operates exclusively as a pickup-only platform. No delivery services are provided. Users are required to collect their orders directly from the Vendor.
+        <li>
+          <strong>Pickup Locations</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Orders must be collected from the selected Vendor location.</li>
+            <li>Locations are typically within your corporate campus.</li>
+          </ul>
+        </li>
 
-2. Pickup Locations
-Orders must be collected from the selected Vendor location within your campus or office premises.
-
-3. Holding Times
-Food quality is guaranteed only within the assigned pickup window. Orders uncollected beyond 60 minutes may be disposed of without refund.`
+        <li>
+          <strong>Holding Times</strong>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Food quality is guaranteed only within the pickup window.</li>
+            <li>Orders uncollected beyond 60 minutes may be discarded.</li>
+            <li>No refund will be issued for expired pickup windows.</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  )
 },
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // 👤 ACCOUNT
   {
@@ -126,11 +227,17 @@ const HelpScreen: React.FC<HelpScreenProps> = ({ navigateTo }) => {
         setOpenIndex(openIndex === index ? null : index);
     };
     
-    const filteredFaqs = faqItems.filter(item => 
-        item.q.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        item.a.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredFaqs = faqItems.filter(item => {
+      const search = searchTerm.toLowerCase();
+      const questionMatch = item.q.toLowerCase().includes(search);
+      const answerMatch =
+          typeof item.a === "string" &&
+          item.a.toLowerCase().includes(search);
+        
+      return questionMatch || answerMatch;
 
+    });
+        
     return (
         <div className="flex flex-col h-full bg-[#FFF9F2]">
             <header className="p-4 flex items-center border-b sticky top-0 bg-[#FFF9F2] z-10">
@@ -170,7 +277,11 @@ const HelpScreen: React.FC<HelpScreenProps> = ({ navigateTo }) => {
                             </button>
                             {openIndex === index && (
                                 <div className="p-4 pt-0 text-gray-600">
-                                    <p>{item.a}</p>
+                                    {typeof item.a === "string" ? (
+                                        <p>{item.a}</p>
+                                    ) : (
+                                        item.a
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -46,6 +46,13 @@ export const VendorOrdersApi = {
   async getLive(): Promise<Order[]> {
     const res = await api.get("/orders/live");
     return res.data.map(normalizeOrder);
+    
+  },
+
+  async getToday(): Promise<Order[]> {
+    const res = await api.get("/orders/today");
+    return res.data.map(normalizeOrder);
+    
   },
 
   /**

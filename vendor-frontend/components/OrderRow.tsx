@@ -10,6 +10,7 @@ interface OrderRowProps {
   onToggleSelection: (id: string) => void;
   showCheckbox: boolean;
   isScheduledView?: boolean;
+  isTodayView?: boolean;
 }
 
 
@@ -123,12 +124,12 @@ const PaymentInfo: React.FC<{payment: 'Paid' | 'Not Paid', total: number}> = ({p
     </div>
 );
 
-export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequestCancel, isSelected, onToggleSelection, showCheckbox,isScheduledView = false, }) => {
+export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequestCancel, isSelected, onToggleSelection, showCheckbox,isScheduledView = false,isTodayView = false }) => {
   return (
     <div className={`relative bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-all duration-300 ${
       order.priority === "HIGH" ? "ring-2 ring-red-500 shadow-lg" : ""
     }`}>
-      <PriorityBadge priority={order.priority} />
+      {!isTodayView && <PriorityBadge priority={order.priority} />}
 
       {/* Desktop View (large screens) */}
       <div className="hidden lg:grid grid-cols-12 gap-4 items-center">
@@ -150,11 +151,12 @@ export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequ
         </div>
         <div className="col-span-3">
           {order.items.map(item => (
-            <div key={item.id} className="flex items-center space-x-2">
+            <div key={item.id} className="flex items-center space-x-3">
               <img src={item.imageUrl} alt={item.name} className="w-12 h-12 rounded-md object-cover" />
               <div>
                 <p className="font-semibold text-sm text-text-primary">{item.name}</p>
-                <p className="text-xs text-text-secondary">₹{item.price.toFixed(2)}</p>
+                <p className="text-xs font-semibold text-gray-700">Qty: {item.quantity} </p>
+                <p className="text-xs text-text-secondary">₹{(item.quantity * item.price).toFixed(2)}</p>
               </div>
             </div>
           ))}
@@ -166,13 +168,17 @@ export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequ
           <StatusPill status={order.status} />
         </div>
         <div className="col-span-2">
-          {isScheduledView ? (
-            <div className="text-sm font-semibold text-blue-600">
-              Scheduled for:
-              <div className="text-text-primary">
-                {order.scheduledAt?.toLocaleString()}
+          {isScheduledView || isTodayView ? (
+            isScheduledView ? (
+              <div className="text-sm font-semibold text-blue-600">
+                Scheduled for:
+                <div className="text-text-primary">
+                  {order.scheduledAt?.toLocaleString()}
+                </div>
               </div>
-            </div>
+
+            ) : null
+            
           ) : (
             <UpdateStatusButtons
               order={order}
