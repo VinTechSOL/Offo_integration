@@ -7,7 +7,7 @@ interface PaymentMethodsScreenProps {
   navigateTo: (screen: Screen) => void;
 }
 
-const phonePeIconUrl = '../../assets/icons/phone pe.jpeg';
+const phonePeIconUrl = '../../assets/icons/phonepe.jpeg';
 
 interface UpiMethod {
     id: number;

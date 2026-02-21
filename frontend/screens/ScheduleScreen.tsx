@@ -3,7 +3,6 @@ import type { Screen } from "../types/navigation";
 import type { OrderDetails, ScheduledItem, Order } from '../types';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import TimePicker from '../components/TimePicker';
-import ScrollableContainer from '../components/ScrollableContainer';
 
 interface ScheduleScreenProps {
   orderDetails: OrderDetails;
@@ -13,7 +12,14 @@ interface ScheduleScreenProps {
   onUpdateOrder: (updatedOrder: Order) => void;
 }
 
-const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ orderDetails, setOrderDetails, navigateTo, orderToEdit, onUpdateOrder }) => {
+const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
+  orderDetails,
+  setOrderDetails,
+  navigateTo,
+  orderToEdit,
+  onUpdateOrder
+}) => {
+
   const isEditMode = orderToEdit != null;
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -23,20 +29,24 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ orderDetails, setOrderD
   const [repeat, setRepeat] = useState<'none' | 'weekly'>('none');
   const [notification, setNotification] = useState<string | null>(null);
 
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
   useEffect(() => {
     if (isEditMode && orderToEdit) {
-        const orderDate = orderToEdit.date;
-        setSelectedDates([orderDate]);
-        setInitialSelectedDates([orderDate]);
-        setCurrentDate(new Date(orderDate.getFullYear(), orderDate.getMonth(), 1));
+      const orderDate = orderToEdit.date;
 
-        let hours = orderDate.getHours();
-        const minutes = orderDate.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
-        const hoursStr = hours.toString().padStart(2, '0');
-        setScheduleTime(`${hoursStr}:${minutes} ${ampm}`);
+      setSelectedDates([orderDate]);
+      setInitialSelectedDates([orderDate]);
+      setCurrentDate(new Date(orderDate.getFullYear(), orderDate.getMonth(), 1));
+
+      let hours = orderDate.getHours();
+      const minutes = orderDate.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const hoursStr = hours.toString().padStart(2, '0');
+      setScheduleTime(`${hoursStr}:${minutes} ${ampm}`);
     }
   }, [isEditMode, orderToEdit]);
 
@@ -47,17 +57,12 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ orderDetails, setOrderD
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const grid: (number | null)[] = [];
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      grid.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      grid.push(i);
-    }
+    for (let i = 0; i < firstDayOfMonth; i++) grid.push(null);
+    for (let i = 1; i <= daysInMonth; i++) grid.push(i);
+
     return grid;
   }, [currentDate]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -67,97 +72,104 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ orderDetails, setOrderD
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const isSameDay = (date1: Date, date2: Date) => {
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
-  };
+
+  const isSameDay = (d1: Date, d2: Date) =>
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
 
   const handleDateClick = (day: number | null) => {
     if (day === null) return;
-    const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    clickedDate.setHours(0, 0, 0, 0);
 
-    if (clickedDate < today) return;
+    const clicked = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      day
+    );
+    clicked.setHours(0,0,0,0);
+
+    if (clicked < today) return;
 
     if (isEditMode) {
-      // In edit mode, only one date can be selected
-      setSelectedDates([clickedDate]);
-      setInitialSelectedDates([clickedDate]);
+      setSelectedDates([clicked]);
+      setInitialSelectedDates([clicked]);
       return;
     }
 
-    const newInitialDates = initialSelectedDates.some(d => isSameDay(d, clickedDate))
-        ? initialSelectedDates.filter(d => !isSameDay(d, clickedDate))
-        : [...initialSelectedDates, clickedDate];
-    
-    newInitialDates.sort((a, b) => a.getTime() - b.getTime());
-    
-    setInitialSelectedDates(newInitialDates);
-    setSelectedDates(newInitialDates);
+    const exists = initialSelectedDates.some(d => isSameDay(d, clicked));
+    const updated = exists
+      ? initialSelectedDates.filter(d => !isSameDay(d, clicked))
+      : [...initialSelectedDates, clicked];
+
+    updated.sort((a,b) => a.getTime() - b.getTime());
+
+    setInitialSelectedDates(updated);
+    setSelectedDates(updated);
     setRepeat('none');
   };
-  
+
   const showNotification = (message: string) => {
     setNotification(message);
-    setTimeout(() => {
-        setNotification(null);
-    }, 2500);
+    setTimeout(() => setNotification(null), 2500);
   };
 
-  const handleRepeatChange = (newRepeat: 'none' | 'weekly') => {
-    setRepeat(newRepeat);
+  const handleRepeatChange = (value: 'none' | 'weekly') => {
+    setRepeat(value);
 
     if (initialSelectedDates.length === 0) {
-        if (newRepeat !== 'none') {
-            showNotification("Please select a date first.");
-        }
-        return;
+      if (value === 'weekly') {
+        showNotification("Please select a date first.");
+      }
+      return;
     }
 
-    if (newRepeat === 'none') {
-        setSelectedDates([...initialSelectedDates]);
-        return;
+    if (value === 'none') {
+      setSelectedDates([...initialSelectedDates]);
+      return;
     }
 
-    const newDatesSet = new Set<number>(initialSelectedDates.map(d => d.getTime()));
+    const expanded = new Set<number>(
+      initialSelectedDates.map(d => d.getTime())
+    );
 
-    if (newRepeat === 'weekly') {
-        initialSelectedDates.forEach(initialDate => {
-            // Add the next 3 weeks for a total of 4 occurrences
-            for (let i = 1; i <= 3; i++) {
-                const dateIterator = new Date(initialDate.getTime());
-                dateIterator.setDate(dateIterator.getDate() + (7 * i));
-                if (dateIterator >= today) {
-                    newDatesSet.add(dateIterator.getTime());
-                }
-            }
-        });
-        showNotification(`Weekly repeat applied for 4 weeks.`);
-    }
-    
-    const sortedDates = Array.from(newDatesSet).map(t => new Date(t)).sort((a, b) => a.getTime() - b.getTime());
-    setSelectedDates(sortedDates);
+    initialSelectedDates.forEach(base => {
+      for (let i = 1; i <= 3; i++) {
+        const next = new Date(base);
+        next.setDate(next.getDate() + 7 * i);
+        if (next >= today) expanded.add(next.getTime());
+      }
+    });
+
+    const finalDates = Array.from(expanded)
+      .map(t => new Date(t))
+      .sort((a,b) => a.getTime() - b.getTime());
+
+    setSelectedDates(finalDates);
+    showNotification("Weekly repeat applied for 4 weeks.");
   };
 
   const handleUpdate = () => {
     if (selectedDates.length !== 1) {
-        alert("Please select one date for the order.");
-        return;
+      alert("Please select one date for the order.");
+      return;
     }
+
     if (!orderToEdit) return;
 
     const newScheduledDate = new Date(selectedDates[0]);
     const [time, period] = scheduleTime.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
+
     if (period === 'PM' && hours < 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
+
     newScheduledDate.setHours(hours, minutes, 0, 0);
 
     const updatedOrder = {
-        ...orderToEdit,
-        date: newScheduledDate,
+      ...orderToEdit,
+      date: newScheduledDate,
     };
+
     onUpdateOrder(updatedOrder);
   };
 
@@ -166,48 +178,87 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ orderDetails, setOrderD
       alert("Please select at least one date.");
       return;
     }
-    
+
     const schedules: ScheduledItem[] = selectedDates.map(date => ({
-        id: date.getTime(),
-        date: date,
-        time: scheduleTime,
+      id: date.getTime(),
+      date,
+      time: scheduleTime,
     }));
-    
-    const total = (orderDetails.subtotal + orderDetails.convenienceFee) * schedules.length;
+
+    const total =
+      (orderDetails.subtotal + orderDetails.convenienceFee)
+      * schedules.length;
+
     setOrderDetails({
-        ...orderDetails,
-        schedules: schedules,
-        total,
+      ...orderDetails,
+      schedules,
+      total,
     });
+
     navigateTo('payment');
-  }
-  
-  const formatSelectedDates = (dates: Date[]) => {
-    if (dates.length === 0) return 'None';
-    const sortedDays = dates.map(d => d.getDate()).sort((a,b) => a - b);
-    if (sortedDays.length <= 5) {
-      return dates.map(d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short'})).join(', ');
-    }
-    const firstPart = dates.slice(0, 4).map(d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short'})).join(', ');
-    const remainingCount = sortedDays.length - 4;
-    return `${firstPart},... +${remainingCount}`;
   };
 
-  const checkoutTotal = !isEditMode && orderDetails ? (orderDetails.subtotal + orderDetails.convenienceFee) * selectedDates.length : 0;
+  const formatSelectedDates = (dates: Date[]) => {
+    if (dates.length === 0) return 'None';
+    return dates
+      .map(d =>
+        d.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+        })
+      )
+      .join(', ');
+  };
+
+  const isTimeInPast = (date: Date, time: string) => {
+    const now = new Date();
+
+    // Only validate if selected date is today
+    if (date.toDateString() !== now.toDateString()) {
+      return false;
+    }
+
+    const [timePart, modifier] = time.split(" ");
+    let [hours, minutes] = timePart.split(":").map(Number);
+
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+
+    const selectedDateTime = new Date(date);
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+
+    return selectedDateTime <= now;
+  };
+  
+
+  const checkoutTotal =
+    !isEditMode && orderDetails
+      ? (orderDetails.subtotal + orderDetails.convenienceFee)
+        * selectedDates.length
+      : 0;
 
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2] relative">
+
       {notification && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm font-semibold py-2 px-4 rounded-full shadow-lg z-20 animate-fade-in-slow">
-                {notification}
-            </div>
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm font-semibold py-2 px-4 rounded-full shadow-lg z-20 animate-fade-in-slow">
+          {notification}
+        </div>
       )}
+
       <header className="p-4 flex items-center flex-shrink-0">
-        <button onClick={() => navigateTo(isEditMode ? 'orders' : 'cart')} className="p-2">
+        <button
+          onClick={() => navigateTo(isEditMode ? 'orders' : 'cart')}
+          className="p-2"
+        >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
-        <h1 className="text-xl font-bold text-gray-800 flex-grow text-center">{isEditMode ? 'Edit Schedule' : 'Schedule Order'}</h1>
-        <div className="w-10"></div> {/* Spacer */}
+
+        <h1 className="text-xl font-bold text-gray-800 flex-grow text-center">
+          {isEditMode ? 'Edit Schedule' : 'Schedule Order'}
+        </h1>
+
+        <div className="w-10"></div>
       </header>
 
       <div className="flex-grow p-4 flex flex-col">
@@ -272,7 +323,11 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ orderDetails, setOrderD
               })}
           </div>
           <div className="border-t mt-3 pt-3">
-             <TimePicker value={scheduleTime} onChange={setScheduleTime} />
+             <TimePicker 
+               value={scheduleTime} 
+               onChange={setScheduleTime} 
+               selectedDate={selectedDates[0]}
+              />
           </div>
 
           <div className={`mt-auto pt-3 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>

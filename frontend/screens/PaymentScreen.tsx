@@ -56,18 +56,24 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
       setPaymentStatus("processing");
 
       // 🔹 Prepare payload
-      const payload: any = {
-        order_type: orderDetails.schedules ? "SCHEDULED" : "INSTANT",
+      let payload: any = {
+        order_type: "INSTANT",
       };
 
-      if (orderDetails.schedules && orderDetails.schedules.length > 0) {
-        const first = orderDetails.schedules[0];
 
-        payload.scheduled_date = first.date
-          .toISOString()
-          .split("T")[0]; // YYYY-MM-DD
-        payload.scheduled_time = first.time; // "08:30 AM"
+      // If schedules exist → Scheduled Order
+      if (orderDetails.schedules && orderDetails.schedules.length > 0) {
+        payload = {
+          order_type: "SCHEDULED",
+          schedules: orderDetails.schedules.map((s) => ({
+            scheduled_date: s.date.toLocaleDateString("en-CA"),
+            scheduled_time: s.time,
+          })),
+          repeat_weekly: false, // repeat already expanded in ScheduleScreen
+        };
       }
+
+      console.log("placing order payload:",payload)
 
       // 🔥 Backend call
       await placeOrderApi(payload);

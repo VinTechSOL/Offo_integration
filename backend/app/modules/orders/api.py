@@ -19,17 +19,27 @@ from datetime import datetime, timedelta, date
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
-@router.post("/place", response_model=PlaceOrderResponse)
+@router.post("/place")
 def place_order(
     data: PlaceOrderRequest,
     db: Session = Depends(get_db),
     user = Depends(get_current_user),
 ):
-    order = OrderService.place_order(db, user.user_id, data)
+    result = OrderService.place_order(db, user.user_id, data)
+
+    # If multiple scheduled orders created
+    if isinstance(result, list):
+        return {
+            "order_ids": [o.order_id for o in result],
+            "status": "CREATED"
+        }
+
+    # Single order (instant)
     return {
-        "order_id": order.order_id,
-        "status": order.order_status
+        "order_id": result.order_id,
+        "status": result.order_status
     }
+
 
 @router.get("/incoming")
 def get_incoming_orders(

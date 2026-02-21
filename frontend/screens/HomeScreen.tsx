@@ -71,14 +71,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           )
         );
 
-        let combined: FoodItem[] = [];
+        const balanced: FoodItem[] = [];
 
-        menus.forEach((menu, index) => {
-          const cafe = openCafes[index];
+        const maxItemsPerCafe = 4
 
-          menu.categories.forEach((category: any) => {
-            category.items.forEach((item: any) => {
-              combined.push({
+        openCafes.forEach((cafe, index) => {
+          const cafeMenu = menus[index];
+
+          cafeMenu.categories.forEach((category: any) => {
+            category.items.slice(0,maxItemsPerCafe).forEach((item: any) => {
+              balanced.push({
                 id: item.branch_menu_item_id,
                 branchId: cafe.branch_id,
                 name: item.name,
@@ -92,7 +94,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           });
         });
 
-        setFoodItems(combined);
+        setFoodItems(balanced);
       } catch (err) {
         console.error("Failed to load food items", err);
       } finally {

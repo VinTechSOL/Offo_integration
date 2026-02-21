@@ -18,6 +18,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
   const [countdown, setCountdown] = useState(30);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpResetKey, setOtpResetKey] = useState(0);
 
   useEffect(() => {
     let timer: number;
@@ -93,6 +94,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
     } catch (error) {
       console.error(error);
       alert('Invalid OTP. Please try again.');
+
+      setOtpResetKey(prev => prev + 1);
     } finally {
       setLoading(false);
     }
@@ -209,7 +212,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
                   Enter the OTP sent to +91 {phone}
                 </p>
 
-                <OTPInput onVerify={handleVerifyOtp} />
+                <OTPInput 
+                  onVerify={handleVerifyOtp}
+                  loading={loading}
+                  resetTrigger={otpResetKey}
+                />
 
                 <div className="text-center text-sm text-gray-500 mt-4">
                   {isTimerActive ? (

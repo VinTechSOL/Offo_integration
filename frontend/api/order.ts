@@ -2,8 +2,11 @@ import api from "./client";
 
 export const placeOrderApi = async (payload: {
   order_type: "INSTANT" | "SCHEDULED";
-  scheduled_date?: string;
-  scheduled_time?: string;
+  schedules?: {
+    scheduled_date: string;
+    scheduled_time: string;
+  }[];
+  repeat_weekly?: boolean;
 }) => {
   const res = await api.post("/orders/place", payload);
   return res.data;

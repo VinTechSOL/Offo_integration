@@ -1,42 +1,73 @@
-import React, { useState, useRef, KeyboardEvent } from 'react';
+import React, { useState, useRef, KeyboardEvent, useEffect } from "react";
 
 interface OTPInputProps {
   onVerify: (otp: string) => void;
   loading?: boolean;
+  resetTrigger?: number; // 👈 used to reset externally
 }
 
-const OTPInput: React.FC<OTPInputProps> = ({ onVerify, loading = false }) => {
-  const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
+const OTPInput: React.FC<OTPInputProps> = ({
+  onVerify,
+  loading = false,
+  resetTrigger,
+}) => {
+  const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleChange = (element: HTMLInputElement, index: number) => {
-    if (!/^\d$/.test(element.value)) return;
+  // ✅ Reset OTP when resetTrigger changes
+  useEffect(() => {
+    setOtp(new Array(6).fill(""));
+    inputsRef.current[0]?.focus();
+  }, [resetTrigger]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const value = e.target.value;
+
+    // Allow empty (for delete)
+    if (!/^\d?$/.test(value)) return;
 
     const newOtp = [...otp];
-    newOtp[index] = element.value;
+    newOtp[index] = value;
     setOtp(newOtp);
 
-    if (element.nextSibling && element.value) {
-      (element.nextSibling as HTMLInputElement).focus();
+    // Move forward if digit entered
+    if (value && index < 5) {
+      inputsRef.current[index + 1]?.focus();
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (e.key === 'Backspace' && !otp[index] && inputsRef.current[index - 1]) {
-      inputsRef.current[index - 1]?.focus();
+  const handleKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Backspace") {
+      if (otp[index]) {
+        // Clear current
+        const newOtp = [...otp];
+        newOtp[index] = "";
+        setOtp(newOtp);
+      } else if (index > 0) {
+        // Move back
+        inputsRef.current[index - 1]?.focus();
+      }
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const paste = e.clipboardData.getData('text');
+    const paste = e.clipboardData.getData("text");
+
     if (paste.length === 6 && /^\d+$/.test(paste)) {
-      setOtp(paste.split(''));
+      const newOtp = paste.split("");
+      setOtp(newOtp);
       inputsRef.current[5]?.focus();
     }
   };
 
-  const otpString = otp.join('');
+  const otpString = otp.join("");
   const isOtpComplete = otpString.length === 6;
 
   return (
@@ -49,10 +80,12 @@ const OTPInput: React.FC<OTPInputProps> = ({ onVerify, loading = false }) => {
             maxLength={1}
             value={value}
             className="w-12 h-14 text-center text-2xl font-bold bg-gray-100 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            onChange={(e) => handleChange(e.target, index)}
+            onChange={(e) => handleChange(e, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             onFocus={(e) => e.target.select()}
-            ref={(el) => { inputsRef.current[index] = el; }}
+            ref={(el) => {
+              inputsRef.current[index] = el;
+            }}
             autoComplete="one-time-code"
           />
         ))}
@@ -63,7 +96,7 @@ const OTPInput: React.FC<OTPInputProps> = ({ onVerify, loading = false }) => {
         disabled={!isOtpComplete || loading}
         className="w-full bg-orange-500 text-white font-bold py-4 rounded-xl shadow-md hover:bg-orange-600 transition-colors disabled:bg-gray-300"
       >
-        {loading ? 'Verifying...' : 'Verify OTP'}
+        {loading ? "Verifying..." : "Verify OTP"}
       </button>
     </div>
   );
