@@ -19,6 +19,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpResetKey, setOtpResetKey] = useState(0);
+  const [errorMessage,setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let timer: number;
@@ -40,6 +41,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
   const handleGetOtp = async () => {
     try {
       setLoading(true);
+      setErrorMessage(null);
 
       if (activeTab === "signup") {
         await signupInit(phone, firstName, lastName);
@@ -51,10 +53,36 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
      setShowOtp(true);
      setCountdown(30);
      setIsTimerActive(true);
-    } catch (error) {
-     alert("Failed to send OTP");
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const backendMessage =
+        error?.response?.data?.detail?.toLowerCase() || "";
+
+        if (status === 429) {
+          setErrorMessage("Too many attempts. Please try again later.");
+          return;
+        }
+
+      // Login Case
+      if (activeTab === "login") {
+        if (backendMessage.includes("not registered")) {
+          setErrorMessage("Mobile number not registered. Please sign up first.");
+          return;
+        }
+      }
+
+      // Signup Case
+      if (activeTab === "signup") {
+        if (backendMessage.includes("already")) {
+          setErrorMessage("Phone number already registered. Please login.");
+          return;
+        }
+      }
+
+      setErrorMessage("Unable to send OTP. Please try again.");
+
     } finally {
-     setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -67,8 +95,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
         await sendOtp(phone);
         setCountdown(30);
         setIsTimerActive(true);
-      } catch (error) {
-        alert('Failed to resend OTP.');
+      } catch (error: any) {
+        const status = error?.response?.status;
+
+         if (status === 429) {
+           setErrorMessage("Too many requests. Please wait before retrying.");
+         } else {
+           setErrorMessage("Unable to resend OTP.");
+         }
       } finally {
         setLoading(false);
       }
@@ -91,9 +125,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
       localStorage.setItem("access_token",response.access_token)
       
       onLoginSuccess(activeTab); // cookie already set by backend
-    } catch (error) {
-      console.error(error);
-      alert('Invalid OTP. Please try again.');
+    } catch (error: any) {
+
+      const status = error?.response?.status;
+
+      const backendMessage =
+        error?.response?.data?.detail?.toLowerCase() || "";
+
+      if (status === 429) {
+        setErrorMessage("Too many failed attempts. Try again later.");
+      } else if (backendMessage.includes("invalid")) {
+        setErrorMessage("Invalid or expired OTP.");
+      } else {
+        setErrorMessage("Verification failed. Please try again.");
+      }
 
       setOtpResetKey(prev => prev + 1);
     } finally {
@@ -187,11 +232,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
                       onChange={(e) => {
                         if (/^\d*$/.test(e.target.value)) {
                           setPhone(e.target.value);
+                          setErrorMessage(null);
                         }
                       }}
                       className="w-full bg-transparent pl-2 focus:outline-none"
                     />
                   </div>
+                  {errorMessage && (
+                   <p className="text-red-500 text-sm mt-2 font-medium">
+                     {errorMessage}
+                   </p>
+                  )}
                 </div>
 
                 <button
@@ -221,6 +272,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
                 <div className="text-center text-sm text-gray-500 mt-4">
                   {isTimerActive ? (
                     <span>Resend OTP in 00:{countdown.toString().padStart(2, '0')}</span>
+
                   ) : (
                     <button
                       onClick={handleResendOtp}
@@ -230,6 +282,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
                     </button>
                   )}
                 </div>
+
+                {errorMessage && (
+                  <p className="text-red-500 text-sm mt-3 text-center font-medium">
+                    {errorMessage}
+                  </p>
+                )}
               </>
             )}
           </div>

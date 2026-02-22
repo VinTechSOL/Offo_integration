@@ -38,4 +38,11 @@ export const signupVerify = async (phone: string, otp: string) => {
 };
 
 
+// CHECK USER IF EXISTS OR NOT
+
+export const checkUserExists = async (phone: string) => {
+  const res = await api.get(`/auth/check-user?phone=${phone}`);
+  return res.data.exists;
+};
+
 

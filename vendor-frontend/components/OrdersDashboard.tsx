@@ -99,12 +99,11 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
   useEffect(() => {
     
     let active = true;
+    let poll: number | undefined;
 
     const load = async () => {
 
       try {
-        setLoading(true);
-
         let data;
 
         if (isScheduledView) {
@@ -121,25 +120,39 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
         }
       } catch (err) {
         console.error("failed to load orders",err)
-      } finally {
-        if (active) setLoading(false);
-      }
-      
+      }  
     };
 
     load();
-    let poll: number | undefined;
 
-    if (!isScheduledView && !isTodayView) {
-      poll = window.setInterval(load,15000);
-    }
+    const startPolling = () => {
+      if (!isScheduledView && !isTodayView) {
+        poll = window.setInterval(load, 15000);
+      }
+    };
 
+    const stopPolling = () => {
+      if (poll) clearInterval(poll);
+    };
+
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        startPolling();
+        load(); // instant refresh when user returns
+      } else {
+        stopPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    startPolling();
+    
     return () => {
       active = false;
-      if(poll !== undefined){
-        clearInterval(poll);
-      }
-      
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [isScheduledView, isTodayView]);
 
