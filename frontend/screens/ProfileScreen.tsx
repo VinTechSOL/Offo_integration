@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Screen } from "@/types/navigation";
+import { useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
 import CheckIcon from "@/components/icons/CheckIcon";
@@ -73,9 +73,8 @@ interface UserContext {
 }
 
 /* ---------------- SCREEN ---------------- */
-const ProfileScreen: React.FC<{ navigateTo: (screen: Screen) => void }> = ({
-  navigateTo,
-}) => {
+const ProfileScreen: React.FC = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [context, setContext] = useState<UserContext | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,22 +105,22 @@ const ProfileScreen: React.FC<{ navigateTo: (screen: Screen) => void }> = ({
 
   /* -------- MENU CONFIG -------- */
   const generalOptions = [
-    { label: "My Account", icon: UserIcon, action: () => navigateTo("my-account") },
+    { label: "My Account", icon: UserIcon, action: () => navigate("/my-account") },
     {
       label: "Payment Methods",
       icon: CreditCardIcon,
-      action: () => navigateTo("payment-methods"),
+      action: () => navigate("/payment-methods"),
     },
     {
       label: "Order History",
       icon: ReceiptIcon,
-      action: () => navigateTo("orders"),
+      action: () => navigate("/orders"),
     },
   ];
 
   const moreOptions = [
-    { label: "Help & Support", icon: HelpIcon, action: () => navigateTo("help") },
-    { label: "About Us", icon: InfoIcon, action: () => navigateTo("about") },
+    { label: "Help & Support", icon: HelpIcon, action: () => navigate("/help") },
+    { label: "About Us", icon: InfoIcon, action: () => navigate("/about") },
   ];
 
   /* ---------------- UI ---------------- */
@@ -130,7 +129,7 @@ const ProfileScreen: React.FC<{ navigateTo: (screen: Screen) => void }> = ({
       {/* Header */}
       <header className="p-4 flex items-center border-b">
         <div className="w-1/5">
-          <button onClick={() => navigateTo("home")}>
+          <button onClick={() => navigate("/home")}>
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>
@@ -200,7 +199,7 @@ const ProfileScreen: React.FC<{ navigateTo: (screen: Screen) => void }> = ({
         {/* Logout */}
         <button
           
-          onClick={() => navigateTo("login")}
+          onClick={() => navigate("/login")}
           className="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 font-semibold"
         >
           <LogoutIcon className="w-6 h-6" />
@@ -208,7 +207,7 @@ const ProfileScreen: React.FC<{ navigateTo: (screen: Screen) => void }> = ({
         </button>
       </main>
 
-      <BottomNav activeScreen="profile" navigateTo={navigateTo} />
+      <BottomNav  />
     </div>
   );
 };

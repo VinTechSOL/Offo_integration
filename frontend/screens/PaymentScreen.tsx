@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import type { Screen } from "../types/navigation";
+import { useNavigate } from "react-router-dom";
 import type { OrderDetails } from "../types";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
 import CheckIcon from "../components/icons/CheckIcon";
@@ -14,14 +14,14 @@ const phonePeMethod = {
 interface PaymentScreenProps {
   orderDetails: OrderDetails;
   setOrderDetails: (details: OrderDetails | null) => void;
-  navigateTo: (screen: Screen) => void;
 }
 
 const PaymentScreen: React.FC<PaymentScreenProps> = ({
   orderDetails,
   setOrderDetails,
-  navigateTo,
 }) => {
+
+  const navigate = useNavigate();
   const [paymentStatus, setPaymentStatus] = useState<
     "idle" | "processing" | "success"
   >("idle");
@@ -40,12 +40,12 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
 
     if (paymentStatus === "success") {
       timer = setTimeout(() => {
-        navigateTo("success"); // or "orders" later
+        navigate("/success"); // or "orders" later
       }, 1500);
     }
 
     return () => clearTimeout(timer);
-  }, [paymentStatus, navigateTo]);
+  }, [paymentStatus, navigate]);
 
   // ============================
   // PLACE ORDER HANDLER
@@ -135,7 +135,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
       <header className="p-4 flex items-center border-b">
         <button
           onClick={() =>
-            navigateTo(orderDetails.schedules ? "schedule" : "cart")
+            navigate(orderDetails.schedules ? "/schedule" : "/cart")
           }
         >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />

@@ -89,7 +89,7 @@ class AuthService:
         
         existing_user = AuthRepository.get_user_by_mobile(db,mobile)
 
-        if not existing_user:
+        if existing_user:
             raise HTTPException(
                 status_code=400,
                 detail="Phone number already registered. Please login."
@@ -124,8 +124,7 @@ class AuthService:
     @staticmethod
     def signup_verify(db: Session, mobile: str, otp: str):
         rate_limit_otp_verify(mobile)
-
-        signup = None
+        
         # in production,no requirement of if and above signup none thing only use else 
         if settings.ALLOW_DEV_OTP and otp == settings.DEV_MASTER_OTP:
             print(f"[dev mode] master otp used for {mobile}")
@@ -149,7 +148,7 @@ class AuthService:
 
         existing_user = AuthRepository.get_user_by_mobile(db, mobile)
 
-        if not existing_user:
+        if existing_user:
             raise HTTPException(status_code=400, detail="Account already exists.Please login.")
 
         

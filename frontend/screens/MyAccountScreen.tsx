@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from "react";
-import type { Screen } from "../types/navigation";
+import { useNavigate } from "react-router-dom";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
 import { getMyProfileApi, updateMyProfileApi } from "../api/user";
 import { getUserContextDetails } from "../api/userContext";
 
-interface Props {
-  navigateTo: (screen: Screen) => void;
-}
 
 const SkeletonLine = () => (
   <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3" />
 );
 
-const MyAccountScreen: React.FC<Props> = ({ navigateTo }) => {
+const MyAccountScreen: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -51,7 +49,7 @@ const MyAccountScreen: React.FC<Props> = ({ navigateTo }) => {
       {/* Header */}
       <header className="p-4 flex items-center border-b bg-[#FFF9F2]">
         <div className="w-1/5">
-          <button onClick={() => navigateTo("profile")}>
+          <button onClick={() => navigate("/profile")}>
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>

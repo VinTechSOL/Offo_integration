@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { Screen } from "../types/navigation";
+import { useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
 import type { Order } from "../types";
@@ -8,7 +8,6 @@ import OrderStatusTracker from "../components/OrderStatusTracker";
 import { OrderTimeline } from "@/components/OrderTimeline";
 
 interface OrdersScreenProps {
-  navigateTo: (screen: Screen) => void;
   orders: Order[];
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
   onEditSchedule: (order: Order) => void;
@@ -54,12 +53,12 @@ const OrderStatusPill: React.FC<{ status: Order["status"] }> = ({ status }) => {
    MAIN SCREEN
 ============================ */
 const OrdersScreen: React.FC<OrdersScreenProps> = ({
-  navigateTo,
   orders,
   setOrders,
   onEditSchedule,
   onEditOrderItems,
 }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"scheduled" | "ongoing" | "past">("past");
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
@@ -128,7 +127,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
 
       {/* HEADER */}
       <header className="p-4 flex items-center border-b">
-        <button onClick={() => navigateTo("home")} className="w-1/5">
+        <button onClick={() => navigate("/home")} className="w-1/5">
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
         <h1 className="w-3/5 text-center text-xl font-bold text-gray-800">
@@ -247,7 +246,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
         )}
       </ScrollableContainer>
 
-      <BottomNav activeScreen="orders" navigateTo={navigateTo} />
+      <BottomNav />
     </div>
   );
 };

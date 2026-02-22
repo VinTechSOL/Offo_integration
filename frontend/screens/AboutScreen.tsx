@@ -1,11 +1,7 @@
 import React from 'react';
-import type { Screen } from "../types/navigation";
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import ScrollableContainer from '../components/ScrollableContainer';
-
-interface AboutScreenProps {
-  navigateTo: (screen: Screen) => void;
-}
+import { useNavigate } from 'react-router-dom';
 
 const Feature: React.FC<{ icon: string; title: string; description: string }> = ({ icon, title, description }) => (
     <div className="flex items-start space-x-4">
@@ -20,12 +16,14 @@ const Feature: React.FC<{ icon: string; title: string; description: string }> = 
 );
 
 
-const AboutScreen: React.FC<AboutScreenProps> = ({ navigateTo }) => {
+const AboutScreen: React.FC = () => {
+  const navigate = useNavigate(); 
+
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2]">
       <header className="p-4 flex items-center border-b sticky top-0 bg-[#FFF9F2] z-10">
         <div className="w-1/5">
-          <button onClick={() => navigateTo('profile')}>
+          <button onClick={() => navigate('/profile')}>
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>

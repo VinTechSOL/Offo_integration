@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import type { Screen } from "../types/navigation"
+import { useNavigate } from 'react-router-dom';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import OTPInput from '../components/OTPInput';
 import { sendOtp, verifyOtp,signupInit,signupVerify } from '../api/auth';
 
 interface LoginScreenProps {
   onLoginSuccess: (flow: "signup" | "login") => void;
-  navigateTo: (screen: Screen) => void;
+  
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess}) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const [phone, setPhone] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -149,7 +150,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, navigateTo })
   return (
     <div className="flex flex-col h-full bg-[#0D1B2A]">
       <div className="p-4">
-        <button className="text-white" onClick={() => navigateTo('onboarding')}>
+        <button className="text-white" onClick={() => navigate('/onboarding')}>
           <ArrowLeftIcon className="w-6 h-6" />
         </button>
       </div>

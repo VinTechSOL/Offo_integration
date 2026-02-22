@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import type { Screen } from "../types/navigation";
+import { useNavigate } from "react-router-dom";
 import type { CartItem, FoodItem, Cafe, CafeForUser } from "../types";
 
 import BottomNav from "../components/BottomNav";
@@ -15,7 +15,6 @@ import { useUserContext } from "../hooks/useUserContext";
 
 interface HomeScreenProps {
   cart: CartItem[];
-  navigateTo: (screen: Screen) => void;
   addToCart: (item: FoodItem, quantity?: number) => void;
   setSelectedCafe: React.Dispatch<React.SetStateAction<Cafe | null>>;
   onViewFoodItem: (item: FoodItem) => void;
@@ -25,11 +24,12 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
   cart,
-  navigateTo,
   addToCart,
   onViewFoodItem,
   setSelectedCafe,
 }) => {
+
+  const navigate = useNavigate();
   const [showChangeLocation, setShowChangeLocation] = useState(false);
 
   /* ---------------- USER CONTEXT ---------------- */
@@ -224,7 +224,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* CART */}
           <div className="relative mt-1">
-            <button onClick={() => navigateTo("cart")}>
+            <button onClick={() => navigate("/cart")}>
               <CartIcon className="w-7 h-7 text-gray-700" />
             </button>
             {cartItemCount > 0 && (
@@ -281,7 +281,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                   status: cafe.is_open ? "Open" : "Closed",
                   image: cafe.image_url || "",
                 });
-                navigateTo("menu");
+                navigate("/menu");
               }}
               className="bg-white p-4 rounded-2xl mb-3 flex items-center justify-between shadow-sm"
             >
@@ -360,7 +360,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
       </ScrollableContainer>
 
-      <BottomNav activeScreen="home" navigateTo={navigateTo} />
+      <BottomNav />
 
       {showChangeLocation && context && (
         <ChangeLocationModal

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import type { Screen } from "../types/navigation";
+import { useNavigate } from "react-router-dom";
 import type { CartItem, FoodItem, Cafe } from "../types";
 import { getBranchMenuForUser } from "@/api/menu";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
@@ -33,7 +33,6 @@ interface BranchMenuApi {
 interface MenuScreenProps {
   cafe: Cafe;
   cart: CartItem[];
-  navigateTo: (screen: Screen) => void;
   addToCart: (item: FoodItem) => void;
   isEditingOrder?: boolean;
   onCancelEdit?: () => void;
@@ -44,11 +43,11 @@ interface MenuScreenProps {
 const MenuScreen: React.FC<MenuScreenProps> = ({
   cafe,
   cart,
-  navigateTo,
   addToCart,
   isEditingOrder,
   onCancelEdit,
 }) => {
+  const navigate = useNavigate();
   const [menu, setMenu] = useState<BranchMenuApi | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -136,14 +135,14 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
             onClick={() =>
               isEditingOrder && onCancelEdit
                 ? onCancelEdit()
-                : navigateTo("home")
+                : navigate("/home")
             }
           >
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
 
           <div className="relative">
-            <button onClick={() => navigateTo("cart")}>
+            <button onClick={() => navigate("/cart")}>
               <CartIcon className="w-8 h-8 text-gray-700" />
             </button>
             {cartItemCount > 0 && (
@@ -234,7 +233,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
               <footer className="p-4 bg-gray-100 border-t flex-shrink-0">
                <div className="bg-gray-800 text-white rounded-lg shadow-lg flex justify-between items-center p-3">
                   <p>{cartItemCount} items | ₹ {cart.reduce((acc, cv) => acc + cv.item.price * cv.quantity, 0).toFixed(2)}</p>
-                  <button onClick={() => navigateTo('cart')} className="font-bold">View Cart &gt;</button>
+                  <button onClick={() => navigate('/cart')} className="font-bold">View Cart &gt;</button>
               </div>
           </footer>
       )}

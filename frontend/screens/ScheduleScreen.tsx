@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Screen } from "../types/navigation";
+import { useNavigate } from 'react-router-dom';
 import type { OrderDetails, ScheduledItem, Order } from '../types';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import TimePicker from '../components/TimePicker';
@@ -7,7 +7,6 @@ import TimePicker from '../components/TimePicker';
 interface ScheduleScreenProps {
   orderDetails: OrderDetails;
   setOrderDetails: React.Dispatch<React.SetStateAction<OrderDetails | null>>;
-  navigateTo: (screen: Screen) => void;
   orderToEdit: Order | null;
   onUpdateOrder: (updatedOrder: Order) => void;
 }
@@ -15,10 +14,11 @@ interface ScheduleScreenProps {
 const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
   orderDetails,
   setOrderDetails,
-  navigateTo,
   orderToEdit,
   onUpdateOrder
 }) => {
+
+  const navigate = useNavigate();
 
   const isEditMode = orderToEdit != null;
 
@@ -195,7 +195,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
       total,
     });
 
-    navigateTo('payment');
+    navigate('/payment');
   };
 
   const formatSelectedDates = (dates: Date[]) => {
@@ -248,7 +248,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
 
       <header className="p-4 flex items-center flex-shrink-0">
         <button
-          onClick={() => navigateTo(isEditMode ? 'orders' : 'cart')}
+          onClick={() => navigate(isEditMode ? '/orders' : '/cart')}
           className="p-2"
         >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />

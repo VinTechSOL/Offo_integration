@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
-import {Routes, Route, useNavigate,useLocation } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
+
 import type { CartItem, OrderDetails, Cafe, Order, FoodItem } from "./types";
+
 import BootstrapLoader from "./screens/BootstrapLoader";
 import ErrorToast from "./components/ErrorToast";
 import SplashScreen from "./screens/SplashScreen";
@@ -22,7 +30,6 @@ import OfflineScreen from "./screens/OfflineScreen";
 import AboutScreen from "./screens/AboutScreen";
 import FoodItemDetailModal from "./components/FoodItemDetailModal";
 import { useToastStore } from "./store/toastStore";
-import type { Screen } from "./types/navigation";
 
 import { getUserContextDetails } from "./api/userContext";
 import {
@@ -31,16 +38,19 @@ import {
   updateCartItemApi,
   clearCartApi,
 } from "./api/cart";
-import { getMyOrdersApi,getMyActiveOrdersApi} from "./api/order";
+import { getMyOrdersApi, getMyActiveOrdersApi } from "./api/order";
 import { mapBackendOrder } from "./utils/mapOrder";
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const locationRouter = useLocation();
+
   /* =======================
      STATE
   ======================= */
 
-  const [screen, setScreen] = useState<Screen>("splash");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
@@ -53,9 +63,7 @@ const App: React.FC = () => {
 
   const [foodDetailItem, setFoodDetailItem] = useState<FoodItem | null>(null);
 
-  const [isOffline, setIsOffline] = useState(false);
-
-  const [location, setLocation] = useState({
+  const [locationData, setLocationData] = useState({
     city: "",
     company: "",
     building: "",
@@ -67,8 +75,7 @@ const App: React.FC = () => {
 
   const loadCart = async () => {
     const data = await getActiveCart();
-
-    if (!data || !data.items) {
+    if (!data?.items) {
       setCart([]);
       return;
     }
@@ -120,7 +127,7 @@ const App: React.FC = () => {
     const ctx = await getUserContextDetails();
     if (!ctx) return false;
 
-    setLocation({
+    setLocationData({
       city: ctx.city_name,
       company: ctx.campus_name,
       building: ctx.building_name || "",
@@ -138,98 +145,130 @@ const App: React.FC = () => {
       const token = localStorage.getItem("access_token");
 
       if (!token) {
-        setScreen("onboarding");
         setIsBootstrapping(false);
         return;
       }
 
       try {
         const hasContext = await refreshLocationFromContext();
-        setScreen(hasContext ? "home" : "location");
-      } catch(err: any){
-        if (err.code == "ERR_NETWORK"){
-          setIsOffline(true);
-        } else{
-          setScreen("location");
+        if (locationRouter.pathname === "/")
+        {
+          navigate(hasContext ? "/home" : "/location", { replace: true });
         }
+        
+      } catch (err: any) {
+        if (err.code === "ERR_NETWORK") {
+          setIsOffline(true);
+        } 
       } finally {
         setIsBootstrapping(false);
       }
     };
 
     bootstrap();
-  }, []);
+  }, [navigate, locationRouter.pathname]);
 
   /* =======================
-     SIDE EFFECTS
+     ROUTE EFFECTS
   ======================= */
 
   useEffect(() => {
-    if (screen === "home") {
+    if (locationRouter.pathname === "/home") {
       loadCart();
     }
-  }, [screen]);
+  }, [locationRouter.pathname]);
 
   useEffect(() => {
-    if ((screen === "schedule" || screen === "payment") && !orderDetails) {
-      setScreen("cart");
+    if (
+      (locationRouter.pathname === "/schedule" ||
+        locationRouter.pathname === "/payment") &&
+      !orderDetails
+    ) {
+      navigate("/cart");
     }
-  }, [screen, orderDetails]);
+  }, [locationRouter.pathname, orderDetails]);
 
   useEffect(() => {
-    if (screen !== "orders") return;
+    if (locationRouter.pathname !== "/orders") return;
 
     let isMounted = true;
+    let interval: number | undefined;
 
-    const pollOrders = async () => {
+    
+    // 🔹 Load full history only once
+    const loadHistoryOnce = async () => {
       try {
-        // 🔹 active = ongoing orders (CREATED → READY)
+        const history = await getMyOrdersApi();
+        if (!isMounted) return;
+        setOrders(history.map(mapBackendOrder));
+      } catch (err) {
+        console.error("Failed to load order history", err);
+      }
+    };
+    
+    // 🔹 Poll only active orders
+    const pollActiveOnly = async () => {
+      try {
         const active = await getMyActiveOrdersApi();
-
-        // 🔹 all = full history (includes completed)
-        const all = await getMyOrdersApi();
 
         if (!isMounted) return;
 
         const mappedActive = active.map(mapBackendOrder);
-        const mappedAll = all.map(mapBackendOrder);
 
-        /**
-        * Merge logic:
-        * - Active orders always win (latest status)
-        * - Past orders come from /users/orders
-        */
-        const mergedOrders = [
+        setOrders( prev => [
           ...mappedActive,
-          ...mappedAll.filter(
+          ...prev.filter(
             o => !mappedActive.find(a => a.id === o.id)
           ),
-        ];
-
-        setOrders(mergedOrders);
+        ]);
       } catch (err) {
-        console.error("Order polling failed", err);
+        console.error("Active polling failed", err);
       }
     };
 
-    // Initial load when Orders screen opens
-    pollOrders();
+    /* -------------------------
+       Start polling
+    ------------------------- */
+    const startPolling = () => {
+      if (!interval) {
+        interval = window.setInterval(pollActiveOnly, 15000);
+      }
+    };
 
-    // Poll every 15 seconds
-    const interval = setInterval(pollOrders, 15000);
+    /* -------------------------
+      Stop polling
+    ------------------------- */
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = undefined;
+      }
+    };
+
+    /* -------------------------
+      Handle tab visibility
+    ------------------------- */
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        pollActiveOnly();   // instant refresh when user returns
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    loadHistoryOnce(); // one-time full fetch
+    pollActiveOnly(); // immediate active fetch
+    startPolling();
+
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [screen]);
-
-
-  useEffect(() => {
-    if (screen === "orders") {
-      loadOrders();
-    }
-  }, [screen]);
+  }, [locationRouter.pathname]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -240,236 +279,192 @@ const App: React.FC = () => {
     return () => window.removeEventListener("online", handleOnline);
   }, []);
 
-
   /* =======================
-     ORDERS
+     ORDER HANDLERS
   ======================= */
 
-  const loadOrders = async () => {
-    try {
-      const data = await getMyOrdersApi();
-      setOrders(data.map(mapBackendOrder));
-    } catch (err) {
-      console.error("Failed to load orders", err);
-    }
-  };
-
   const handleUpdateOrder = (updated: Order) => {
-    setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)));
+    setOrders(prev =>
+      prev.map(o => (o.id === updated.id ? updated : o))
+    );
     setOrderToEdit(null);
     setIsEditingOrder(false);
     setCart([]);
-    setScreen("orders");
+    navigate("/orders");
   };
 
   /* =======================
-     NAVIGATION
-  ======================= */
-
-  const navigateTo = (next: Screen) => {
-    if (next === "login") {
-      localStorage.removeItem("access_token");
-      setCart([]);
-      setOrders([]);
-      setOrderDetails(null);
-      setSelectedCafe(null);
-      setFoodDetailItem(null);
-    }
-    setScreen(next);
-  };
-
-  /* =======================
-     RENDER GUARD
+     OFFLINE / LOADER
   ======================= */
 
   if (isOffline) {
     return <OfflineScreen onRetry={() => window.location.reload()} />;
   }
 
-
   if (isBootstrapping) {
     return <BootstrapLoader />;
   }
 
   /* =======================
-     SCREEN RENDERER
-  ======================= */
-
-  const renderScreen = () => {
-    switch (screen) {
-      case "splash":
-        return <SplashScreen onFinish={() => navigateTo("onboarding")} />;
-
-      case "onboarding":
-        return <OnboardingScreen onGetStarted={() => navigateTo("login")} />;
-
-      case "login":
-        return (
-          <LoginScreen
-            navigateTo={navigateTo}
-            onLoginSuccess={async flow => {
-              if (flow === "signup") {
-                navigateTo("location");
-              } else {
-                await refreshLocationFromContext();
-                navigateTo("home");
-              }
-            }}
-          />
-        );
-
-      case "location":
-        return (
-          <LocationScreen
-            navigateTo={navigateTo}
-            onConfirm={async loc => {
-              setLocation(loc);
-              await refreshLocationFromContext();
-              navigateTo("home");
-            }}
-          />
-        );
-
-      case "home":
-        return (
-          <HomeScreen
-            cart={cart}
-            navigateTo={navigateTo}
-            addToCart={addToCart}
-            setSelectedCafe={setSelectedCafe}
-            onViewFoodItem={setFoodDetailItem}
-          />
-        );
-
-      case "menu":
-        return (
-          <MenuScreen
-            cafe={selectedCafe!}
-            cart={cart}
-            navigateTo={navigateTo}
-            addToCart={addToCart}
-            isEditingOrder={isEditingOrder}
-            onCancelEdit={() => navigateTo("orders")}
-          />
-        );
-
-      case "cart":
-        return (
-          <CartScreen
-            cart={cart}
-            updateCartQuantity={updateCartQuantity}
-            navigateTo={navigateTo}
-            clearCart={clearCart}
-            setOrderDetails={setOrderDetails}
-            isEditingOrder={isEditingOrder}
-            onUpdateOrder={() => {}}
-            onOrderNow={() => {
-              const subtotal = cart.reduce(
-                (a, c) => a + c.item.price * c.quantity,
-                0
-              );
-              setOrderDetails({
-                items: cart,
-                subtotal,
-                convenienceFee: 6,
-                total: subtotal + 6,
-              });
-              navigateTo("payment");
-            }}
-            onSchedule={() => {
-              const subtotal = cart.reduce(
-                (a, c) => a + c.item.price * c.quantity,
-                0
-              );
-              setOrderDetails({
-                items: cart,
-                subtotal,
-                convenienceFee: 6,
-                total: subtotal + 6,
-              });
-              navigateTo("schedule");
-            }}
-          />
-        );
-
-      case "schedule":
-        return (
-          <ScheduleScreen
-            orderDetails={orderDetails!}
-            setOrderDetails={setOrderDetails}
-            navigateTo={navigateTo}
-            orderToEdit={orderToEdit}
-            onUpdateOrder={handleUpdateOrder}
-          />
-        );
-
-      case "payment":
-        return (
-          <PaymentScreen
-            orderDetails={orderDetails!}
-            setOrderDetails={setOrderDetails}
-            navigateTo={navigateTo}
-          />
-        );
-
-      case "success":
-        return (
-          <SuccessScreen
-            navigateTo={navigateTo}
-            clearCart={clearCart}
-            orderDetails={orderDetails}
-          />
-        );
-
-      case "orders":
-        return (
-          <OrdersScreen
-            navigateTo={navigateTo}
-            orders={orders}
-            setOrders={setOrders}
-            onEditSchedule={order => {
-              setOrderToEdit(order);
-              setIsEditingOrder(true);
-              navigateTo("schedule");
-            }}
-            onEditOrderItems={order => {
-              setOrderToEdit(order);
-              setIsEditingOrder(true);
-              setCart(order.items);
-              navigateTo("menu");
-            }}
-          />
-        );
-
-      case 'help':
-        return <HelpScreen navigateTo={navigateTo} />;
-
-      case 'profile':
-        return <ProfileScreen navigateTo={navigateTo} />;
-
-      case 'about':
-        return <AboutScreen navigateTo={navigateTo} />;
-
-      case 'my-account':
-        return <MyAccountScreen navigateTo={navigateTo} />;
-
-      case 'payment-methods':
-        return <PaymentMethodsScreen navigateTo={navigateTo} />;
-
-      default:
-        return <SplashScreen onFinish={() => navigateTo("onboarding")} />;
-    }
-  };
-
-  /* =======================
-     ROOT
+     UI
   ======================= */
 
   return (
     <div className="bg-gray-100 sm:bg-slate-900 flex justify-center items-center h-screen w-full">
       <div className="w-full h-full sm:w-[412px] sm:h-[892px] bg-white sm:rounded-[3rem] sm:shadow-2xl overflow-hidden relative sm:border-[8px] sm:border-slate-800">
-        {renderScreen()}
-        <ErrorToast/>
+
+        <Routes>
+
+          <Route path="/" element={
+            <SplashScreen onFinish={() => navigate("/onboarding")} />
+          } />
+
+          <Route path="/onboarding" element={
+            <OnboardingScreen onGetStarted={() => navigate("/login")} />
+          } />
+
+          <Route path="/login" element={
+            <LoginScreen
+              onLoginSuccess={async flow => {
+                if (flow === "signup") {
+                  navigate("/location");
+                } else {
+                  await refreshLocationFromContext();
+                  navigate("/home");
+                }
+              }}
+            />
+          } />
+
+          <Route path="/location" element={
+            <LocationScreen
+              onConfirm={async loc => {
+                setLocationData(loc);
+                await refreshLocationFromContext();
+                navigate("/home");
+              }}
+            />
+          } />
+
+          <Route path="/home" element={
+            <HomeScreen
+              cart={cart}
+              addToCart={addToCart}
+              setSelectedCafe={setSelectedCafe}
+              onViewFoodItem={setFoodDetailItem}
+            />
+          } />
+
+          <Route path="/menu" element={
+            selectedCafe
+              ? <MenuScreen
+                  cafe={selectedCafe}
+                  cart={cart}
+                  addToCart={addToCart}
+                  isEditingOrder={isEditingOrder}
+                  onCancelEdit={() => navigate("/orders")}
+                />
+              : <Navigate to="/home" replace />
+          } />
+
+          <Route path="/cart" element={
+            <CartScreen
+              cart={cart}
+              updateCartQuantity={updateCartQuantity}
+              clearCart={clearCart}
+              setOrderDetails={setOrderDetails}
+              isEditingOrder={isEditingOrder}
+              onUpdateOrder={() => {}}
+              onOrderNow={() => {
+                const subtotal = cart.reduce(
+                  (a, c) => a + c.item.price * c.quantity,
+                  0
+                );
+                setOrderDetails({
+                  items: cart,
+                  subtotal,
+                  convenienceFee: 6,
+                  total: subtotal + 6,
+                });
+                navigate("/payment");
+              }}
+              onSchedule={() => {
+                const subtotal = cart.reduce(
+                  (a, c) => a + c.item.price * c.quantity,
+                  0
+                );
+                setOrderDetails({
+                  items: cart,
+                  subtotal,
+                  convenienceFee: 6,
+                  total: subtotal + 6,
+                });
+                navigate("/schedule");
+              }}
+            />
+          } />
+
+          <Route path="/schedule" element={
+            orderDetails ? (
+              <ScheduleScreen
+                orderDetails={orderDetails!}
+                setOrderDetails={setOrderDetails}
+                orderToEdit={orderToEdit}
+                onUpdateOrder={handleUpdateOrder}
+              />
+            ) : (
+              <Navigate to="/cart" replace />
+            )
+          } />
+
+          <Route path="/payment" element={
+            orderDetails ? (
+              <PaymentScreen
+                orderDetails={orderDetails!}
+                setOrderDetails={setOrderDetails}
+              /> 
+            ) : (
+              <Navigate to="/cart" replace />
+            ) 
+          } />
+
+          <Route path="/success" element={
+            <SuccessScreen
+              clearCart={clearCart}
+              orderDetails={orderDetails}
+            />
+          } />
+
+          <Route path="/orders" element={
+            <OrdersScreen
+              orders={orders}
+              setOrders={setOrders}
+              onEditSchedule={order => {
+                setOrderToEdit(order);
+                setIsEditingOrder(true);
+                navigate("/schedule");
+              }}
+              onEditOrderItems={order => {
+                setOrderToEdit(order);
+                setIsEditingOrder(true);
+                setCart(order.items);
+                navigate("/menu");
+              }}
+            />
+          } />
+
+          <Route path="/help" element={<HelpScreen  />} />
+          <Route path="/profile" element={<ProfileScreen  />} />
+          <Route path="/about" element={<AboutScreen  />} />
+          <Route path="/my-account" element={<MyAccountScreen  />} />
+          <Route path="/payment-methods" element={<PaymentMethodsScreen  />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+
+        </Routes>
+
+        <ErrorToast />
+
         {foodDetailItem && (
           <FoodItemDetailModal
             item={foodDetailItem}
@@ -477,6 +472,7 @@ const App: React.FC = () => {
             onAddToCart={() => {}}
           />
         )}
+
       </div>
     </div>
   );

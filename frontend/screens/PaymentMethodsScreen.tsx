@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import type { Screen } from "../types/navigation";
+import { useNavigate } from 'react-router-dom';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import ScrollableContainer from '../components/ScrollableContainer';
 
-interface PaymentMethodsScreenProps {
-  navigateTo: (screen: Screen) => void;
-}
+
 
 const phonePeIconUrl = '../../assets/icons/phonepe.jpeg';
 
@@ -14,7 +12,8 @@ interface UpiMethod {
     upiId: string;
 }
 
-const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({ navigateTo }) => {
+const PaymentMethodsScreen: React.FC = () => {
+    const navigate = useNavigate();
     const [methods, setMethods] = useState<UpiMethod[]>([
         { id: 1, upiId: 'johndoe@ybl' },
         { id: 2, upiId: '9876543210@paytm' },
@@ -58,7 +57,7 @@ const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({ navigateTo 
             )}
             <header className="p-4 flex items-center border-b sticky top-0 bg-[#FFF9F2] z-10">
                 <div className="w-1/5">
-                    <button onClick={() => navigateTo('profile')}>
+                    <button onClick={() => navigate('/profile')}>
                         <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
                     </button>
                 </div>

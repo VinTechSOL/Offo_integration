@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Screen } from "../types/navigation";
+import { useNavigate } from 'react-router-dom';
 import type { CartItem, OrderDetails } from '../types';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import ScrollableContainer from '../components/ScrollableContainer';
@@ -7,7 +7,6 @@ import ScrollableContainer from '../components/ScrollableContainer';
 interface CartScreenProps {
   cart: CartItem[];
   updateCartQuantity: (itemId: number, newQuantity: number) => void;
-  navigateTo: (screen: Screen) => void;
   setOrderDetails: (details: OrderDetails) => void;
   clearCart: () => void;
   isEditingOrder?: boolean;
@@ -16,7 +15,9 @@ interface CartScreenProps {
   onSchedule: () => void;
 }
 
-const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, navigateTo, setOrderDetails, clearCart, isEditingOrder, onUpdateOrder,onOrderNow,onSchedule }) => {
+const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOrderDetails, clearCart, isEditingOrder, onUpdateOrder,onOrderNow,onSchedule }) => {
+
+  const navigate = useNavigate();
   
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [highlightedItem, setHighlightedItem] = useState<number | null>(null);
@@ -72,7 +73,7 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, navig
     if (isEditingOrder) return;
     const orderDetails: OrderDetails = { items: cart, subtotal, convenienceFee, total };
     setOrderDetails(orderDetails);
-    navigateTo(isScheduling ? 'schedule' : 'payment');
+    navigate(isScheduling ? '/schedule' : '/payment');
   };
   
   const handleRemoveItem = (itemId: number) => {
@@ -97,7 +98,7 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, navig
       <div className="flex flex-col h-full bg-[#FFF9F2]">
         <header className="p-4 flex items-center border-b">
           <div className="w-1/5">
-            <button onClick={() => navigateTo('home')}>
+            <button onClick={() => navigate('/home')}>
               <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
             </button>
           </div>
@@ -108,7 +109,7 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, navig
         </header>
         <div className="flex-grow flex flex-col items-center justify-center">
             <p className="text-gray-500">Your cart is empty.</p>
-            <button onClick={() => navigateTo('home')} className="mt-4 bg-orange-500 text-white font-bold py-2 px-4 rounded-lg">
+            <button onClick={() => navigate('/home')} className="mt-4 bg-orange-500 text-white font-bold py-2 px-4 rounded-lg">
                 Start Ordering
             </button>
         </div>
@@ -132,7 +133,7 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, navig
       )}
       <header className="p-4 flex items-center border-b">
         <div className="w-1/5">
-          <button onClick={() => navigateTo(isEditingOrder ? 'menu' : 'home')}>
+          <button onClick={() => navigate(isEditingOrder ? '/menu' : '/home')}>
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>
@@ -172,7 +173,7 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, navig
           </div>
         ))}
         <div className="pt-2">
-            <button onClick={() => navigateTo(isEditingOrder ? 'menu' : 'home')} className="w-full text-center py-3 border-2 border-dashed border-orange-400 text-orange-600 font-semibold rounded-xl hover:bg-orange-50 transition-colors">
+            <button onClick={() => navigate(isEditingOrder ? '/menu' : '/home')} className="w-full text-center py-3 border-2 border-dashed border-orange-400 text-orange-600 font-semibold rounded-xl hover:bg-orange-50 transition-colors">
               + Add More Items
             </button>
         </div>

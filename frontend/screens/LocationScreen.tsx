@@ -6,7 +6,7 @@ import {
   getBuildings,
 } from "../api/location";
 import { saveUserContext } from "../api/userContext";
-import type { Screen } from "../types/navigation"
+import { useNavigate } from "react-router-dom";
 
 interface LocationScreenProps {
   onConfirm: (loc: {
@@ -14,7 +14,6 @@ interface LocationScreenProps {
     company: string;
     building: string;
   }) => void;
-  navigateTo: (screen: Screen) => void;
 }
 
 interface Option {
@@ -23,6 +22,7 @@ interface Option {
 }
 
 const LocationScreen: React.FC<LocationScreenProps> = ({ onConfirm }) => {
+  const navigate = useNavigate();
   const [cities, setCities] = useState<Option[]>([]);
   const [campuses, setCampuses] = useState<Option[]>([]);
   const [buildings, setBuildings] = useState<Option[]>([]);
@@ -138,7 +138,10 @@ const LocationScreen: React.FC<LocationScreenProps> = ({ onConfirm }) => {
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2]">
       <div className="p-4 flex items-center">
-        <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
+        <button onClick={() => navigate(-1)}>
+          <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
+        </button>
+        
         <h1 className="text-xl font-bold text-gray-800 ml-4">
           Select your Location
         </h1>

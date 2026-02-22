@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import type { Screen } from "../types/navigation";
+import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 
 // FIX: Defined the missing 'HelpScreenProps' interface.
-interface HelpScreenProps {
-    navigateTo: (screen: Screen) => void;
-}
 
 const faqItems = [
 
@@ -219,7 +216,8 @@ const faqItems = [
 
 ];
 
-const HelpScreen: React.FC<HelpScreenProps> = ({ navigateTo }) => {
+const HelpScreen: React.FC = () => {
+    const navigate = useNavigate();
     const [openIndex, setOpenIndex] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -242,7 +240,7 @@ const HelpScreen: React.FC<HelpScreenProps> = ({ navigateTo }) => {
         <div className="flex flex-col h-full bg-[#FFF9F2]">
             <header className="p-4 flex items-center border-b sticky top-0 bg-[#FFF9F2] z-10">
                 <div className="w-1/5">
-                    <button onClick={() => navigateTo('home')}>
+                    <button onClick={() => navigate('/home')}>
                         <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
                     </button>
                 </div>
@@ -296,7 +294,7 @@ const HelpScreen: React.FC<HelpScreenProps> = ({ navigateTo }) => {
                 </div>
             </main>
 
-            <BottomNav activeScreen="help" navigateTo={navigateTo} />
+            <BottomNav />
         </div>
     );
 };
