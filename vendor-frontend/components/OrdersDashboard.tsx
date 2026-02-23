@@ -40,7 +40,6 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
 
   // State for scheduled order filters
   const [filterDate, setFilterDate] = useState<string>(''); // YYYY-MM-DD
-  const [filterTime, setFilterTime] = useState<string>(''); // HH:MM
   
   const TABS = isScheduledView ? SCHEDULED_TABS : isTodayView ? [] : LIVE_TABS;
   
@@ -66,7 +65,6 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
 
         const orderScheduledDate = new Date(order.scheduledAt);
         let matchesDate = true;
-        let matchesTime = true;
 
         if (filterDate) {
           const [year, month, day] = filterDate.split('-').map(Number);
@@ -75,18 +73,43 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
                         orderScheduledDate.getDate() === day;
         }
 
-        if (filterTime) {
-          const [hours, minutes] = filterTime.split(':').map(Number);
-          matchesTime = orderScheduledDate.getHours() === hours &&
-                        orderScheduledDate.getMinutes() === minutes;
-        }
 
-        return matchesDate && matchesTime;
+        return matchesDate;
       });
     }
 
     return filtered;
-  }, [orders, activeTab, isScheduledView, filterDate, filterTime]);
+  }, [orders, activeTab, isScheduledView, filterDate]);
+
+  const groupedScheduledOrders = useMemo(() => {
+    if (!isScheduledView) return {};
+
+    const groups: Record<string, Order[]> = {};
+
+    displayedOrders.forEach(order => {
+      if (!order.scheduledAt) return;
+
+      const date = new Date(order.scheduledAt);
+      const key = date.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+
+      groups[key].push(order);
+    });
+
+    // Sort orders inside each group by time
+    Object.keys(groups).forEach(dateKey => {
+      groups[dateKey].sort(
+        (a, b) =>
+          new Date(a.scheduledAt!).getTime() -
+          new Date(b.scheduledAt!).getTime()
+      );
+    });
+
+    return groups;
+  }, [displayedOrders, isScheduledView]);
 
 
   useEffect(() => {
@@ -94,6 +117,7 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
     console.log("active tab:",activeTab);
     console.log("filtered orders:",displayedOrders);
   }, [orders, activeTab, displayedOrders]);
+
 
 
   useEffect(() => {
@@ -104,6 +128,7 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
     const load = async () => {
 
       try {
+        setLoading(true);
         let data;
 
         if (isScheduledView) {
@@ -116,7 +141,9 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
       
         if (active) {
           setOrders(data);
+          setLoading(false)
           console.log("fetched orders",data);
+
         }
       } catch (err) {
         console.error("failed to load orders",err)
@@ -155,6 +182,43 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [isScheduledView, isTodayView]);
+
+
+  useEffect(() => {
+
+    const handleHighPriority = (event: any) => {
+      const orderId = event.detail.orderId;
+
+      // Switch to Incoming tab
+      setActiveTab(OrderStatus.Incoming);
+
+      // Wait for DOM render
+      setTimeout(() => {
+        const element = document.getElementById(`order-${orderId}`);
+
+        if (element) {
+          element.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+
+          element.classList.add("ring-4", "ring-red-400");
+
+          setTimeout(() => {
+            element.classList.remove("ring-4", "ring-red-400");
+          }, 3000);
+        }
+      }, 400);
+    };
+
+    window.addEventListener("high-priority-order", handleHighPriority);
+
+    return () => {
+      window.removeEventListener("high-priority-order", handleHighPriority);
+    };
+
+  }, []);
+
 
   useEffect(() => {
     setSelectedOrders([]);
@@ -274,7 +338,6 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
 
   const handleClearFilters = () => {
     setFilterDate('');
-    setFilterTime('');
   };
   
   const totalOrders = orders.length;
@@ -334,10 +397,35 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
     }
   };
 
+
+  const formatDateLabel = (dateString: string) => {
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    const date = new Date(dateString);
+
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    }
+
+    if (date.toDateString() === tomorrow.toDateString()) {
+      return "Tomorrow";
+    }
+
+    return date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {loading && (
-        <div className="text-center py-20 text-text-secondary">Loading Orders...</div>
+        <div className="flex  justify-center py-4">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-offo-orange border-t-transparent"></div>
+        </div>
       )}
       
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-gray-800 p-4 rounded-lg shadow-lg grid grid-cols-2 gap-4 sm:flex sm:flex-nowrap sm:items-center sm:divide-x sm:divide-white/10 text-white">
@@ -406,13 +494,6 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
                 onChange={(e) => setFilterDate(e.target.value)}
                 className="bg-white border border-gray-300 rounded-md p-2 text-sm focus:ring-offo-orange focus:border-offo-orange w-full"
                 aria-label="Filter by date"
-              />
-              <input
-                type="time"
-                value={filterTime}
-                onChange={(e) => setFilterTime(e.target.value)}
-                className="bg-white border border-gray-300 rounded-md p-2 text-sm focus:ring-offo-orange focus:border-offo-orange w-full"
-                aria-label="Filter by time"
               />
               <button
                 onClick={handleApplyFilter}
@@ -501,27 +582,64 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
 
 
           <div className="space-y-4">
-              {displayedOrders.length > 0 ? (
-                  displayedOrders.map(order => (
-                      <OrderRow 
-                          key={order.id} 
-                          order={order} 
-                          onStatusChange={handleStatusChange} 
-                          onRequestCancel={handleRequestCancel}
-                          isSelected={selectedOrders.includes(order.id)}
-                          onToggleSelection={handleToggleSelection}
-                          showCheckbox={showCheckboxes}
-                          isScheduledView={isScheduledView}
-                          isTodayView={isTodayView}
+            {isScheduledView ? (
+              Object.keys(groupedScheduledOrders).length > 0 ? (
+                Object.keys(groupedScheduledOrders)
+                  .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+                  .map(dateKey => (
+                   <div key={dateKey} className="space-y-3">
+
+                    {/* Date Header */}
+                    <div className="bg-slate-100 text-slate-800 font-semibold px-4 py-2 rounded-md shadow-sm">
+                    📅 {formatDateLabel(dateKey)} ({groupedScheduledOrders[dateKey].length})
+                    </div>
+
+                    {/* Orders Under That Date */}
+                    {groupedScheduledOrders[dateKey].map(order => (
+                      <OrderRow
+                        key={order.id}
+                        order={order}
+                        onStatusChange={handleStatusChange}
+                        onRequestCancel={handleRequestCancel}
+                        isSelected={selectedOrders.includes(order.id)}
+                        onToggleSelection={handleToggleSelection}
+                        showCheckbox={showCheckboxes}
+                        isScheduledView={isScheduledView}
+                        isTodayView={isTodayView}
+                       />
+                     ))}
+
+                   </div>
+                 ))
+             ) : (
+               <div className="text-center py-16 text-text-secondary">
+                 <p className="font-semibold">No scheduled orders.</p>
+               </div>
+             )
+           ) : (
+
+             displayedOrders.length > 0 ? (
+               displayedOrders.map(order => (
+                 <OrderRow 
+                    key={order.id} 
+                    order={order} 
+                    onStatusChange={handleStatusChange} 
+                    onRequestCancel={handleRequestCancel}
+                    isSelected={selectedOrders.includes(order.id)}
+                    onToggleSelection={handleToggleSelection}
+                    showCheckbox={showCheckboxes}
+                    isScheduledView={isScheduledView}
+                    isTodayView={isTodayView}
                           
-                      />
-                  ))
-              ) : (
-                  <div className="text-center py-16 text-text-secondary">
-                      <p className="font-semibold">No orders in this category yet.</p>
-                      <p className="text-sm">They will appear here when they arrive.</p>
-                  </div>
-              )}
+                  />
+               ))
+             ) : (
+               <div className="text-center py-16 text-text-secondary">
+                 <p className="font-semibold">No orders in this category yet.</p>
+                 <p className="text-sm">They will appear here when they arrive.</p>
+               </div>
+             )
+           )}
           </div>
         </div>
       </div>

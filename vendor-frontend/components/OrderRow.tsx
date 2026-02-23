@@ -126,8 +126,8 @@ const PaymentInfo: React.FC<{payment: 'Paid' | 'Not Paid', total: number}> = ({p
 
 export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequestCancel, isSelected, onToggleSelection, showCheckbox,isScheduledView = false,isTodayView = false }) => {
   return (
-    <div className={`relative bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-all duration-300 ${
-      order.priority === "HIGH" ? "ring-2 ring-red-500 shadow-lg" : ""
+    <div id={`order-${order.id}`} className={`relative bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-all duration-300 ${
+      order.priority === "HIGH" ? "ring-2 ring-red-500 shadow-lg animate-pulse" : ""
     }`}>
       {!isTodayView && <PriorityBadge priority={order.priority} />}
 

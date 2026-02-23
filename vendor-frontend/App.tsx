@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { AuthPage } from './pages/Authpage';
 import { Dashboard } from './pages/Dashbord';
 import { IntroSplashPage } from './components/IntroSplashPage';
 import { VendorProvider } from './context/VendorContext';
+import { VendorOrdersApi } from './apis/vendorOrders';
 
 // Define the screens as an enum for clear state management
 enum AppScreen {
@@ -61,6 +62,21 @@ const BrandSplashScreen: React.FC = () => {
 
 
 const App: React.FC = () => {
+
+  // 🔔 Global Alert Tracking
+  const previousAlertRef = useRef<{
+    latestOrderId: string | null;
+    latestHighId: string | null;
+    totalActive: number;
+  }>({
+    latestOrderId: null,
+    latestHighId: null,
+    totalActive: 0,
+  });
+
+  const normalAudio = useRef<HTMLAudioElement | null>(null);
+  const highAudio = useRef<HTMLAudioElement | null>(null);
+
   const [currentAppScreen, setCurrentAppScreen] = useState<AppScreen>(AppScreen.IntroSplash1);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -87,6 +103,94 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [currentAppScreen]);
 
+  // 🔊 Initialize sounds once
+  useEffect(() => {
+    normalAudio.current = new Audio("/assets/sounds/new-order.mp3");
+    highAudio.current = new Audio("/assets/sounds/high-priority.mp3");
+  }, []);
+
+  // 🔔 Lightweight global alert polling
+  useEffect(() => {
+
+    // Only start polling when logged in and inside main app
+    if (!isAuthenticated || currentAppScreen !== AppScreen.AuthOrDashboard) {
+      return;
+    }
+
+    const poll = setInterval(async () => {
+      try {
+        const data = await VendorOrdersApi.getAlerts();
+
+        const { latest_order_id, latest_high_priority_id , total_active_orders } = data;
+
+        const isFirstPoll = 
+        previousAlertRef.current.latestOrderId === null &&
+        previousAlertRef.current.latestHighId === null;
+
+        const hasNewHigh =
+          latest_high_priority_id &&
+          latest_high_priority_id !== previousAlertRef.current.latestHighId;
+
+        const hasNewOrder =
+          latest_order_id &&
+          latest_order_id !== previousAlertRef.current.latestOrderId;
+
+        const activeCountIncreased = total_active_orders > previousAlertRef.current.totalActive
+
+
+        if (!isFirstPoll) {
+          if (hasNewHigh) {
+            if (highAudio.current){
+              highAudio.current.currentTime = 0;
+              highAudio.current.play().catch(() => {});
+            }  
+            
+            //dispatch global priority event
+            window.dispatchEvent(
+              new CustomEvent("high-priority-order", {
+                detail: { orderId: latest_high_priority_id }
+              })
+            )
+          }
+          else if (hasNewOrder || activeCountIncreased) {
+            if (normalAudio.current){
+              normalAudio.current.currentTime = 0;
+              normalAudio.current.play().catch(() => {});
+            }
+          }
+        }
+
+        previousAlertRef.current = {
+          latestOrderId: latest_order_id,
+          latestHighId: latest_high_priority_id,
+          totalActive: total_active_orders,
+        };
+
+      } catch (err) {
+        console.error("Alert polling failed", err);
+      }
+    }, 15000);
+
+    return () => clearInterval(poll);
+
+  }, [isAuthenticated, currentAppScreen]);
+
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      normalAudio.current?.play().then(() => {
+        normalAudio.current?.pause();
+        normalAudio.current!.currentTime = 0;
+      }).catch(() => {});
+      window.removeEventListener("click", unlockAudio);
+    };
+
+    window.addEventListener("click", unlockAudio);
+
+    return () => window.removeEventListener("click", unlockAudio);
+  }, []);
+
+
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setCurrentAppScreen(AppScreen.AuthOrDashboard);
@@ -95,6 +199,14 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentAppScreen(AppScreen.AuthOrDashboard);
+
+    //reset alert memory
+
+    previousAlertRef.current = {
+      latestOrderId: null,
+      latestHighId: null,
+      totalActive: 0,
+    };
   };
 
   return (

@@ -70,6 +70,11 @@ export const VendorOrdersApi = {
     );
   },
 
+  async getAlerts() {
+    const res = await api.get("/orders/alerts");
+    return res.data;
+  },
+
   /**
    * Accept order
    * POST /orders/{order_id}/accept
