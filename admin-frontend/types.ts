@@ -36,13 +36,26 @@ export interface Order {
 
 export interface Branch {
   id: string;
+
   name: string;
-  address: string;
+
+  cafeId : string;
+
+  // Location hierarchy
+  cityId: string;
+  campusId: string;
+  cityName: string;
+  campusName: string;
+  buildingName?: string;
+
+  // Status
   status: 'Active' | 'Disabled';
-  manager: string;
-  contact: string;
-  latitude: string;
-  longitude: string;
+
+  // Optional geo
+  latitude?: string;
+  longitude?: string;
+
+  imageUrl?: string;
 }
 
 

@@ -4,11 +4,13 @@ export const constants = {
     LOGIN: '/login',
     OVERVIEW: '/overview',
     ORDERS: '/orders',
-    MENU: '/menu',
     BRANCHES: '/branches',
+    ADD_VENDOR: '/add-vendor',
+    VIEW_CAFES: '/cafes',
+    MANAGE_USERS:'/manage-users',
     REPORTS: '/reports',
-    BRANDING: '/branding',
     SETTINGS: '/settings',
+    
   },
   colors: {
     PRIMARY: 'offoOrange',
