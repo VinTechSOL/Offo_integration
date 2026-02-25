@@ -225,9 +225,21 @@ export const OverviewPage: React.FC = () => {
 
               <button
                 onClick={() => navigate(constants.routes.REPORTS)}
-                className="p-4 bg-gray-50 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition"
+                className="p-4 bg-purple-50 text-purple-700 rounded-xl font-medium hover:bg-purple-100 transition"
               >
                 View Reports
+              </button>
+              <button
+                onClick={() => navigate(constants.routes.ADD_VENDOR)}
+                className="p-4 bg-purple-50 text-purple-700 rounded-xl font-medium hover:bg-purple-100 transition"
+              >
+                Add Vendor
+              </button>
+              <button
+                onClick={() => navigate(constants.routes.VIEW_CAFES)}
+                className="p-4 bg-orange-50 text-orange-700 rounded-xl font-medium hover:bg-orange-100 transition"
+              >
+                View Cafes
               </button>
             </div>
           </Card>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import Drawer from '../components/common/Drawer.tsx';
-import { Order, OrderStatus } from '../types.ts';
-import { useBranch } from '../context/BranchContext.tsx';
+import Drawer from '../components/common/Drawer';
+import { Order, OrderStatus } from '../types';
+import { useBranch } from '../context/BranchContext';
+import { useCity } from '../context/CityContext';
+import { useCampus } from '../context/CampusContext';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 const getCurrentTime = () =>
@@ -10,7 +12,16 @@ const getCurrentTime = () =>
 type Tab = 'history' | 'scheduled';
 
 export const OrdersPage: React.FC = () => {
-  const { currentBranchId } = useBranch();
+  const { currentBranchId, branches } = useBranch();
+  const { currentCityId, cities } = useCity();
+  const { currentCampusId, campuses } = useCampus();
+
+  const selectedCity = cities.find(c => c.id === currentCityId);
+  const selectedCampus = campuses.find(c => c.id === currentCampusId);
+  const selectedBranch = branches.find(b => b.id === currentBranchId);
+
+  const isSelectionValid =
+    currentCityId && currentCampusId && currentBranchId;
 
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('history');
@@ -22,9 +33,11 @@ export const OrdersPage: React.FC = () => {
   const [maxAmount, setMaxAmount] = useState('');
   const [notification, setNotification] = useState<string | null>(null);
 
-  /* ---------------- INITIAL MOCK DATA ---------------- */
+  /* ================= INITIAL MOCK ================= */
 
   useEffect(() => {
+    if (!currentBranchId) return;
+
     const initialOrders: Order[] = [
       {
         id: '500001',
@@ -60,15 +73,17 @@ export const OrdersPage: React.FC = () => {
     setAllOrders(initialOrders);
   }, [currentBranchId]);
 
-  /* ---------------- REAL-TIME TEST ORDERS ---------------- */
+  /* ================= REAL TIME MOCK ================= */
 
   useEffect(() => {
+    if (!currentBranchId) return;
+
     const interval = setInterval(() => {
       const newOrder: Order = {
         id: Math.floor(Date.now() % 1000000).toString(),
         branchId: currentBranchId,
         customerName: 'Walk-in Customer',
-        address: 'Tech Park - Lobby',
+        address: 'Lobby Area',
         totalAmount: Math.floor(Math.random() * 400) + 150,
         status: OrderStatus.COMPLETED,
         date: getTodayDate(),
@@ -87,7 +102,7 @@ export const OrdersPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [currentBranchId]);
 
-  /* ---------------- FILTER LOGIC ---------------- */
+  /* ================= FILTER ================= */
 
   const branchOrders = useMemo(
     () => allOrders.filter(o => o.branchId === currentBranchId),
@@ -113,23 +128,29 @@ export const OrdersPage: React.FC = () => {
     });
   }, [branchOrders, activeTab, searchQuery, filterDate, minAmount, maxAmount]);
 
-  const groupedScheduled = useMemo(() => {
-    if (activeTab !== 'scheduled') return {};
-    return filteredOrders.reduce((acc: any, order) => {
-      if (!acc[order.date]) acc[order.date] = [];
-      acc[order.date].push(order);
-      return acc;
-    }, {});
-  }, [filteredOrders, activeTab]);
-
-  /* ---------------- STATS ---------------- */
-
   const totalOrders = branchOrders.length;
   const revenue = branchOrders.reduce((a, b) => a + b.totalAmount, 0);
   const completedCount = branchOrders.filter(o => o.status === OrderStatus.COMPLETED).length;
   const scheduledCount = branchOrders.filter(o => o.status === OrderStatus.SCHEDULED).length;
 
-  /* ---------------- UI ---------------- */
+  /* ================= VALIDATION ================= */
+
+  if (!isSelectionValid) {
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <div className="text-center space-y-3">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Please select City, Campus and Branch
+          </h2>
+          <p className="text-gray-500 text-sm">
+            Use the top filter bar to choose location before viewing orders.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ================= UI ================= */
 
   return (
     <div className="space-y-0 relative bg-gray-50 min-h-screen -m-4 sm:-m-6 lg:-m-8">
@@ -140,7 +161,17 @@ export const OrdersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Context Header */}
+      <div className="bg-white border-b px-6 py-4">
+        <p className="text-sm text-gray-500">Showing Orders For:</p>
+        <div className="flex gap-6 mt-2 text-sm font-medium text-gray-800">
+          <span>City: {selectedCity?.name}</span>
+          <span>Campus: {selectedCampus?.name}</span>
+          <span>Branch: {selectedBranch?.name}</span>
+        </div>
+      </div>
+
+      {/* Stats (Original Rich Version Restored) */}
       <div className="bg-slate-900 text-white p-6 grid grid-cols-2 md:grid-cols-4">
         <div className="text-center">
           <p className="text-xs text-gray-400">TOTAL ORDERS</p>
@@ -221,107 +252,67 @@ export const OrdersPage: React.FC = () => {
         {/* Orders */}
         <div className="bg-white border border-t-0 rounded-b-lg overflow-x-auto">
 
-          {activeTab === 'history' &&
-            filteredOrders.map(order => (
-              <div
-                key={order.id}
-                className="border-b px-6 py-5 hover:bg-gray-50 transition cursor-pointer"
-                onClick={() => setSelectedOrder(order)}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-center">
+          {filteredOrders.map(order => (
+            <div
+              key={order.id}
+              className="border-b px-6 py-5 hover:bg-gray-50 transition cursor-pointer"
+              onClick={() => setSelectedOrder(order)}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-center">
 
-                  <div>
-                    <p className="font-bold">#{order.id}</p>
-                    <p className="font-semibold">{order.customerName}</p>
-                    <p className="text-xs text-gray-500">{order.address}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 bg-gray-200 rounded-md overflow-hidden">
-                      <img src={order.itemImage} className="h-full w-full object-cover" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{order.items[0].name}</p>
-                      <p className="text-xs text-gray-500">Qty: {order.items[0].quantity}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="font-bold">₹{order.totalAmount}</p>
-                  </div>
-
-                  <div>
-                    <span className="text-green-600 text-sm font-semibold">
-                      Paid ({order.paymentMethod})
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                      Picked Up
-                    </span>
-                  </div>
-
-                </div>
-              </div>
-            ))}
-
-          {activeTab === 'scheduled' &&
-            Object.keys(groupedScheduled).map(date => (
-              <div key={date}>
-                <div className="bg-gray-100 px-6 py-3 font-bold text-gray-700 border-t">
-                  {date}
+                <div>
+                  <p className="font-bold">#{order.id}</p>
+                  <p className="font-semibold">{order.customerName}</p>
+                  <p className="text-xs text-gray-500">{order.address}</p>
                 </div>
 
-                {groupedScheduled[date].map((order: Order) => (
-                  <div
-                    key={order.id}
-                    className="border-b px-6 py-5 hover:bg-gray-50 transition cursor-pointer"
-                    onClick={() => setSelectedOrder(order)}
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 bg-gray-200 rounded-md overflow-hidden">
+                    {order.itemImage && (
+                      <img
+                        src={order.itemImage}
+                        className="h-full w-full object-cover"
+                        alt=""
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {order.items[0].name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Qty: {order.items[0].quantity}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="font-bold">₹{order.totalAmount}</p>
+                </div>
+
+                <div>
+                  <span className="text-green-600 text-sm font-semibold">
+                    Paid ({order.paymentMethod})
+                  </span>
+                </div>
+
+                <div className="text-right">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      order.status === OrderStatus.SCHEDULED
+                        ? 'bg-orange-100 text-orange-600'
+                        : 'bg-green-100 text-green-700'
+                    }`}
                   >
-                    <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-center">
+                    {order.status}
+                  </span>
+                </div>
 
-                      <div>
-                        <p className="font-bold">#{order.id}</p>
-                        <p className="font-semibold">{order.customerName}</p>
-                        <p className="text-xs text-gray-500">{order.address}</p>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 bg-gray-200 rounded-md overflow-hidden">
-                          <img src={order.itemImage} className="h-full w-full object-cover" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">{order.items[0].name}</p>
-                          <p className="text-xs text-gray-500">Qty: {order.items[0].quantity}</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="font-bold">₹{order.totalAmount}</p>
-                      </div>
-
-                      <div>
-                        <span className="text-green-600 text-sm font-semibold">
-                          Paid ({order.paymentMethod})
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
-                          Scheduled
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {order.date} • {order.scheduledTime}
-                        </p>
-                      </div>
-
-                    </div>
-                  </div>
-                ))}
               </div>
-            ))}
+            </div>
+          ))}
         </div>
+
       </div>
 
       <Drawer

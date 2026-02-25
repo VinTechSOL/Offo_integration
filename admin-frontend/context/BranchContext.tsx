@@ -7,13 +7,27 @@ import React, {
 } from 'react';
 import { Branch } from '../types';
 
+export interface Staff {
+  id: string;
+  branchId: string;
+  role: 'VENDOR';
+  firstName: string;
+  lastName: string;
+  username: string;
+  password: string; // mock only
+  isActive: boolean;
+  createdAt: string;
+  lastReset?: string;
+}
+
 interface BranchContextType {
   branches: Branch[];
   setBranches: React.Dispatch<React.SetStateAction<Branch[]>>;
-
   currentBranchId: string;
   setCurrentBranchId: (id: string) => void;
   currentBranch?: Branch;
+  staffList: Staff[];
+  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
@@ -29,7 +43,9 @@ export const useBranch = () => {
 export const BranchProvider: React.FC<{ children: ReactNode }> = ({
   children
 }) => {
+
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   const [currentBranchId, setCurrentBranchId] = useState<string>('');
 
   const currentBranch = useMemo(
@@ -44,7 +60,9 @@ export const BranchProvider: React.FC<{ children: ReactNode }> = ({
         setBranches,
         currentBranchId,
         setCurrentBranchId,
-        currentBranch
+        currentBranch,
+        staffList,
+        setStaffList,
       }}
     >
       {children}
