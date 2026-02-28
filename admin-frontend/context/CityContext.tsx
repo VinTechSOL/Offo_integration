@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { LocationApi } from "@/apis/LocationApi";
 
 export interface City {
   id: string;
@@ -9,28 +10,48 @@ interface CityContextType {
   cities: City[];
   currentCityId: string;
   setCurrentCityId: (id: string) => void;
+  loading: boolean;
 }
 
 const CityContext = createContext<CityContextType | undefined>(undefined);
 
-export const useCity = () => {
-  const context = useContext(CityContext);
-  if (!context) throw new Error('useCity must be used within CityProvider');
-  return context;
-};
+export const CityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [cities, setCities] = useState<City[]>([]);
+  const [currentCityId, setCurrentCityId] = useState("");
+  const [loading, setLoading] = useState(true);
 
-const INITIAL_CITIES: City[] = [
-  { id: '1', name: 'Bangalore' },
-  { id: '2', name: 'Hyderabad' }
-];
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const data = await LocationApi.getCities();
 
-export const CityProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [cities] = useState(INITIAL_CITIES);
-  const [currentCityId, setCurrentCityId] = useState<string>('');
+        setCities(
+          data.map((c: any) => ({
+            id: String(c.city_id),
+            name: c.city_name,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load cities");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCities();
+  }, []);
 
   return (
-    <CityContext.Provider value={{ cities, currentCityId, setCurrentCityId }}>
+    <CityContext.Provider
+      value={{ cities, currentCityId, setCurrentCityId, loading }}
+    >
       {children}
     </CityContext.Provider>
   );
+};
+
+export const useCity = () => {
+  const context = useContext(CityContext);
+  if (!context) throw new Error("useCity must be used within CityProvider");
+  return context;
 };

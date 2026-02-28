@@ -155,13 +155,13 @@ INSERT INTO core.staff (
 )
 VALUES
 (
-    1,
+    2,
     'Admin',
     'User',
-    'admin',
+    'sathya12',
     '$2b$12$KIXQ4pF5z5cF8ZzK4n1rWuj7mY5q8VvM4Qb0tD1Lw8bR9zY6z9G5G',
     1,
-    1,
+    null,
     true
 )
 ON CONFLICT (staff_id) DO NOTHING;
@@ -179,13 +179,13 @@ INSERT INTO core.staff (
 )
 VALUES
 (
-    4,
+    3,
     'Rohit',
     'S',
     'rohit7',
     '$2b$12$uPU1umlKqIi3Sh1R2mR1.Otc5T/Xm1IgW7RDWCzTIeuNTGhg5MHtm',
-    5,
-    3,
+    1,
+    null,
     true,
     NOW()
 )

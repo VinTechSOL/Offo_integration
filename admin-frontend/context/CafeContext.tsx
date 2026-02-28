@@ -1,42 +1,57 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { CafeApi } from "@/apis/CafeApi";
 
 export interface Cafe {
   id: string;
   name: string;
-  phone: string;
-  email?: string;
-  isActive: boolean;
 }
 
 interface CafeContextType {
   cafes: Cafe[];
-  setCafes: React.Dispatch<React.SetStateAction<Cafe[]>>;
+  currentCafeId: string;
+  setCurrentCafeId: (id: string) => void;
+  loading: boolean;
 }
 
 const CafeContext = createContext<CafeContextType | undefined>(undefined);
 
-export const useCafe = () => {
-  const context = useContext(CafeContext);
-  if (!context) throw new Error('useCafe must be used within CafeProvider');
-  return context;
-};
+export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [cafes, setCafes] = useState<Cafe[]>([]);
+  const [currentCafeId, setCurrentCafeId] = useState("");
+  const [loading, setLoading] = useState(true);
 
-const INITIAL_CAFES: Cafe[] = [
-  {
-    id: '1',
-    name: 'Healthy Bites',
-    phone: '+91 9876543210',
-    email: 'healthy@offo.com',
-    isActive: true
-  }
-];
+  useEffect(() => {
+    const fetchCafes = async () => {
+      try {
+        const data = await CafeApi.getCafeterias();
 
-export const CafeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [cafes, setCafes] = useState<Cafe[]>(INITIAL_CAFES);
+        setCafes(
+          data.map((c: any) => ({
+            id: String(c.cafe_id),
+            name: c.cafe_name,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load cafeterias");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCafes();
+  }, []);
 
   return (
-    <CafeContext.Provider value={{ cafes, setCafes }}>
+    <CafeContext.Provider
+      value={{ cafes, currentCafeId, setCurrentCafeId, loading }}
+    >
       {children}
     </CafeContext.Provider>
   );
+};
+
+export const useCafe = () => {
+  const context = useContext(CafeContext);
+  if (!context) throw new Error("useCafe must be used within CafeProvider");
+  return context;
 };

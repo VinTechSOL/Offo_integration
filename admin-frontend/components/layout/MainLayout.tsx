@@ -9,9 +9,7 @@ import { useBranch } from '../../context/BranchContext';
 import { useCity } from '../../context/CityContext';
 import { useCampus } from '../../context/CampusContext';
 
-interface MainLayoutProps {
-  onLogout: () => void;
-}
+import { useAuth } from '@/context/AuthContext';
 
 /* =========================================
    Premium Select Types
@@ -77,7 +75,8 @@ const PremiumSelect: React.FC<PremiumSelectProps> = ({
    Main Layout
 ========================================= */
 
-export const MainLayout: React.FC<MainLayoutProps> = ({ onLogout }) => {
+export const MainLayout: React.FC = () => {
+  const { logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -87,7 +86,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ onLogout }) => {
 
   const handleLogoutConfirm = () => {
     setIsLogoutModalOpen(false);
-    onLogout();
+    logout();
   };
 
   /* =========================================

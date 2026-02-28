@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
-import Button from '../common/Button.tsx';
-import LoadingSpinner from '../common/LoadingSpinner.tsx';
+import React, { useState } from "react";
+import Button from "../common/Button";
+import LoadingSpinner from "../common/LoadingSpinner";
+import { loginAdmin } from "@/apis/AdminAuth";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
-interface MobileLoginFormProps {
-  onLogin: (success: boolean, branchId?: string) => void;
-}
-
-const MobileLoginForm: React.FC<MobileLoginFormProps> = ({ onLogin }) => {
-  const [identifier, setIdentifier] = useState<string>(''); // mobile or username
-  const [password, setPassword] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+const MobileLoginForm: React.FC = () => {
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +26,25 @@ const MobileLoginForm: React.FC<MobileLoginFormProps> = ({ onLogin }) => {
     }
 
     try {
-      // 🔥 Replace this with real API call
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const result = await loginAdmin(identifier, password);
 
-      // Example success login
-      onLogin(true, "1");
+      // 🔐 Only SUPER_ADMIN allowed
+      if (result.role !== "SUPER_ADMIN") {
+        setError("Access denied. Not a super admin account.");
+        setLoading(false);
+        return;
+      }
 
-    } catch (err) {
-      setError("Invalid credentials. Please try again.");
+      // Store token via AuthContext
+      login(result.access_token);
+
+      navigate("/overview");
+
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.detail ||
+        "Invalid credentials. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -40,7 +53,6 @@ const MobileLoginForm: React.FC<MobileLoginFormProps> = ({ onLogin }) => {
   return (
     <div className="bg-white">
 
-      {/* Heading */}
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome Back
@@ -50,17 +62,14 @@ const MobileLoginForm: React.FC<MobileLoginFormProps> = ({ onLogin }) => {
         </p>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-100">
           <p className="text-sm text-red-600 font-medium">{error}</p>
         </div>
       )}
 
-      {/* Login Form */}
       <form onSubmit={handleLogin} className="space-y-6">
 
-        {/* Mobile / Username */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Username
@@ -75,7 +84,6 @@ const MobileLoginForm: React.FC<MobileLoginFormProps> = ({ onLogin }) => {
           />
         </div>
 
-        {/* Password */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Password
@@ -90,18 +98,16 @@ const MobileLoginForm: React.FC<MobileLoginFormProps> = ({ onLogin }) => {
           />
         </div>
 
-        {/* Login Button */}
         <Button
           type="submit"
           variant="primary"
           className="w-full py-3.5 text-lg shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40"
           disabled={loading}
         >
-          {loading ? <LoadingSpinner /> : 'Login'}
+          {loading ? <LoadingSpinner /> : "Login"}
         </Button>
 
       </form>
-
     </div>
   );
 };
