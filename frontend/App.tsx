@@ -31,7 +31,7 @@ import AboutScreen from "./screens/AboutScreen";
 import NotificationScreen from "./screens/NotificationsScreen";
 import FoodItemDetailModal from "./components/FoodItemDetailModal";
 import { useToastStore } from "./store/toastStore";
-
+import { unlockAudio } from "./utils/sound";
 import { getUserContextDetails } from "./api/userContext";
 import {
   getActiveCart,
@@ -69,6 +69,22 @@ const App: React.FC = () => {
     company: "",
     building: "",
   });
+
+  /* =======================
+     AUDIO UNLOCK
+  ======================= */
+
+  useEffect(() => {
+    const unlock = () => {
+      unlockAudio();
+      window.removeEventListener("click", unlock);
+    };
+
+    window.addEventListener("click", unlock);
+
+    return () => window.removeEventListener("click", unlock);
+  }, []);
+
 
   /* =======================
      CART

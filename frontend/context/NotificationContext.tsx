@@ -26,48 +26,56 @@ export const NotificationProvider: React.FC<{
   const [unreadCount, setUnreadCount] = useState(0);
   const [animateBell, setAnimateBell] = useState(false);
 
-  // ✅ useRef instead of useState (no re-render loop)
-  const lastReadyIdRef = useRef<number | null>(null);
+  // 🔒 Track highest notification ID seen
+  const highestSeenIdRef = useRef<number>(0);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
 
-    // 🔒 Don’t poll if not logged in
+    // 🚫 Do not poll if user not logged in
     if (!token) return;
 
     const fetchNotifications = async () => {
       try {
         const notifications = await getUserNotifications();
-        if (!notifications?.length) return;
 
+        if (!notifications || notifications.length === 0) return;
+
+        // 🔹 Update unread count
         const unread = notifications.filter(
           (n: any) => !n.is_read
         ).length;
 
         setUnreadCount(unread);
 
-        const latestReady = notifications.find(
-          (n: any) => n.event_type === "ORDER_READY"
-        );
+        // 🔹 Assume newest notification is first (most APIs return sorted desc)
+        const newest = notifications[0];
 
+        //  Only trigger sound if:
+        // 1. It is ORDER_READY
+        // 2. It is newer than what we already saw
         if (
-          latestReady &&
-          latestReady.id !== lastReadyIdRef.current
+          newest &&
+          newest.event_type === "ORDER_READY" &&
+          newest.id > highestSeenIdRef.current
         ) {
-          lastReadyIdRef.current = latestReady.id;
+          highestSeenIdRef.current = newest.id;
 
           playNotificationSound();
 
           setAnimateBell(true);
           setTimeout(() => setAnimateBell(false), 500);
         }
+
       } catch (err) {
         console.error("Notification polling failed", err);
       }
     };
 
+    // Initial fetch
     fetchNotifications();
 
+    // Poll every 8 seconds
     const interval = setInterval(fetchNotifications, 8000);
 
     return () => clearInterval(interval);
