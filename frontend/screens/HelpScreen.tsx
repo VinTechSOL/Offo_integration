@@ -162,22 +162,10 @@ const faqItems = [
 },
 
 
-
-
-
-
-
-
-
-
-
-
-
-
   // 👤 ACCOUNT
   {
     q: "How do I create an account?",
-    a: "Click on the 'Sign Up' option on the login screen and register using your corporate email address. Follow the prompts to complete your account setup."
+    a: "Click on the 'Sign Up' option on the login screen and register using your first name ,last name & phone number. Follow the prompts to complete your account setup."
   },
 
   // 🛒 ORDERS
@@ -199,7 +187,7 @@ const faqItems = [
   // 💳 PAYMENTS
   {
     q: "What payment methods are accepted?",
-    a: "We support  PhonePe and corporate billing (if enabled by your organization)."
+    a: "We currently accept PhonePe UPI payments only. Other payment options will be added shortly.Please note that we do not accept credit/debit cards or net banking at this time."
   },
 
   // ❌ CANCELLATION
@@ -250,7 +238,7 @@ const HelpScreen: React.FC = () => {
                 <div className="w-1/5"></div>
             </header>
             
-            <main className="flex-grow overflow-y-auto p-4">
+            <main className="flex-grow overflow-y-auto p-4 pb-24">
                 <div className="mb-6">
                     <input 
                         type="text"
@@ -289,8 +277,8 @@ const HelpScreen: React.FC = () => {
                 <div className="mt-8 bg-white p-4 rounded-lg border border-gray-200 text-center">
                     <h3 className="font-bold text-lg text-gray-800 mb-2">Still need help?</h3>
                     <p className="text-gray-600 mb-4">Contact our support team.</p>
-                    <a href="mailto:support@offo.com" className="font-semibold text-orange-600">support@offo.com</a>
-                    <p className="text-gray-500 text-sm mt-1">or call <a href="tel:+911234567890" className="font-semibold text-orange-600">+91 12345 67890</a></p>
+                    <a href="mailto:support@offo.com" className="font-semibold text-orange-600">support@offo.co.in</a>
+                    {/* <p className="text-gray-500 text-sm mt-1">or call <a href="tel:+911234567890" className="font-semibold text-orange-600">+91 12345 67890</a></p> */}
                 </div>
             </main>
 

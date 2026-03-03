@@ -10,7 +10,7 @@ import ChangeLocationModal from "@/components/ChangeLocationModal";
 import { getCafesForUser } from "../api/cafes";
 import { getBranchMenuForUser } from "../api/menu";
 import { useUserContext } from "../hooks/useUserContext";
-
+import { useNotifications } from "@/context/NotificationContext";
 /* ------------------------------------------------------------------ */
 
 interface HomeScreenProps {
@@ -30,6 +30,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
 
   const navigate = useNavigate();
+  const { unreadCount, animateBell} = useNotifications();
   const [showChangeLocation, setShowChangeLocation] = useState(false);
 
   /* ---------------- USER CONTEXT ---------------- */
@@ -187,6 +188,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     </div>
   );
 
+  /* Notifications for user*/
+
+  
+
+  
+
+
   /* ========================== RENDER ========================== */
 
   return (
@@ -222,16 +230,51 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             </h1>
           </div>
 
-          {/* CART */}
-          <div className="relative mt-1">
-            <button onClick={() => navigate("/cart")}>
-              <CartIcon className="w-7 h-7 text-gray-700" />
-            </button>
-            {cartItemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-orange-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {cartItemCount}
-              </span>
-            )}
+          <div className="flex items-center gap-4 mt-1">
+
+            {/* 🔔 Notification Bell */}
+            <div className="relative">
+              <button onClick={() => navigate("/notifications")}>
+                <svg
+                  className={`w-7 h-7 text-gray-700 transition-transform ${ animateBell ? "animate-bounce" : "" }`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 17h5l-1.405-1.405A2.032 
+                    2.032 0 0118 14.158V11a6.002 
+                    6.002 0 00-4-5.659V5a2 
+                    2 0 10-4 0v.341C7.67 
+                    6.165 6 8.388 6 11v3.159c0 
+                    .538-.214 1.055-.595 
+                    1.436L4 17h5m6 0v1a3 3 0 
+                    11-6 0v-1m6 0H9"
+                  />
+               </svg>
+              </button>
+
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </div>
+
+            {/* CART */}
+            <div className="relative mt-1">
+              <button onClick={() => navigate("/cart")}>
+                <CartIcon className="w-7 h-7 text-gray-700" />
+              </button>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -359,6 +402,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </>
         )}
       </ScrollableContainer>
+
+      {cartItemCount > 0 && (
+        <footer className="p-4 bg-gray-100 border-t fixed bottom-16 left-0 right-0">
+          <div className="bg-gray-800 text-white rounded-lg shadow-lg flex justify-between items-center p-3 mx-4">
+            <p>
+              {cartItemCount} items | ₹{" "}
+              {cart
+                .reduce((acc, cv) => acc + cv.item.price * cv.quantity, 0)
+                .toFixed(2)}
+            </p>
+            <button
+              onClick={() => navigate("/cart")}
+              className="font-bold"
+            >
+              View Cart &gt;
+            </button>
+          </div>
+        </footer>
+      )}
 
       <BottomNav />
 

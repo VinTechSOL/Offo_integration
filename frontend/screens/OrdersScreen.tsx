@@ -62,15 +62,31 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   const [activeTab, setActiveTab] = useState<"scheduled" | "ongoing" | "past">("past");
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isSameDay = (date: Date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === today.getTime();
+  };
+
+  const isFutureDay = (date: Date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() > today.getTime();
+  };
+
   /* ============================
      FILTERING (BACKEND DRIVEN)
   ============================ */
   const scheduledOrders = orders.filter(
-    (o) => o.orderType === "SCHEDULED" && o.status === "Pending"
+    (o) => o.orderType === "SCHEDULED" && isFutureDay(o.date) && o.status === "Pending"
   );
 
   const ongoingOrders = orders.filter((o) =>
-    ["Pending", "Accepted", "Preparing", "Ready for Pickup", "Out for Delivery"].includes(o.status)
+    isSameDay(o.date) &&
+    !["Delivered", "Cancelled", "Rejected"].includes(o.status)
   );
 
   const pastOrders = orders.filter((o) =>

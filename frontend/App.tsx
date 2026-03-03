@@ -28,6 +28,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import MyAccountScreen from "./screens/MyAccountScreen";
 import OfflineScreen from "./screens/OfflineScreen";
 import AboutScreen from "./screens/AboutScreen";
+import NotificationScreen from "./screens/NotificationsScreen";
 import FoodItemDetailModal from "./components/FoodItemDetailModal";
 import { useToastStore } from "./store/toastStore";
 
@@ -166,7 +167,7 @@ const App: React.FC = () => {
     };
 
     bootstrap();
-  }, [navigate, locationRouter.pathname]);
+  }, []);
 
   /* =======================
      ROUTE EFFECTS
@@ -310,6 +311,7 @@ const App: React.FC = () => {
   ======================= */
 
   return (
+   
     <div className="bg-gray-100 sm:bg-slate-900 flex justify-center items-center h-screen w-full">
       <div className="w-full h-full sm:w-[412px] sm:h-[892px] bg-white sm:rounded-[3rem] sm:shadow-2xl overflow-hidden relative sm:border-[8px] sm:border-slate-800">
 
@@ -435,6 +437,8 @@ const App: React.FC = () => {
             />
           } />
 
+          <Route path="/notifications" element={<NotificationScreen />} />
+
           <Route path="/orders" element={
             <OrdersScreen
               orders={orders}
@@ -475,6 +479,7 @@ const App: React.FC = () => {
 
       </div>
     </div>
+   
   );
 };
 

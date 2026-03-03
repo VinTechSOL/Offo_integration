@@ -50,7 +50,23 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
     if (isScheduledView) {
       filtered = orders.filter(o => o.scheduledAt);
     } else if (isTodayView) {
-      filtered = orders;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      filtered = orders.filter(o => {
+
+        // If order is scheduled
+        if (o.scheduledAt) {
+          const scheduledDate = new Date(o.scheduledAt);
+          scheduledDate.setHours(0, 0, 0, 0);
+
+          // Only include if scheduled date is today
+          return scheduledDate.getTime() === today.getTime();
+        }
+
+        // Normal live order
+        return true;
+      });
     } else {
       filtered = orders.filter(o => o.status === activeTab);
     }
