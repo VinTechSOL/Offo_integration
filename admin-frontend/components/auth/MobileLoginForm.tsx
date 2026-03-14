@@ -5,6 +5,8 @@ import { loginAdmin } from "@/apis/AdminAuth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
+
+
 const MobileLoginForm: React.FC = () => {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +39,6 @@ const MobileLoginForm: React.FC = () => {
 
       // Store token via AuthContext
       login(result.access_token);
-
       navigate("/overview");
 
     } catch (err: any) {

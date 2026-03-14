@@ -1,139 +1,205 @@
+/* =========================================
+   LOCATION TYPES
+========================================= */
 
-
-export enum OrderStatus {
-  INCOMING = 'Incoming',
-  PENDING = 'Pending', // Treated as Incoming usually
-  PREPARING = 'Preparing',
-  READY_FOR_PICKUP = 'Ready for Pickup',
-  SCHEDULED = 'Scheduled',
-  COMPLETED = 'Completed',
-  CANCELLED = 'Cancelled',
+export interface City {
+  id: string
+  name: string
 }
 
-export interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
+export interface Campus {
+  id: string
+  name: string
+  cityId: string
 }
 
-export interface Order {
-  id: string;
-  branchId: string; // Added branchId
-  customerName: string;
-  address?: string; // Added address for UI
-  totalAmount: number;
-  status: OrderStatus;
-  items: OrderItem[];
-  itemImage?: string; // Added for UI preview
-  date: string; // YYYY-MM-DD format
-  orderTime: string;
-  pickupTime?: string;
-  scheduledTime?: string;
-  cancellationReason?: string;
-  paymentMethod: 'Cash' | 'Card' | 'UPI';
+/* =========================================
+   CAFE / VENDOR TYPES
+========================================= */
+
+export interface Cafe {
+  id: string
+  name: string
+  phone: string
+  email?: string
+  isActive: boolean
 }
 
 export interface Branch {
-  id: string;
+  id: string
 
-  name: string;
+  cafeId: string
 
-  cafeId : string;
+  name: string
 
-  // Location hierarchy
-  cityId: string;
-  campusId: string;
-  cityName: string;
-  campusName: string;
-  buildingName?: string;
+  cityId: string
+  cityName: string
 
-  // Status
-  status: 'Active' | 'Disabled';
+  campusId: string
+  campusName: string
 
-  // Optional geo
-  latitude?: string;
-  longitude?: string;
+  buildingName?: string
 
-  imageUrl?: string;
+  imageUrl?: string
+
+  status: "Active" | "Disabled"
 }
 
+/* =========================================
+   USERS
+========================================= */
+
+export interface AppUser {
+  id: string
+  branchId: string
+
+  name: string
+  phone: string
+
+  totalOrders: number
+  totalSpent: number
+  lastOrderDate: string
+
+  status: "Active" | "Inactive" | "No Orders"
+}
+
+/* =========================================
+   STAFF
+========================================= */
+
+export interface Staff {
+  id: string
+
+  branchId: string
+
+  role: "VENDOR"
+
+  firstName: string
+  lastName: string
+
+  username: string
+  password: string
+
+  isActive: boolean
+
+  createdAt: string
+  lastReset?: string
+}
+
+/* =========================================
+   ORDER TYPES
+========================================= */
+
+export enum OrderStatus {
+  INCOMING = "Incoming",
+  PENDING = "Pending",
+  PREPARING = "Preparing",
+  READY_FOR_PICKUP = "Ready for Pickup",
+  SCHEDULED = "Scheduled",
+  COMPLETED = "Completed",
+  CANCELLED = "Cancelled",
+}
+
+export interface OrderItem {
+  id: string
+  name: string
+  quantity: number
+  price: number
+}
+
+export interface Order {
+  id: string
+
+  branchId: string
+
+  customerName: string
+
+  address?: string
+
+  totalAmount: number
+
+  status: OrderStatus
+
+  items: OrderItem[]
+
+  itemImage?: string
+
+  date: string
+  orderTime: string
+  pickupTime?: string
+  scheduledTime?: string
+
+  cancellationReason?: string
+
+  paymentMethod: "Cash" | "Card" | "UPI"
+}
+
+/* =========================================
+   MENU TYPES
+========================================= */
 
 export interface MenuCategory {
-  id: string;
-  name: string;
-  description?: string;
-  branchId: string;
+  id: string
+  name: string
+  description?: string
+  branchId: string
 }
 
 export interface MenuItem {
-  id: string;
-  categoryId: string;
-  branchId: string;
-  name: string;
-  description: string;
-  price: number;
-  isVeg: boolean;
-  isAvailable: boolean;
-  imageUrl?: string;
+  id: string
+
+  categoryId: string
+  branchId: string
+
+  name: string
+  description: string
+
+  price: number
+
+  isVeg: boolean
+  isAvailable: boolean
+
+  imageUrl?: string
 }
 
+/* =========================================
+   ANALYTICS
+========================================= */
+
 export interface SalesDataPoint {
-  date: string;
-  sales: number;
+  date: string
+  sales: number
 }
 
 export interface CategorySalesData {
-  category: string;
-  sales: number;
+  category: string
+  sales: number
 }
 
 export interface MostSellingItem {
-  id: string;
-  name: string;
-  salesCount: number;
-  revenue: number;
+  id: string
+  name: string
+  salesCount: number
+  revenue: number
 }
 
-export interface VendorInfo {
-  logoFile?: File;
-  logoPreviewUrl?: string;
-  bannerFile?: File;
-  bannerPreviewUrl?: string;
-  themeColorPrimary: string;
-  themeColorSecondary: string;
-  cafeName: string;
-  address: string;
-  phone: string;
-  about: string;
-  timings: {
-    day: string;
-    isOpen: boolean;
-    openTime: string;
-    closeTime: string;
-  }[];
-  socialLinks: {
-    facebook?: string;
-    instagram?: string;
-    twitter?: string;
-    website?: string;
-  };
-}
+/* =========================================
+   PAYOUT
+========================================= */
 
 export enum PayoutMethod {
-  BANK = 'Bank Transfer',
-  UPI = 'UPI',
+  BANK = "Bank Transfer",
+  UPI = "UPI",
 }
 
 export interface BankAccount {
-  bankName: string;
-  accountNumber: string;
-  ifscCode: string;
-  accountHolderName: string;
+  bankName: string
+  accountNumber: string
+  ifscCode: string
+  accountHolderName: string
 }
 
 export interface UPIAccount {
-  upiId: string;
-  accountHolderName: string;
+  upiId: string
+  accountHolderName: string
 }
-

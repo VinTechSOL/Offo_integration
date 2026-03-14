@@ -47,7 +47,7 @@ export const AuthScreen: React.FC = () => {
             <p className="text-gray-500 mt-2 font-medium">Admin Panel</p>
           </div>
 
-          <MobileLoginForm />
+          <MobileLoginForm  />
 
           <div className="mt-10 pt-6 border-t border-gray-100 text-center">
             <p className="text-sm text-gray-400">

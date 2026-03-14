@@ -1,137 +1,229 @@
-import React, { useState } from 'react';
-import Card from '../components/common/Card.tsx';
-import { constants } from '../constants.ts';
+import React, { useEffect, useState } from "react";
+import Card from "../components/common/Card";
+import { constants } from "../constants";
+import { useBranch } from "@/context/BranchContext";
+import { ReportsApi } from "@/apis/ReportsApi";
+
+type RangeType = "today" | "week" | "month";
+
+interface ReportResponse {
+  total_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  cancelled: number;
+  completed: number;
+  scheduled: number;
+}
 
 export const ReportsPage: React.FC = () => {
-  const [range, setRange] = useState<'today' | 'week' | 'month'>('month');
 
-  /* ================= Dummy Data ================= */
+  const { selectedBranchIds } = useBranch();
 
-  const totalOrders = 1248;
-  const totalRevenue = 458900;
-  const avgOrder = 367;
-  const cancelled = 42;
-  const completed = 1206;
-  const scheduled = 28;
+  const [range, setRange] = useState<RangeType>("month");
+
+  const [loading, setLoading] = useState(false);
+
+  const [report, setReport] = useState<ReportResponse>({
+    total_orders: 0,
+    total_revenue: 0,
+    avg_order_value: 0,
+    cancelled: 0,
+    completed: 0,
+    scheduled: 0
+  });
+
+  /* ================= Fetch Reports ================= */
+
+  useEffect(() => {
+
+    const fetchReports = async () => {
+
+      if (!selectedBranchIds.length) {
+        setReport({
+          total_orders: 0,
+          total_revenue: 0,
+          avg_order_value: 0,
+          cancelled: 0,
+          completed: 0,
+          scheduled: 0
+        });
+        return;
+      }
+
+      try {
+
+        setLoading(true);
+
+        const data = await ReportsApi.getReports(
+          selectedBranchIds,
+          range
+        );
+
+        setReport(data);
+
+      } catch (err) {
+
+        console.error("Failed to load reports", err);
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+    fetchReports();
+
+  }, [selectedBranchIds, range]);
+
+  const totalOrders = report.total_orders;
+  const totalRevenue = report.total_revenue;
+  const avgOrder = report.avg_order_value;
+  const cancelled = report.cancelled;
+  const completed = report.completed;
+  const scheduled = report.scheduled;
 
   return (
     <div className="space-y-10">
 
       {/* ================= Header ================= */}
+
       <div className="flex justify-between items-center">
+
         <div>
           <h1 className={`text-3xl font-bold text-${constants.colors.TEXT_DARK}`}>
             Reports
           </h1>
+
           <p className="text-gray-500 mt-1 text-sm">
             Business performance & financial insights
           </p>
         </div>
 
-        {/* Date Filters */}
+        {/* Range Filters */}
+
         <div className="flex gap-3">
-          {['today', 'week', 'month'].map(r => (
+
+          {["today", "week", "month"].map(r => (
+
             <button
               key={r}
-              onClick={() => setRange(r as any)}
+              onClick={() => setRange(r as RangeType)}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
                 range === r
-                  ? 'bg-orange-500 text-white border-orange-500'
-                  : 'bg-white border-gray-300 text-gray-600'
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "bg-white border-gray-300 text-gray-600"
               }`}
             >
-              {r === 'today'
-                ? 'Today'
-                : r === 'week'
-                ? 'This Week'
-                : 'This Month'}
+
+              {r === "today"
+                ? "Today"
+                : r === "week"
+                ? "This Week"
+                : "This Month"}
+
             </button>
+
           ))}
+
         </div>
+
       </div>
 
-      {/* ================= Black KPI Strip ================= */}
+      {/* ================= Loading ================= */}
+
+      {loading && (
+        <div className="text-center text-gray-500">
+          Loading reports...
+        </div>
+      )}
+
+      {/* ================= KPI Strip ================= */}
+
       <div className="bg-black rounded-2xl p-8 grid grid-cols-2 md:grid-cols-4 gap-10 text-white shadow-xl">
 
         <KPI label="Total Orders" value={totalOrders} />
-        <KPI label="Revenue" value={`₹${totalRevenue.toLocaleString()}`} />
-        <KPI label="Avg Order Value" value={`₹${avgOrder}`} />
+
+        <KPI
+          label="Revenue"
+          value={`₹${totalRevenue.toLocaleString()}`}
+        />
+
+        <KPI
+          label="Avg Order Value"
+          value={`₹${avgOrder}`}
+        />
+
         <KPI label="Cancelled Orders" value={cancelled} />
+
         <KPI label="Completed Orders" value={completed} />
+
         <KPI label="Scheduled Orders" value={scheduled} />
 
       </div>
 
-      {/* ================= Revenue Trend ================= */}
+      {/* ================= Revenue Trend (placeholder until backend chart API) ================= */}
+
       <Card className="p-8 space-y-6">
+
         <h2 className="text-xl font-bold text-gray-900">
           Revenue Trend
         </h2>
 
         <div className="h-64 flex items-end gap-6">
+
           {[12000, 18000, 14000, 22000, 26000, 20000, 30000].map(
             (val, index) => (
+
               <div key={index} className="flex flex-col items-center w-full">
+
                 <div
                   className="bg-orange-500 rounded-md w-8 transition-all"
                   style={{ height: `${val / 200}px` }}
-                ></div>
+                />
+
                 <p className="text-xs mt-2 text-gray-500">
                   Day {index + 1}
                 </p>
+
               </div>
+
             )
           )}
+
         </div>
+
       </Card>
 
-      {/* ================= Breakdown Section ================= */}
+      {/* ================= Breakdown ================= */}
+
       <div className="grid md:grid-cols-2 gap-8">
 
         <Card className="p-8 space-y-6">
+
           <h2 className="text-lg font-bold text-gray-900">
             Orders Breakdown
           </h2>
 
-          <Breakdown label="Completed" value="90%" color="bg-green-500" />
-          <Breakdown label="Cancelled" value="5%" color="bg-red-500" />
-          <Breakdown label="Scheduled" value="5%" color="bg-orange-500" />
-        </Card>
+          <Breakdown
+            label="Completed"
+            value={`${totalOrders ? Math.round((completed / totalOrders) * 100) : 0}%`}
+            color="bg-green-500"
+          />
 
-        {/* 🔥 NEW: Peak Order Hours */}
-        <Card className="p-8 space-y-6">
-          <h2 className="text-lg font-bold text-gray-900">
-            Peak Order Hours
-          </h2>
+          <Breakdown
+            label="Cancelled"
+            value={`${totalOrders ? Math.round((cancelled / totalOrders) * 100) : 0}%`}
+            color="bg-red-500"
+          />
 
-          <PeakHour label="12 PM - 2 PM" percentage="85%" />
-          <PeakHour label="6 PM - 8 PM" percentage="70%" />
-          <PeakHour label="9 AM - 11 AM" percentage="40%" />
-        </Card>
+          <Breakdown
+            label="Scheduled"
+            value={`${totalOrders ? Math.round((scheduled / totalOrders) * 100) : 0}%`}
+            color="bg-orange-500"
+          />
 
-      </div>
-
-      {/* ================= Top Performers ================= */}
-      <div className="grid md:grid-cols-2 gap-8">
-
-        <Card className="p-8 space-y-6">
-          <h2 className="text-lg font-bold text-gray-900">
-            Top Branches
-          </h2>
-
-          <TopRow rank={1} name="Tech Park" revenue="₹1,24,500" orders="320 orders" />
-          <TopRow rank={2} name="Hitech City" revenue="₹98,400" orders="210 orders" />
-          <TopRow rank={3} name="IT Park" revenue="₹76,200" orders="180 orders" />
-        </Card>
-
-        <Card className="p-8 space-y-6">
-          <h2 className="text-lg font-bold text-gray-900">
-            Top Selling Items
-          </h2>
-
-          <TopRow rank={1} name="Veg Burger" revenue="₹84,000" orders="420 sold" />
-          <TopRow rank={2} name="Coffee" revenue="₹43,200" orders="360 sold" />
-          <TopRow rank={3} name="Party Platter" revenue="₹50,000" orders="50 sold" />
         </Card>
 
       </div>
@@ -171,67 +263,20 @@ const Breakdown = ({
   color: string;
 }) => (
   <div className="space-y-2">
+
     <div className="flex justify-between text-sm font-medium">
       <span>{label}</span>
       <span>{value}</span>
     </div>
+
     <div className="w-full bg-gray-200 rounded-full h-2">
+
       <div
         className={`${color} h-2 rounded-full`}
         style={{ width: value }}
       />
-    </div>
-  </div>
-);
 
-const PeakHour = ({
-  label,
-  percentage
-}: {
-  label: string;
-  percentage: string;
-}) => (
-  <div className="space-y-2">
-    <div className="flex justify-between text-sm font-medium">
-      <span>{label}</span>
-      <span>{percentage}</span>
     </div>
-    <div className="w-full bg-gray-200 rounded-full h-2">
-      <div
-        className="bg-orange-500 h-2 rounded-full"
-        style={{ width: percentage }}
-      />
-    </div>
-  </div>
-);
 
-const TopRow = ({
-  rank,
-  name,
-  revenue,
-  orders
-}: {
-  rank: number;
-  name: string;
-  revenue: string;
-  orders: string;
-}) => (
-  <div className="flex justify-between items-center border-b pb-3">
-    <div className="flex items-center gap-4">
-      <span className="text-orange-500 font-bold text-lg">
-        {rank}.
-      </span>
-      <div>
-        <p className="font-semibold text-gray-900">
-          {name}
-        </p>
-        <p className="text-sm text-gray-500">
-          {orders}
-        </p>
-      </div>
-    </div>
-    <p className="font-semibold text-gray-900">
-      {revenue}
-    </p>
   </div>
 );

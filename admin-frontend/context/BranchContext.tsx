@@ -1,86 +1,107 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { CafeApi } from "@/apis/CafeApi";
-import { useCafe } from "./CafeContext";
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { Branch } from "../types";
 
-export interface Branch {
+export interface AppUser {
   id: string;
+  branchId: string;
   name: string;
-  cafeId: string;
-  cityId: string;
-  campusId: string;
-  buildingId?: string;
-  imageUrl?: string;
+  phone: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: string;
+  status: "Active" | "Inactive" | "No Orders";
+}
+
+export interface Staff {
+  id: string;
+  branchId: string;
+  role: "VENDOR";
+  firstName: string;
+  lastName: string;
+  username: string;
+  password: string;
   isActive: boolean;
+  createdAt: string;
+  lastReset?: string;
 }
 
 interface BranchContextType {
   branches: Branch[];
   setBranches: React.Dispatch<React.SetStateAction<Branch[]>>;
-  currentBranchId: string;
-  setCurrentBranchId: (id: string) => void;
-  loading: boolean;
-  refreshBranches: () => Promise<void>;
+
+  users: AppUser[];
+  setUsers: React.Dispatch<React.SetStateAction<AppUser[]>>;
+
+  staffList: Staff[];
+  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
+
+  /* ===== Filters used in Dashboard ===== */
+
+  selectedBranchIds: string[];
+  setSelectedBranchIds: React.Dispatch<React.SetStateAction<string[]>>;
+
+  selectedCities: string[];
+  setSelectedCities: React.Dispatch<React.SetStateAction<string[]>>;
+
+  selectedAreas: string[];
+  setSelectedAreas: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
-export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentCafeId } = useCafe();
+export const useBranch = () => {
+  const ctx = useContext(BranchContext);
+  if (!ctx) {
+    throw new Error("useBranch must be used within BranchProvider");
+  }
+  return ctx;
+};
+
+export const BranchProvider: React.FC<{ children: ReactNode }> = ({
+  children
+}) => {
+
+  /* ================= Branches ================= */
+
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [currentBranchId, setCurrentBranchId] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const fetchBranches = async () => {
-    if (!currentCafeId) {
-      setBranches([]);
-      return;
-    }
+  /* ================= Users ================= */
 
-    setLoading(true);
-    try {
-      const data = await CafeApi.getBranchesByCafe(Number(currentCafeId));
+  const [users, setUsers] = useState<AppUser[]>([]);
 
-      setBranches(
-        data.map((b: any) => ({
-          id: String(b.branch_id),
-          name: b.branch_name,
-          cafeId: String(b.cafe_id),
-          cityId: String(b.city_id),
-          campusId: String(b.campus_id),
-          buildingId: b.building_id ? String(b.building_id) : undefined,
-          imageUrl: b.image_url,
-          isActive: b.is_active
-        }))
-      );
-    } catch (err) {
-      console.error("Failed to load branches");
-    } finally {
-      setLoading(false);
-    }
-  };
+  /* ================= Staff ================= */
 
-  useEffect(() => {
-    fetchBranches();
-  }, [currentCafeId]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+
+  /* ================= Filters ================= */
+
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
   return (
     <BranchContext.Provider
       value={{
         branches,
         setBranches,
-        currentBranchId,
-        setCurrentBranchId,
-        loading,
-        refreshBranches: fetchBranches
+
+        users,
+        setUsers,
+
+        staffList,
+        setStaffList,
+
+        selectedBranchIds,
+        setSelectedBranchIds,
+
+        selectedCities,
+        setSelectedCities,
+
+        selectedAreas,
+        setSelectedAreas
       }}
     >
       {children}
     </BranchContext.Provider>
   );
-};
-
-export const useBranch = () => {
-  const context = useContext(BranchContext);
-  if (!context) throw new Error("useBranch must be used within BranchProvider");
-  return context;
 };

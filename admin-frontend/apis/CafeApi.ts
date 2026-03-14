@@ -1,8 +1,18 @@
 import api from "./client";
 
 export const CafeApi = {
+
   getCafeterias: async () => {
     const res = await api.get("/vendors/cafeterias");
+    return res.data;
+  },
+
+  createCafeteria: async (data: {
+    cafe_name: string;
+    phone_number: string;
+    email_id?: string;
+  }) => {
+    const res = await api.post("/vendors/cafeterias", data);
     return res.data;
   },
 
@@ -16,7 +26,6 @@ export const CafeApi = {
       is_active: isActive
     });
     return res.data;
-
   },
 
   createBranch: async (formData: FormData) => {
@@ -25,5 +34,5 @@ export const CafeApi = {
     });
     return res.data;
   }
-  
+
 };

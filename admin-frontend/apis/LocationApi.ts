@@ -1,6 +1,7 @@
 import api from "./client";
 
 export const LocationApi = {
+
   getCities: async () => {
     const res = await api.get("/locations/cities");
     return res.data;
@@ -12,4 +13,12 @@ export const LocationApi = {
     });
     return res.data;
   },
+
+  getBuildings: async (campusId: string) => {
+    const res = await api.get("/locations/buildings", {
+      params: { campus_id: campusId },
+    });
+    return res.data;
+  }
+
 };

@@ -10,6 +10,8 @@ export const constants = {
     MANAGE_USERS:'/manage-users',
     REPORTS: '/reports',
     SETTINGS: '/settings',
+    PROFILE: '/profile',
+    ADD_BRANCH: '/add-branch'
     
   },
   colors: {

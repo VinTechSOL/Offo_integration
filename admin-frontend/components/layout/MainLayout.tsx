@@ -1,248 +1,316 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { Sidebar } from "./Sidebar";
+import { BottomNav } from "./BottomNav";
+import LogoutModal from "../auth/LogoutModal";
+import MultiSelectDropdown from "../common/MultiselectDropdown";
 
-import { Sidebar } from './Sidebar';
-import { BottomNav } from './BottomNav';
-import LogoutModal from '../auth/LogoutModal';
+import { useBranch } from "../../context/BranchContext";
+import { useLocation } from "../../context/LocationContext";
+import { ProfileApi } from "@/apis/ProfileApi";
 
-import { useBranch } from '../../context/BranchContext';
-import { useCity } from '../../context/CityContext';
-import { useCampus } from '../../context/CampusContext';
-
-import { useAuth } from '@/context/AuthContext';
-
-/* =========================================
-   Premium Select Types
-========================================= */
-
-interface SelectOption {
-  id: string;
-  name: string;
+interface MainLayoutProps {
+  onLogout: () => void;
 }
 
-interface PremiumSelectProps {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  options: SelectOption[];
-  placeholder: string;
-  disabled?: boolean;
-}
+export const MainLayout: React.FC<MainLayoutProps> = ({ onLogout }) => {
 
-const PremiumSelect: React.FC<PremiumSelectProps> = ({
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled = false
-}) => (
-  <div className="relative group min-w-[180px]">
-    <select
-      value={value || ''}
-      onChange={onChange}
-      disabled={disabled}
-      className="appearance-none w-full px-4 py-2.5 pr-10 bg-white rounded-xl text-offoDark font-semibold shadow-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-offoOrange transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
-    >
-      <option value="" disabled>
-        {placeholder}
-      </option>
+  const navigate = useNavigate();
 
-      {options.map(item => (
-        <option key={item.id} value={item.id}>
-          {item.name}
-        </option>
-      ))}
-    </select>
-
-    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400 group-hover:text-offoOrange transition-colors">
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M19 9l-7 7-7-7"
-        />
-      </svg>
-    </div>
-  </div>
-);
-
-/* =========================================
-   Main Layout
-========================================= */
-
-export const MainLayout: React.FC = () => {
-  const { logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
-  const { branches, currentBranchId, setCurrentBranchId } = useBranch();
-  const { cities, currentCityId, setCurrentCityId } = useCity();
-  const { campuses, currentCampusId, setCurrentCampusId } = useCampus();
+  const [adminName, setAdminName] = useState("Admin");
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  /* ================= Branch Context ================= */
+
+  const {
+    branches,
+    selectedBranchIds,
+    setSelectedBranchIds,
+    selectedCities,
+    selectedAreas,
+    setSelectedCities,
+    setSelectedAreas
+  } = useBranch();
+
+  /* ================= Location Context ================= */
+
+  const {
+    cities,
+    campuses,
+    setSelectedCityId,
+    setSelectedCampusId
+  } = useLocation();
+
+  /* ================= Load Admin Profile ================= */
+
+  useEffect(() => {
+
+    const loadProfile = async () => {
+
+      try {
+
+        const data = await ProfileApi.getProfile();
+
+        setAdminName(data.full_name);
+
+      } catch (err) {
+
+        console.error("Failed to load profile", err);
+
+      }
+
+    };
+
+    loadProfile();
+
+  }, []);
+
+  /* ================= Close Dropdown on Outside Click ================= */
+
+  useEffect(() => {
+
+    const handleClickOutside = (event: MouseEvent) => {
+
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileDropdownOpen(false);
+      }
+
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+
+  }, []);
 
   const handleLogoutConfirm = () => {
     setIsLogoutModalOpen(false);
-    logout();
+    onLogout();
   };
 
   /* =========================================
-     Hierarchy Filtering
+     Cities from backend
   ========================================= */
 
-  const filteredCampuses = useMemo(() => {
-    if (!currentCityId) return [];
-    return campuses.filter(c => c.cityId === currentCityId);
-  }, [campuses, currentCityId]);
+  const allCities = useMemo(() => {
+    return cities.map(c => c.name);
+  }, [cities]);
+
+  /* =========================================
+     Areas filtered by city
+  ========================================= */
+
+  const allAreas = useMemo(() => {
+
+    if (!selectedCities.length) return [];
+
+    const selectedCity = cities.find(c => c.name === selectedCities[0]);
+
+    if (!selectedCity) return [];
+
+    return campuses
+      .filter(c => c.cityId === selectedCity.id)
+      .map(c => c.name);
+
+  }, [cities, campuses, selectedCities]);
+
+  /* =========================================
+     Branch filter
+  ========================================= */
 
   const filteredBranches = useMemo(() => {
-    if (!currentCampusId) return [];
-    return branches.filter(b => b.campusId === currentCampusId);
-  }, [branches, currentCampusId]);
 
-  /* Reset Logic */
+    if (!selectedCities.length || !selectedAreas.length) return [];
 
-  useEffect(() => {
-    setCurrentCampusId('');
-    setCurrentBranchId('');
-  }, [currentCityId]);
+    const selectedCity = cities.find(c => c.name === selectedCities[0]);
+    const selectedCampus = campuses.find(c => c.name === selectedAreas[0]);
 
-  useEffect(() => {
-    if (currentCampusId) {
-      setCurrentBranchId('');
-    }
-  }, [currentCampusId]);
+    if (!selectedCity || !selectedCampus) return [];
+
+    return branches.filter(
+      b =>
+        b.cityId === selectedCity.id &&
+        b.campusId === selectedCampus.id
+    );
+
+  }, [branches, selectedCities, selectedAreas, cities, campuses]);
 
   return (
     <div className="flex min-h-screen bg-offoPrimaryBg">
 
-      {/* Sidebar */}
+      {/* ================= Sidebar ================= */}
+
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onLogout={() => setIsLogoutModalOpen(true)}
       />
 
-      <div className="flex-1 flex flex-col md:ml-0 pb-16 md:pb-0">
+      <div className="flex-1 flex flex-col pb-16 md:pb-0">
 
-        {/* =========================================
-            Mobile Header
-        ========================================= */}
-        <header className="bg-offoHeaderBg shadow-lg h-16 flex items-center justify-between px-4 sticky top-0 z-20 md:hidden">
+        {/* ================= Header ================= */}
 
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="text-white focus:outline-none focus:ring-2 focus:ring-offoOrange rounded-md p-1"
-            aria-label="Toggle sidebar"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-
-          <h1 className="text-xl font-bold text-white">OFFO</h1>
-
-          <button
-            onClick={() => setIsLogoutModalOpen(true)}
-            className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-
-        </header>
-
-        {/* =========================================
-            Desktop Header
-        ========================================= */}
         <div className="hidden md:flex bg-offoHeaderBg h-24 px-6 text-white items-center justify-between shadow-md">
 
           <div>
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             <p className="text-sm text-white/80">
-              Welcome, Healthy Bites Catering Admin
+              Vendor Control Center
             </p>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
 
-            <PremiumSelect
-              value={currentCityId}
-              onChange={(e) => setCurrentCityId(e.target.value)}
-              options={cities}
+            {/* ================= City Filter ================= */}
+
+            <MultiSelectDropdown
+              label="City"
+              options={allCities}
+              selectedOptions={selectedCities}
+              onChange={(citiesSelected) => {
+
+                setSelectedCities(citiesSelected);
+                setSelectedAreas([]);
+                setSelectedBranchIds([]);
+
+                const city = cities.find(c => c.name === citiesSelected[0]);
+
+                if (city) setSelectedCityId(city.id);
+
+              }}
               placeholder="Select City"
             />
 
-            <PremiumSelect
-              value={currentCampusId}
-              onChange={(e) => setCurrentCampusId(e.target.value)}
-              options={filteredCampuses}
-              placeholder="Select Campus"
-              disabled={!currentCityId}
+            {/* ================= Area Filter ================= */}
+
+            <MultiSelectDropdown
+              label="Area"
+              options={allAreas}
+              selectedOptions={selectedAreas}
+              onChange={(areasSelected) => {
+
+                setSelectedAreas(areasSelected);
+                setSelectedBranchIds([]);
+
+                const campus = campuses.find(c => c.name === areasSelected[0]);
+
+                if (campus) setSelectedCampusId(campus.id);
+
+              }}
+              placeholder="Select Area"
             />
 
-            <PremiumSelect
-              value={currentBranchId}
-              onChange={(e) => setCurrentBranchId(e.target.value)}
-              options={filteredBranches}
+            {/* ================= Branch Filter ================= */}
+
+            <MultiSelectDropdown
+              label="Branch"
+              options={filteredBranches.map(b => b.name)}
+              selectedOptions={filteredBranches
+                .filter(b => selectedBranchIds.includes(b.id))
+                .map(b => b.name)}
+              onChange={(branchNames) => {
+
+                const ids = filteredBranches
+                  .filter(b => branchNames.includes(b.name))
+                  .map(b => b.id);
+
+                setSelectedBranchIds(ids);
+
+              }}
               placeholder="Select Branch"
-              disabled={!currentCampusId}
             />
 
             <div className="h-8 w-px bg-white/30"></div>
 
-            <button
-              onClick={() => setIsLogoutModalOpen(true)}
-              className="flex items-center gap-2 text-white hover:bg-white/10 px-4 py-2 rounded-lg transition-colors font-medium"
-            >
-              <span>Logout</span>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* ================= Profile ================= */}
+
+            <div className="relative" ref={dropdownRef}>
+
+              <button
+                onClick={() =>
+                  setIsProfileDropdownOpen(!isProfileDropdownOpen)
+                }
+                className="flex items-center gap-2 hover:bg-white/10 px-4 py-2 rounded-xl transition"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
+
+                <span className="text-sm font-semibold">
+                  {adminName}
+                </span>
+
+                <svg
+                  className="w-4 h-4 opacity-80"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+
+              </button>
+
+              {isProfileDropdownOpen && (
+
+                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-xl py-2 z-50 text-gray-800">
+
+                  <button
+                    onClick={() => {
+                      navigate("/profile");
+                      setIsProfileDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  >
+                    My Profile
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      setIsLogoutModalOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+
+                </div>
+
+              )}
+
+            </div>
 
           </div>
         </div>
 
-        {/* =========================================
-            Page Content
-        ========================================= */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto text-offoTextDark">
+        {/* ================= Page Content ================= */}
+
+        <main className="flex-1 p-6 overflow-auto text-offoTextDark">
           <Outlet />
         </main>
 
       </div>
 
+      {/* ================= Bottom Nav ================= */}
+
       <BottomNav />
 
-      {/* Logout Modal */}
+      {/* ================= Logout Modal ================= */}
+
       <LogoutModal
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={handleLogoutConfirm}
       />
+
     </div>
   );
 };

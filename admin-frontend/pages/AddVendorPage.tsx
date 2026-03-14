@@ -1,369 +1,281 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCafe } from '../context/CafeContext';
-import { useBranch } from '../context/BranchContext';
-import { useCity } from '../context/CityContext';
-import { useCampus } from '../context/CampusContext';
-import { Branch } from '../types';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCafe } from "../context/CafeContext";
+import { useBranch } from "../context/BranchContext";
+import { useLocation } from "@/context/LocationContext";
+import { CafeApi } from "@/apis/CafeApi";
 
 export const AddVendorPage: React.FC = () => {
+
   const navigate = useNavigate();
-  const { cafes, setCafes } = useCafe();
+
+  const { setCafes } = useCafe();
   const { setBranches } = useBranch();
-  const { cities } = useCity();
-  const { campuses } = useCampus();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const {
+    cities,
+    campuses,
+    buildings,
+    setSelectedCityId,
+    setSelectedCampusId
+  } = useLocation();
 
-  /* =========================
-     Cafe State
-  ========================= */
-  const [selectedCafeId, setSelectedCafeId] = useState('');
-  const [isCreatingCafe, setIsCreatingCafe] = useState(false);
-  const [cafeName, setCafeName] = useState('');
-  const [cafePhone, setCafePhone] = useState('');
-  const [cafeEmail, setCafeEmail] = useState('');
-  const [cafeActive, setCafeActive] = useState(true);
+  const [step, setStep] = useState<1 | 2>(1);
 
-  /* =========================
-     Branch State
-  ========================= */
-  const [branchName, setBranchName] = useState('');
-  const [cityId, setCityId] = useState('');
-  const [campusId, setCampusId] = useState('');
-  const [buildingName, setBuildingName] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [opensAt, setOpensAt] = useState('09:00');
-  const [closesAt, setClosesAt] = useState('18:00');
-  const [branchActive, setBranchActive] = useState(true);
+  /* ---------------- Cafe ---------------- */
+
+  const [cafeName, setCafeName] = useState("");
+  const [cafePhone, setCafePhone] = useState("");
+  const [cafeEmail, setCafeEmail] = useState("");
+
+  /* ---------------- Branch ---------------- */
+
+  const [branchName, setBranchName] = useState("");
+  const [cityId, setCityId] = useState("");
+  const [campusId, setCampusId] = useState("");
+  const [buildingId, setBuildingId] = useState("");
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  /* Auto-fill Branch Name */
   useEffect(() => {
-    if (isCreatingCafe && cafeName) {
+    if (cafeName) {
       setBranchName(`${cafeName} - Main`);
     }
-  }, [cafeName, isCreatingCafe]);
+  }, [cafeName]);
 
-  /* =========================
-     Image Upload
-  ========================= */
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
 
-  /* =========================
-     Step Handlers
-  ========================= */
-  const handleCafeNext = () => {
-    if (isCreatingCafe) {
-      if (!cafeName || !cafePhone) {
-        alert('Cafe Name and Phone are required');
-        return;
+  const handleCreateVendor = async () => {
+
+    try {
+
+      /* -------- Create Cafeteria -------- */
+
+      const cafe = await CafeApi.createCafeteria({
+        cafe_name: cafeName,
+        phone_number: cafePhone,
+        email_id: cafeEmail || undefined
+      });
+
+      const cafeId = cafe.cafe_id;
+
+      /* -------- Create Branch -------- */
+
+      const formData = new FormData();
+
+      formData.append("cafe_id", cafeId);
+      formData.append("branch_name", branchName);
+      formData.append("city_id", cityId);
+      formData.append("campus_id", campusId);
+
+      if (buildingId) {
+        formData.append("building_id", buildingId);
       }
 
-      const newCafe = {
-        id: Date.now().toString(),
-        name: cafeName,
-        phone: cafePhone,
-        email: cafeEmail,
-        isActive: cafeActive
-      };
+      formData.append("opens_at", "08:00");
+      formData.append("closes_at", "22:00");
+      formData.append("is_active", "true");
 
-      setCafes(prev => [...prev, newCafe]);
-      setSelectedCafeId(newCafe.id);
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      const branch = await CafeApi.createBranch(formData);
+
+      const selectedCity = cities.find(c => c.id === cityId);
+      const selectedCampus = campuses.find(c => c.id === campusId);
+
+      setCafes(prev => [
+        ...prev,
+        {
+          id: String(cafe.cafe_id),
+          name: cafeName,
+          phone: cafePhone,
+          email: cafeEmail,
+          isActive: true
+        }
+      ]);
+
+      setBranches(prev => [
+        ...prev,
+        {
+          id: String(branch.branch_id),
+          cafeId: String(cafe.cafe_id),
+          name: branchName,
+          cityId,
+          cityName: selectedCity?.name || "",
+          campusId,
+          campusName: selectedCampus?.name || "",
+          buildingName: buildings.find(b => b.id === buildingId)?.name,
+          imageUrl: branch.image_url,
+          status: "Active"
+        }
+      ]);
+
+      navigate("/branches");
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create vendor");
     }
-
-    if (!selectedCafeId && !isCreatingCafe) {
-      alert('Please select or create a cafe');
-      return;
-    }
-
-    setStep(2);
   };
 
-  const handleBranchNext = () => {
-    if (!branchName || !cityId || !campusId) {
-      alert('Please fill required branch details');
-      return;
-    }
-    setStep(3);
-  };
-
-  const handleCreateVendor = () => {
-    const selectedCity = cities.find(c => c.id === cityId);
-    const selectedCampus = campuses.find(c => c.id === campusId);
-
-    const newBranch: Branch = {
-      id: Date.now().toString(),
-      cafeId: selectedCafeId,
-      name: branchName,
-      cityId,
-      cityName: selectedCity?.name || '',
-      campusId,
-      campusName: selectedCampus?.name || '',
-      buildingName,
-      latitude: latitude || undefined,
-      longitude: longitude || undefined,
-      imageUrl: imagePreview || undefined,
-      status: branchActive ? 'Active' : 'Disabled'
-    };
-
-    setBranches(prev => [...prev, newBranch]);
-    navigate('/branches');
-  };
-
-  /* =========================
-     Toggle Component
-  ========================= */
-  const Toggle = ({
-    enabled,
-    setEnabled
-  }: {
-    enabled: boolean;
-    setEnabled: (v: boolean) => void;
-  }) => (
-    <div
-      onClick={() => setEnabled(!enabled)}
-      className={`w-14 h-8 flex items-center rounded-full p-1 cursor-pointer transition ${
-        enabled ? 'bg-green-500' : 'bg-red-500'
-      }`}
-    >
-      <div
-        className={`bg-white w-6 h-6 rounded-full shadow-md transform transition ${
-          enabled ? 'translate-x-6' : ''
-        }`}
-      />
-    </div>
-  );
-
-  /* =========================
-     UI
-  ========================= */
   return (
-    <div className="max-w-6xl mx-auto py-12 space-y-10">
 
-      <div>
-        <h1 className="text-4xl font-bold text-gray-900">Add Vendor</h1>
-        <p className="text-gray-500 mt-2">
-          Create or select a cafe and add its branch details.
-        </p>
-      </div>
+    <div className="max-w-3xl mx-auto py-12 bg-white p-10 rounded-xl shadow space-y-8">
 
-      {/* =========================
-         STEP 1 — Cafe
-      ========================= */}
+      <h1 className="text-3xl font-bold">
+        Create Vendor
+      </h1>
+
       {step === 1 && (
-        <div className="bg-white rounded-2xl shadow-lg p-10 space-y-8">
 
-          <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">
-            1. Select existing cafe or create new one. <br />
-            2. Add branch details. <br />
-            3. Preview and confirm.
-          </div>
+        <div className="space-y-5">
 
           <div>
-            <label className="block mb-2 font-semibold">Select Cafe</label>
-            <select
-              value={selectedCafeId}
-              onChange={e => {
-                const value = e.target.value;
-                if (value === 'create') {
-                  setIsCreatingCafe(true);
-                  setSelectedCafeId('');
-                } else {
-                  setIsCreatingCafe(false);
-                  setSelectedCafeId(value);
-                }
-              }}
-              className="w-full border rounded-xl p-3 focus:ring-2 focus:ring-orange-400"
-            >
-              <option value="">Choose Cafe</option>
-              <option value="create">+ Create New Cafe</option>
-              {cafes.map(cafe => (
-                <option key={cafe.id} value={cafe.id}>
-                  {cafe.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {isCreatingCafe && (
-            <div className="grid grid-cols-2 gap-6">
-              <input
-                placeholder="Cafe Name *"
-                value={cafeName}
-                onChange={e => setCafeName(e.target.value)}
-                className="border rounded-xl p-3"
-              />
-              <input
-                placeholder="Phone *"
-                value={cafePhone}
-                onChange={e => setCafePhone(e.target.value)}
-                className="border rounded-xl p-3"
-              />
-              <input
-                placeholder="Email (Optional)"
-                value={cafeEmail}
-                onChange={e => setCafeEmail(e.target.value)}
-                className="border rounded-xl p-3 col-span-2"
-              />
-
-              <div className="flex items-center gap-4">
-                <span className="font-medium">Cafe Active</span>
-                <Toggle enabled={cafeActive} setEnabled={setCafeActive} />
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <button
-              onClick={handleCafeNext}
-              className="bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* =========================
-         STEP 2 — Branch
-      ========================= */}
-      {step === 2 && (
-        <div className="bg-white rounded-2xl shadow-lg p-10 space-y-8">
-
-          <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">
-            Branch name is auto-filled as "Cafe - Main". You can edit it.
-          </div>
-
-          <input
-            value={branchName}
-            onChange={e => setBranchName(e.target.value)}
-            className="w-full border rounded-xl p-3"
-          />
-
-          <div className="grid grid-cols-3 gap-6">
-            <select
-              value={cityId}
-              onChange={e => setCityId(e.target.value)}
-              className="border rounded-xl p-3"
-            >
-              <option value="">Select City *</option>
-              {cities.map(city => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={campusId}
-              onChange={e => setCampusId(e.target.value)}
-              className="border rounded-xl p-3"
-            >
-              <option value="">Select Campus *</option>
-              {campuses
-                .filter(c => c.cityId === cityId)
-                .map(campus => (
-                  <option key={campus.id} value={campus.id}>
-                    {campus.name}
-                  </option>
-                ))}
-            </select>
-
+            <label className="text-sm font-semibold">
+              Cafe Name
+            </label>
             <input
-              placeholder="Building"
-              value={buildingName}
-              onChange={e => setBuildingName(e.target.value)}
-              className="border rounded-xl p-3"
+              className="border p-3 rounded w-full mt-1"
+              value={cafeName}
+              onChange={e => setCafeName(e.target.value)}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <input type="time" value={opensAt} onChange={e => setOpensAt(e.target.value)} className="border rounded-xl p-3"/>
-            <input type="time" value={closesAt} onChange={e => setClosesAt(e.target.value)} className="border rounded-xl p-3"/>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <input placeholder="Latitude (Optional)" value={latitude} onChange={e => setLatitude(e.target.value)} className="border rounded-xl p-3"/>
-            <input placeholder="Longitude (Optional)" value={longitude} onChange={e => setLongitude(e.target.value)} className="border rounded-xl p-3"/>
-          </div>
-
-          {/* Image Upload */}
-          <div className="border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer hover:border-orange-400 transition">
-            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="upload"/>
-            <label htmlFor="upload" className="cursor-pointer text-gray-500">
-              {imagePreview ? (
-                <img src={imagePreview} className="h-40 mx-auto rounded-xl object-cover"/>
-              ) : (
-                "Click to upload branch image"
-              )}
+          <div>
+            <label className="text-sm font-semibold">
+              Phone
             </label>
+            <input
+              className="border p-3 rounded w-full mt-1"
+              value={cafePhone}
+              onChange={e => setCafePhone(e.target.value)}
+            />
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="font-medium">Branch Active</span>
-            <Toggle enabled={branchActive} setEnabled={setBranchActive} />
+          <div>
+            <label className="text-sm font-semibold">
+              Email
+            </label>
+            <input
+              className="border p-3 rounded w-full mt-1"
+              value={cafeEmail}
+              onChange={e => setCafeEmail(e.target.value)}
+            />
           </div>
 
-          <div className="flex justify-between">
-            <button onClick={() => setStep(1)} className="px-6 py-3 rounded-xl border">
-              Back
-            </button>
-            <button onClick={handleBranchNext} className="bg-slate-900 text-white px-6 py-3 rounded-xl">
-              Preview
-            </button>
-          </div>
+          <button
+            disabled={!cafeName || !cafePhone}
+            onClick={() => setStep(2)}
+            className="bg-black text-white px-6 py-3 rounded disabled:opacity-40"
+          >
+            Next
+          </button>
+
         </div>
+
       )}
 
-      {/* =========================
-         STEP 3 — Preview
-      ========================= */}
-      {step === 3 && (
-        <div className="bg-white rounded-2xl shadow-lg p-10 space-y-8">
+      {step === 2 && (
 
-          <h2 className="text-2xl font-bold">Preview</h2>
+        <div className="space-y-5">
 
-          <div className="grid grid-cols-2 gap-10">
+          <input
+            className="border p-3 rounded w-full"
+            value={branchName}
+            onChange={e => setBranchName(e.target.value)}
+          />
 
-            {imagePreview && (
-              <img src={imagePreview} className="rounded-2xl h-72 object-cover"/>
-            )}
+          <select
+            value={cityId}
+            onChange={(e) => {
+              setCityId(e.target.value)
+              setSelectedCityId(e.target.value)
+            }}
+            className="border p-3 rounded w-full"
+          >
+            <option value="">Select City</option>
+            {cities.map(city => (
+              <option key={city.id} value={city.id}>
+                {city.name}
+              </option>
+            ))}
+          </select>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-xl font-semibold">{branchName}</h3>
-                <p className="text-gray-500">
-                  {cities.find(c => c.id === cityId)?.name} • {campuses.find(c => c.id === campusId)?.name}
-                </p>
-              </div>
+          <select
+            value={campusId}
+            onChange={(e) => {
+              setCampusId(e.target.value)
+              setSelectedCampusId(e.target.value)
+            }}
+            className="border p-3 rounded w-full"
+          >
+            <option value="">Select Campus</option>
 
-              <div>
-                <p className="text-gray-600">Open: {opensAt}</p>
-                <p className="text-gray-600">Close: {closesAt}</p>
-              </div>
+            {campuses
+              .filter(c => c.cityId === cityId)
+              .map(campus => (
+                <option key={campus.id} value={campus.id}>
+                  {campus.name}
+                </option>
+              ))}
 
-              <div>
-                <p>Status: {branchActive ? 'Active' : 'Disabled'}</p>
-              </div>
-            </div>
+          </select>
 
-          </div>
+          <select
+            value={buildingId}
+            onChange={(e) => setBuildingId(e.target.value)}
+            className="border p-3 rounded w-full"
+          >
+            <option value="">Select Building</option>
 
-          <div className="flex justify-between">
-            <button onClick={() => setStep(2)} className="px-6 py-3 rounded-xl border">
+            {buildings
+              .filter(b => b.campusId === campusId)
+              .map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+          </select>
+
+          <input type="file" onChange={handleImageUpload} />
+
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              className="h-40 rounded-lg object-cover"
+            />
+          )}
+
+          <div className="flex gap-4">
+
+            <button
+              onClick={() => setStep(1)}
+              className="border px-5 py-2 rounded"
+            >
               Back
             </button>
-            <button onClick={handleCreateVendor} className="bg-green-600 text-white px-6 py-3 rounded-xl">
+
+            <button
+              onClick={handleCreateVendor}
+              className="bg-green-600 text-white px-5 py-2 rounded"
+            >
               Create Vendor
             </button>
+
           </div>
+
         </div>
+
       )}
 
     </div>
