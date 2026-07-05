@@ -61,19 +61,35 @@ const allOptionsSelected = Array.isArray(options) && Array.isArray(selectedOptio
 const safeOptions = Array.isArray(options) ? options : [];
 const safeSelected = Array.isArray(selectedOptions) ? selectedOptions : [];
 
-const displayValue =
-  safeSelected.length === 0
-    ? `Select ${label}`
-    : safeSelected.length === safeOptions.length
-    ? `All ${label}s`
-    : `${safeSelected.length} ${label}${safeSelected.length > 1 ? 's' : ''}`;
+
+const displayValue = (() => {
+
+  if (safeSelected.length === 0) {
+    return `Select ${label}`;
+  }
+
+  if (safeSelected.length === safeOptions.length) {
+    return `All ${label}s`;
+  }
+
+  if (safeSelected.length === 1) {
+    return safeSelected[0];
+  }
+
+  if (safeSelected.length === 2) {
+    return `${safeSelected[0]}, ${safeSelected[1]}`;
+  }
+
+  return `${safeSelected[0]}, ${safeSelected[1]} +${safeSelected.length - 2}`;
+
+})();
 
     
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offoOrange min-w-[160px]"
+        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offoOrange min-w-[240px]"
       >
         <span className="truncate mr-2">{displayValue}</span>
         <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

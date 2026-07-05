@@ -14,6 +14,18 @@ interface OrderRowProps {
 }
 
 
+const formatOrderTime = (date?: Date) => {
+  if (!date) return "";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(date));
+};
+
+
 const PriorityBadge: React.FC<{ priority?: string }> = ({ priority }) => {
   if (!priority) return null;
 
@@ -143,11 +155,40 @@ export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequ
               aria-label={`Select order ${order.id}`}
             />
           )}
+
           <div>
-            <p className="font-bold text-text-primary text-sm">{order.id}</p>
-            <p className="font-semibold text-gray-700">{order.customerName}</p>
-            <p className="text-xs text-text-secondary">{order.customerAddress}</p>
-          </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-text-primary text-sm">
+                {order.displayOrderId || order.id}
+              </p>
+
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                  order.orderType === "SCHEDULED"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-orange-100 text-orange-700"
+                }`}
+              >
+                {order.orderType === "SCHEDULED"
+                  ? "Scheduled"
+                  : "Instant"}
+              </span>
+            </div>
+
+            <p className="text-xs text-text-secondary mt-1">
+              {order.orderType === "SCHEDULED"
+                ? `Scheduled: ${formatOrderTime(order.scheduledAt)}`
+                : `Placed: ${formatOrderTime(order.createdAt)}`}
+            </p>
+
+            <p className="font-semibold text-gray-700">
+              {order.customerName}
+            </p>
+
+            <p className="text-xs text-text-secondary">
+              {order.customerAddress}
+            </p>
+        </div>
         </div>
         <div className="col-span-3">
           {order.items.map(item => (
@@ -202,11 +243,42 @@ export const OrderRow: React.FC<OrderRowProps> = ({ order, onStatusChange,onRequ
                       aria-label={`Select order ${order.id}`}
                   />
                 )}
+
+
                 <div>
-                    <p className="font-bold text-text-primary text-sm">{order.id}</p>
-                    <p className="font-semibold text-gray-700 text-base">{order.customerName}</p>
-                    <p className="text-xs text-text-secondary">{order.customerAddress}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-text-primary text-sm">
+                      {order.displayOrderId || order.id}
+                    </p>
+
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                        order.orderType === "SCHEDULED"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}
+                    >
+                      {order.orderType === "SCHEDULED"
+                        ? "Scheduled"
+                        : "Instant"}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-text-secondary mt-1">
+                    {order.orderType === "SCHEDULED"
+                      ? `Scheduled: ${formatOrderTime(order.scheduledAt)}`
+                      : `Placed: ${formatOrderTime(order.createdAt)}`}
+                  </p>
+
+                  <p className="font-semibold text-gray-700 text-base">
+                    {order.customerName}
+                  </p>
+
+                  <p className="text-xs text-text-secondary">
+                    {order.customerAddress}
+                  </p>
                 </div>
+
             </div>
             <StatusPill status={order.status} />
         </div>

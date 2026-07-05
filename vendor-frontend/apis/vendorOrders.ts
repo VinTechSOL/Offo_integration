@@ -7,6 +7,10 @@ import { Order, OrderStatus } from "@/types";
 const normalizeOrder = (o: any): Order => ({
   id: String(o.order_id),
 
+  displayOrderId: o.display_order_id,
+
+  orderType: o.order_type,
+
   customerName: o.user_name,
 
   customerAddress: `${o.campus_name}, ${o.building_name}`,

@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     MSG91_AUTH_KEY: str = ""
     MSG91_TEMPLATE_ID: str = ""
     ENVIRONMENT: str = "development"
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
     AWS_REGION : str
     S3_BUCKET: str
 

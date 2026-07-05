@@ -17,6 +17,8 @@ export interface OrderItem {
 
 export interface Order {
   id:string;
+  displayOrderId?: string;
+  orderType?: "INSTANT" | "SCHEDULED";
   customerName: string;
   customerAddress: string;
   items: OrderItem[];

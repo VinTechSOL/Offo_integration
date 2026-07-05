@@ -69,6 +69,10 @@ export const MenuDashboard: React.FC = () => {
           price: data.price,
         });
 
+        if (!itemToEdit.baseItemId) {
+          throw new Error("Missing base item id");
+        }
+
         await VendorMenuApi.updateMenuItem(itemToEdit.baseItemId, {
           name: data.name,
           description: data.description,

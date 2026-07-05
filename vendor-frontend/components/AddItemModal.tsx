@@ -29,6 +29,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
   const [foodType, setFoodType] = useState<'veg' | 'non-veg'>('veg');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState('');
   const [available] = useState(true);
   
 
@@ -70,6 +71,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
+        const maxSize = 400 * 1024;
+
+        if (file.size > maxSize) {
+
+            setImageError("Image should be less than 400 KB");
+            setImageFile(null);
+            setImagePreview(null);
+
+            return;
+        }
+        setImageError("");
         setImageFile(file);
 
         const reader = new FileReader();
@@ -99,8 +111,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="add-item-modal-title">
-      <div className="bg-dark-navy text-white p-6 rounded-lg shadow-2xl w-11/12 max-w-lg relative transition-all duration-300 animate-popIn max-h-[90vh] overflow-y-auto"> {/* Adjusted w-full max-w-md to w-11/12 max-w-lg and p-8 to p-6 */}
+    <div className="fixed inset-0 bg-black/50  flex justify-center items-center z-50 p-4 overflow-y-auto animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="add-item-modal-title">
+      <div className="bg-dark-navy text-white p-6 rounded-xl shadow-2xl w-full max-w-2xl relative transition-all duration-300 animate-popIn my-auto max-h-[95vh] overflow-y-auto"> {/* Adjusted w-full max-w-md to w-11/12 max-w-lg and p-8 to p-6 */}
         <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-white" aria-label="Close add item form">
           <XIcon className="w-6 h-6" />
         </button>
@@ -168,7 +180,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onS
                     <label htmlFor="image-upload" className="cursor-pointer bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition-colors">
                         Upload Image
                     </label>
-                    <input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                    <input id="image-upload" type="file" accept="image/png,image/jpeg,image/webp,image/jpg" className="hidden" onChange={handleImageChange} />
+                    {imageError && (
+                        <p className='text-red-400 text-sm mt-2'> { imageError } </p>
+                    )}
                 </div>
             </div>
 

@@ -48,7 +48,7 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onEdit, onToggle
       <div className="flex flex-col sm:grid sm:grid-cols-12 sm:gap-4 sm:items-center">
         {/* Item Info */}
         <div className="col-span-12 sm:col-span-5 flex items-center space-x-4">
-          <img src={item.imageUrl} alt={item.name} className="w-16 h-16 rounded-md object-cover" />
+          <img src={item.imageUrl || "/placeholder-food.png"} alt={item.name} className="w-16 h-16 rounded-md object-cover bg-gray-100" onError={(e) => { e.currentTarget.src = "/placeholder-food.png";}} />
           <div>
             <div className="flex items-center gap-2">
                 <FoodTypeIndicator type={item.foodType} />
