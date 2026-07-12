@@ -12,6 +12,23 @@ export const StaffApi = {
     return res.data;
   },
 
+  updateVendor: async (
+    staffId: number,
+    data: {
+      first_name: string;
+      last_name: string;
+      username: string;
+      is_active: boolean;
+    }
+  ) => {
+    const res = await api.patch(
+      `/staff/vendors/${staffId}`,
+      data
+    );
+
+    return res.data;
+  },
+
   getVendorByBranch: async (branchId: number) => {
     const res = await api.get("/staff/vendors", {
       params: { branch_id: branchId }

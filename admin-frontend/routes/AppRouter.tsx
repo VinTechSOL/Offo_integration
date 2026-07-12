@@ -13,6 +13,7 @@ import { ManageUsersPage } from "../pages/ManageUsersPage";
 import { ReportsPage } from "../pages/ReportsPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { ProfilePage } from "../pages/ProfilePage";
+import { AddLocationPage } from "@/pages/AddLocationPage";
 
 import { useAuth } from "../context/AuthContext";
 import { constants } from "../constants";
@@ -61,6 +62,7 @@ export const AppRouter: React.FC = () => {
         <Route path={constants.routes.SETTINGS} element={<SettingsPage />} />
         <Route path={constants.routes.PROFILE} element={<ProfilePage />} />
         <Route path={constants.routes.ADD_BRANCH} element={<AddBranchPage />} />
+        <Route path={constants.routes.ADD_LOCATION} element={<AddLocationPage />} />
 
         <Route path="/" element={<Navigate to={constants.routes.OVERVIEW} />} />
 

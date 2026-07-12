@@ -28,6 +28,26 @@ export const CafeApi = {
     return res.data;
   },
 
+  updateBranch: async (
+    branchId: number,
+    payload: {
+      branch_name: string;
+      city_id: number;
+      campus_id: number;
+      building_id: number | null;
+      opens_at: string;
+      closes_at: string;
+      is_active: boolean;
+    }
+  ) => {
+    const res = await api.patch(
+      `/vendors/branches/${branchId}`,
+      payload
+    );
+
+    return res.data;
+  },
+
   createBranch: async (formData: FormData) => {
     const res = await api.post("/vendors/branches", formData, {
       headers: { "Content-Type": "multipart/form-data" }

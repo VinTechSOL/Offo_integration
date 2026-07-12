@@ -38,9 +38,14 @@ export interface Branch {
   campusId: string
   campusName: string
 
+  buildingId?: string
   buildingName?: string
-
+  
+  opensAt?: string
+  closesAt?: string
   imageUrl?: string
+
+  hasVendor?: boolean;
 
   status: "Active" | "Disabled"
 }

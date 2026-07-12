@@ -37,6 +37,10 @@ interface LocationContextType {
   setSelectedCityId: (id: string) => void;
   setSelectedCampusId: (id: string) => void;
   setSelectedBuildingId: (id: string) => void;
+
+  reloadCities: () => Promise<void>;
+  reloadCampuses: (cityId: string) => Promise<void>;
+  reloadBuildings: (campusId: string) => Promise<void>;
 }
 
 const LocationContext = createContext<LocationContextType | undefined>(
@@ -45,13 +49,20 @@ const LocationContext = createContext<LocationContextType | undefined>(
 
 export const useLocation = () => {
   const ctx = useContext(LocationContext);
-  if (!ctx) throw new Error("useLocation must be used inside LocationProvider");
+
+  if (!ctx) {
+    throw new Error(
+      "useLocation must be used inside LocationProvider"
+    );
+  }
+
   return ctx;
 };
 
-export const LocationProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const LocationProvider: React.FC<{
+  children: ReactNode;
+}> = ({ children }) => {
+
   const [cities, setCities] = useState<City[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -60,82 +71,141 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({
   const [selectedCampusId, setSelectedCampusId] = useState("");
   const [selectedBuildingId, setSelectedBuildingId] = useState("");
 
-  /* ---------- Load Cities ---------- */
+  /* =====================================================
+     Reload Cities
+  ===================================================== */
 
-  useEffect(() => {
-    const loadCities = async () => {
-      try {
-        const data = await LocationApi.getCities();
+  const reloadCities = async () => {
 
-        const mapped = data.map((c: any) => ({
+    try {
+
+      const data = await LocationApi.getCities();
+
+      setCities(
+        data.map((c: any) => ({
           id: String(c.city_id),
           name: c.city_name,
-        }));
+        }))
+      );
 
-        setCities(mapped);
-      } catch (err) {
-        console.error("Cities load failed", err);
-      }
-    };
+    } catch (err) {
 
-    loadCities();
-  }, []);
+      console.error("Cities load failed", err);
 
-  /* ---------- Load Campuses ---------- */
-
-  useEffect(() => {
-    if (!selectedCityId) {
-      setCampuses([]);
-      return;
     }
 
-    const loadCampuses = async () => {
-      try {
-        const data = await LocationApi.getCampuses(selectedCityId);
+  };
 
-        const mapped = data.map((c: any) => ({
+  /* =====================================================
+     Reload Campuses
+  ===================================================== */
+
+  const reloadCampuses = async (
+    cityId: string
+  ) => {
+
+    if (!cityId) {
+
+      setCampuses([]);
+
+      return;
+
+    }
+
+    try {
+
+      const data = await LocationApi.getCampuses(cityId);
+
+      setCampuses(
+        data.map((c: any) => ({
           id: String(c.campus_id),
           name: c.campus_name,
           cityId: String(c.city_id),
-        }));
+        }))
+      );
 
-        setCampuses(mapped);
-      } catch (err) {
-        console.error("Campus load failed", err);
-      }
-    };
+    } catch (err) {
 
-    loadCampuses();
-  }, [selectedCityId]);
+      console.error("Campus load failed", err);
 
-  /* ---------- Load Buildings ---------- */
-
-  useEffect(() => {
-    if (!selectedCampusId) {
-      setBuildings([]);
-      return;
     }
 
-    const loadBuildings = async () => {
-      try {
-        const data = await LocationApi.getBuildings(selectedCampusId);
+  };
 
-        const mapped = data.map((b: any) => ({
+  /* =====================================================
+     Reload Buildings
+  ===================================================== */
+
+  const reloadBuildings = async (
+    campusId: string
+  ) => {
+
+    if (!campusId) {
+
+      setBuildings([]);
+
+      return;
+
+    }
+
+    try {
+
+      const data = await LocationApi.getBuildings(campusId);
+
+      setBuildings(
+        data.map((b: any) => ({
           id: String(b.building_id),
           name: b.building_name,
           campusId: String(b.campus_id),
-        }));
+        }))
+      );
 
-        setBuildings(mapped);
-      } catch (err) {
-        console.error("Buildings load failed", err);
-      }
-    };
+    } catch (err) {
 
-    loadBuildings();
+      console.error("Buildings load failed", err);
+
+    }
+
+  };
+
+  /* =====================================================
+     Initial Load
+  ===================================================== */
+
+  useEffect(() => {
+
+    reloadCities();
+
+  }, []);
+
+  /* =====================================================
+     Selected City Changed
+  ===================================================== */
+
+  useEffect(() => {
+
+    reloadCampuses(selectedCityId);
+
+    setSelectedCampusId("");
+    setSelectedBuildingId("");
+    setBuildings([]);
+
+  }, [selectedCityId]);
+
+  /* =====================================================
+     Selected Campus Changed
+  ===================================================== */
+
+  useEffect(() => {
+
+    reloadBuildings(selectedCampusId);
+
+    setSelectedBuildingId("");
+
   }, [selectedCampusId]);
 
   return (
+
     <LocationContext.Provider
       value={{
         cities,
@@ -149,9 +219,15 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({
         setSelectedCityId,
         setSelectedCampusId,
         setSelectedBuildingId,
+
+        reloadCities,
+        reloadCampuses,
+        reloadBuildings,
       }}
     >
       {children}
     </LocationContext.Provider>
+
   );
+
 };

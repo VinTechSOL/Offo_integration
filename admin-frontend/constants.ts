@@ -11,7 +11,8 @@ export const constants = {
     REPORTS: '/reports',
     SETTINGS: '/settings',
     PROFILE: '/profile',
-    ADD_BRANCH: '/add-branch'
+    ADD_BRANCH: '/add-branch',
+    ADD_LOCATION: '/locations',
     
   },
   colors: {
