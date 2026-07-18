@@ -24,8 +24,8 @@ const SPLASH_PAGE_CONFIGS = [
   },
   {
     backgroundImage: '../../assets/food items/coffeee.jpg', // Example: Coffee (from data.ts)
-    title: 'Brewing Success Together',
-    subtitle: 'Offer delightful experiences and capture the essence of your cafe.',
+    title: 'Growing Success Together',
+    subtitle: 'Capture the essence of corporate dining with seamless food solutions.',
     backgroundColorClass: 'bg-dark-navy',
     textColorClass: 'text-white',
   },

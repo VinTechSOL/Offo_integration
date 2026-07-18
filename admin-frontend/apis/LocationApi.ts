@@ -1,16 +1,15 @@
 import api from "./client";
 
 export const LocationApi = {
-
   /* ================= Dropdown APIs ================= */
 
   getCities: async () => {
-    const res = await api.get("/locations/cities");
+    const res = await api.get('/locations/cities');
     return res.data;
   },
 
   getCampuses: async (cityId: string) => {
-    const res = await api.get("/locations/campuses", {
+    const res = await api.get('/locations/campuses', {
       params: { city_id: cityId },
     });
 
@@ -18,7 +17,7 @@ export const LocationApi = {
   },
 
   getBuildings: async (campusId: string) => {
-    const res = await api.get("/locations/buildings", {
+    const res = await api.get('/locations/buildings', {
       params: { campus_id: campusId },
     });
 
@@ -28,24 +27,20 @@ export const LocationApi = {
   /* ================= Location Master ================= */
 
   getLocationTree: async () => {
-    const res = await api.get("/locations/tree");
+    const res = await api.get('/locations/tree');
     return res.data;
   },
 
   createCity: async (city_name: string) => {
-    const res = await api.post("/locations/cities", {
+    const res = await api.post('/locations/cities', {
       city_name,
     });
 
     return res.data;
   },
 
-  createCampus: async (
-    city_id: number,
-    campus_name: string
-  ) => {
-
-    const res = await api.post("/locations/campuses", {
+  createCampus: async (city_id: number, campus_name: string) => {
+    const res = await api.post('/locations/campuses', {
       city_id,
       campus_name,
     });
@@ -53,17 +48,43 @@ export const LocationApi = {
     return res.data;
   },
 
-  createBuilding: async (
-    campus_id: number,
-    building_name: string
-  ) => {
-
-    const res = await api.post("/locations/buildings", {
+  createBuilding: async (campus_id: number, building_name: string) => {
+    const res = await api.post('/locations/buildings', {
       campus_id,
       building_name,
     });
 
     return res.data;
-  }
+  },
 
+  /* ================= Update ================= */
+
+  updateCity: async (cityId: number, city_name: string) => {
+    const res = await api.patch(`/locations/cities/${cityId}`, {
+      city_name,
+    });
+
+    return res.data;
+  },
+
+  updateCampus: async (campusId: number, campus_name: string) => {
+    const res = await api.patch(`/locations/campuses/${campusId}`, {
+      campus_name,
+    });
+
+    return res.data;
+  },
+
+  updateBuilding: async (
+    buildingId: number,
+    payload: {
+      building_name: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    },
+  ) => {
+    const res = await api.patch(`/locations/buildings/${buildingId}`, payload);
+
+    return res.data;
+  },
 };

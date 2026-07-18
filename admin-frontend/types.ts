@@ -208,3 +208,58 @@ export interface UPIAccount {
   upiId: string
   accountHolderName: string
 }
+
+
+
+/* =========================================
+   LOCATION TREE TYPES
+========================================= */
+
+export interface BuildingTree {
+  building_id: number;
+  building_name: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface CampusTree {
+  campus_id: number;
+  campus_name: string;
+  city_id: number;
+  buildings: BuildingTree[];
+}
+
+export interface CityTree {
+  city_id: number;
+  city_name: string;
+  campuses: CampusTree[];
+}
+
+/* =========================================
+   EDIT LOCATION
+========================================= */
+
+export type LocationType = "city" | "campus" | "building";
+
+export interface EditLocationData {
+  type: LocationType;
+
+  city?: {
+    city_id: number;
+    city_name: string;
+  };
+
+  campus?: {
+    campus_id: number;
+    city_id: number;
+    campus_name: string;
+  };
+
+  building?: {
+    building_id: number;
+    campus_id: number;
+    building_name: string;
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+}

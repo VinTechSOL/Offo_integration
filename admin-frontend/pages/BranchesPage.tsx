@@ -383,6 +383,36 @@ Password: ${credentialForm.password}`;
 
   };
 
+
+  const handleBranchStatusToggle = async (branch: Branch) => {
+    try {
+      const updated = await CafeApi.updateBranch(Number(branch.id), {
+        branch_name: branch.name,
+        city_id: Number(branch.cityId),
+        campus_id: Number(branch.campusId),
+        building_id: branch.buildingId ? Number(branch.buildingId) : null,
+        opens_at: branch.opensAt || '',
+        closes_at: branch.closesAt || '',
+        is_active: branch.status !== 'Active',
+      });
+
+      setBranches((prev) =>
+        prev.map((b) =>
+          b.id === branch.id
+            ? {
+                ...b,
+                status: updated.is_active ? 'Active' : 'Disabled',
+              }
+            : b,
+        ),
+      );
+    } catch (err) {
+      console.error(err);
+
+      alert('Unable to update branch status.');
+    }
+  };
+
   /* =========================================================
      UI
   ========================================================= */
@@ -448,36 +478,26 @@ Password: ${credentialForm.password}`;
           const cafe = cafes.find(c => c.id === b.cafeId);
 
           return (
-
             <div
               key={b.id}
               className="bg-white rounded-2xl p-6 shadow-sm border hover:shadow-md"
             >
-
               <div className="flex gap-6">
-
                 <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100">
-
                   {b.imageUrl ? (
-
                     <img
                       src={b.imageUrl}
                       className="w-full h-full object-cover"
                       alt="Branch"
                     />
-
                   ) : (
-
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                       No Image
                     </div>
-
                   )}
-
                 </div>
 
                 <div className="flex-1 space-y-2">
-
                   <h3 className="text-lg font-semibold text-gray-900">
                     {b.name}
                   </h3>
@@ -486,12 +506,9 @@ Password: ${credentialForm.password}`;
                     {b.campusName} • {b.buildingName || '—'}
                   </p>
 
-                  <p className="text-xs text-gray-400">
-                    {b.cityName}
-                  </p>
+                  <p className="text-xs text-gray-400">{b.cityName}</p>
 
                   <div className="pt-2 text-sm">
-
                     <div>
                       <span className="text-gray-500">Cafe:</span>{' '}
                       <span className="font-medium text-gray-800">
@@ -499,50 +516,70 @@ Password: ${credentialForm.password}`;
                       </span>
                     </div>
 
-                    <div className="text-gray-600">
-                      {cafe?.phone || '—'}
-                    </div>
-
+                    <div className="text-gray-600">{cafe?.phone || '—'}</div>
                   </div>
-
                 </div>
 
                 <div className="flex flex-col justify-between items-end w-44">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-sm font-medium ${
+                        b.status === 'Active'
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      {b.status}
+                    </span>
 
-                  <span
-                    className={`px-3 py-1 text-xs rounded-full font-semibold ${
-                      b.status === 'Active'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-600'
-                    }`}
-                  >
-                    {b.status}
-                  </span>
+                    <button
+                      onClick={() => handleBranchStatusToggle(b)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        b.status === 'Active' ? 'bg-green-500' : 'bg-red-500'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                          b.status === 'Active'
+                            ? 'translate-x-5'
+                            : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
 
                   <button
+                    disabled={b.status !== 'Active'}
                     onClick={() => openCredentialModal(b)}
                     className={`px-3 py-1.5 rounded-lg text-xs w-full font-medium ${
-                      b.hasVendor
-                        ? "bg-green-100 text-green-700 border border-green-300"
-                        : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      b.status !== 'Active'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : b.hasVendor
+                        ? 'bg-green-100 text-green-700 border border-green-300'
+                        : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    {b.hasVendor ? "✓ View Credentials" : "Issue Credentials"}
+                    {b.status !== 'Active'
+                      ? 'Branch Disabled'
+                      : b.hasVendor
+                      ? '✓ View Credentials'
+                      : 'Issue Credentials'}
                   </button>
 
                   <button
+                    disabled={b.status !== 'Active'}
                     onClick={() => openEditModal(b)}
-                    className="border px-3 py-1.5 rounded-lg text-xs w-full"
+                    className={`px-3 py-1.5 rounded-lg text-xs w-full font-medium ${
+                      b.status !== 'Active'
+                        ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                        : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     Edit Branch
                   </button>
-
                 </div>
-
               </div>
-
             </div>
-
           );
 
         })}

@@ -210,7 +210,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             >
               <span className="text-orange-500 text-sm">📍</span>
               <span className="text-sm font-medium text-gray-800 max-w-[180px] truncate">
-                {contextLoading ? "Loading..." : locationLabel}
+                {contextLoading ? 'Loading...' : locationLabel}
               </span>
 
               <svg
@@ -220,7 +220,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 strokeWidth="2"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
@@ -231,12 +235,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
 
           <div className="flex items-center gap-4 mt-1">
-
             {/* 🔔 Notification Bell */}
             <div className="relative">
-              <button onClick={() => navigate("/notifications")}>
+              <button onClick={() => navigate('/notifications')}>
                 <svg
-                  className={`w-7 h-7 text-gray-700 transition-transform ${ animateBell ? "animate-bounce" : "" }`}
+                  className={`w-7 h-7 text-gray-700 transition-transform ${
+                    animateBell ? 'animate-bounce' : ''
+                  }`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -254,19 +259,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                     1.436L4 17h5m6 0v1a3 3 0 
                     11-6 0v-1m6 0H9"
                   />
-               </svg>
+                </svg>
               </button>
 
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {unreadCount > 9 ? "9+" : unreadCount}
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </div>
 
             {/* CART */}
             <div className="relative mt-1">
-              <button onClick={() => navigate("/cart")}>
+              <button onClick={() => navigate('/cart')}>
                 <CartIcon className="w-7 h-7 text-gray-700" />
               </button>
               {cartItemCount > 0 && (
@@ -286,7 +291,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <div
               ref={marqueeContentRef}
               className="flex space-x-4"
-              style={{ willChange: "transform" }}
+              style={{ willChange: 'transform' }}
             >
               {[...foodItems, ...foodItems].map((item, index) => (
                 <FoodItemCard key={`${item.id}-${index}`} item={item} />
@@ -319,28 +324,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                   branch_id: cafe.branch_id,
                   name: cafe.branch_name,
                   location: `${cafe.campus_name}${
-                    cafe.building_name ? ", " + cafe.building_name : ""
+                    cafe.building_name ? ', ' + cafe.building_name : ''
                   }`,
-                  status: cafe.is_open ? "Open" : "Closed",
-                  image: cafe.image_url || "",
+                  status: cafe.is_open ? 'Open' : 'Closed',
+                  image: cafe.image_url || '',
                 });
-                navigate("/menu");
+                navigate('/menu');
               }}
               className="bg-white p-4 rounded-2xl mb-3 flex items-center justify-between shadow-sm"
             >
               <div className="flex items-center gap-4">
                 <img
-                  src={cafe.image_url || "/placeholder-food.png"}
+                  src={cafe.image_url || '/placeholder-food.png'}
                   className="w-16 h-16 rounded-xl object-cover"
                 />
                 <div>
-                  <p className="font-bold text-gray-800">
-                    {cafe.branch_name}
-                  </p>
+                  <p className="font-bold text-gray-800">{cafe.branch_name}</p>
                   <p className="text-sm text-gray-500">
-                    {cafe.building_name
-                      ? `${cafe.building_name}, `
-                      : ""}
+                    {cafe.building_name ? `${cafe.building_name}, ` : ''}
                     {cafe.campus_name}
                   </p>
                 </div>
@@ -348,10 +349,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
               <span
                 className={`px-3 py-1 text-xs rounded-full text-white ${
-                  cafe.is_open ? "bg-green-500" : "bg-red-500"
+                  cafe.is_open ? 'bg-green-500' : 'bg-red-500'
                 }`}
               >
-                {cafe.is_open ? "Open" : "Closed"}
+                {cafe.is_open ? 'Open' : 'Closed'}
               </span>
             </div>
           ))}
@@ -359,9 +360,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* POPULAR SECTION */}
         {foodItems.length > 0 && (
           <>
-            <h2 className="font-bold text-lg my-4">
-              Popular Near You
-            </h2>
+            <h2 className="font-bold text-lg my-4">Popular Near You</h2>
 
             <div className="space-y-3">
               {foodItems.slice(0, 8).map((item) => (
@@ -376,12 +375,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                   />
 
                   <div className="ml-4 flex-grow">
-                    <p className="font-bold text-sm truncate">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      ({item.cafe})
-                    </p>
+                    <p className="font-bold text-sm truncate">{item.name}</p>
+                    <p className="text-xs text-gray-500">({item.cafe})</p>
                     <p className="text-sm font-semibold mt-2">
                       ₹{item.price.toFixed(2)}
                     </p>
@@ -404,19 +399,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       </ScrollableContainer>
 
       {cartItemCount > 0 && (
-        <footer className="p-4 bg-gray-100 border-t fixed bottom-16 left-0 right-0">
-          <div className="bg-gray-800 text-white rounded-lg shadow-lg flex justify-between items-center p-3 mx-4">
-            <p>
-              {cartItemCount} items | ₹{" "}
+        <footer className="fixed bottom-16 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[380px] z-40">
+          <div className=" bg-gray-800 text-white rounded-xl shadow-lg flex justify-between items-center px-4 py-3">
+            <p className="text-sm font-medium">
+              {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} | ₹{' '}
               {cart
                 .reduce((acc, cv) => acc + cv.item.price * cv.quantity, 0)
                 .toFixed(2)}
             </p>
-            <button
-              onClick={() => navigate("/cart")}
-              className="font-bold"
-            >
-              View Cart &gt;
+
+            <button onClick={() => navigate('/cart')} className="font-semibold">
+              View Cart →
             </button>
           </div>
         </footer>

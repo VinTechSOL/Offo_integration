@@ -83,7 +83,7 @@ export const SettingsPage: React.FC = () => {
               Commission Settings
             </h3>
 
-            <Input label="Platform Commission " defaultValue="5" />
+            <Input label="Platform Commission " defaultValue="6" />
             <Input label="GST (%)" defaultValue="18" />
 
             <Button>Save Commission</Button>
