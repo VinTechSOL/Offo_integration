@@ -34,7 +34,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         {/* Tagline with OFFO brand styling */}
         <div className="border-l-[4px] border-[#E66A00] pl-4 md:pl-6 animate-in fade-in slide-in-from-bottom duration-700 delay-300">
           <p className="text-[#2D1E12] text-base md:text-lg lg:text-xl font-bold tracking-[0.3em] uppercase opacity-80">
-            Order Food From Office
+            Order Food From Office.
           </p>
         </div>
 

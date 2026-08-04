@@ -130,27 +130,27 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       aria-modal="true" 
       aria-labelledby="add-item-modal-title"
     >
-      <div className="bg-dark-navy text-white rounded-xl shadow-2xl w-full max-w-2xl relative transition-all duration-300 my-8">
-        {/* Header */}
-        <div className="sticky top-0 bg-dark-navy z-10 px-6 pt-6 pb-4 border-b border-slate-700 rounded-t-xl">
+      <div className="bg-dark-navy text-white rounded-xl shadow-2xl w-full max-w-lg relative transition-all duration-300 my-4">
+        {/* Header - Compact */}
+        <div className="sticky top-0 bg-dark-navy z-10 px-5 pt-5 pb-3 border-b border-slate-700 rounded-t-xl">
           <button 
             onClick={handleClose} 
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            className="absolute top-3 right-3 text-gray-400 hover:text-white transition-colors"
             aria-label="Close add item form"
           >
-            <XIcon className="w-6 h-6" />
+            <XIcon className="w-5 h-5" />
           </button>
-          <h2 id="add-item-modal-title" className="text-2xl font-bold">
+          <h2 id="add-item-modal-title" className="text-xl font-bold">
             {itemToEdit ? 'Edit Menu Item' : 'Add New Menu Item'}
           </h2>
         </div>
 
-        {/* Form Body */}
-        <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
-          <form onSubmit={handleSave} className="space-y-5">
-            {/* Item Name */}
+        {/* Form Body - Compact with scroll */}
+        <div className="px-5 py-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+          <form onSubmit={handleSave} className="space-y-3.5">
+            {/* Item Name - Compact */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="name" className="block text-xs font-medium text-gray-300 mb-1">
                 Item Name <span className="text-red-400">*</span>
               </label>
               <input 
@@ -158,37 +158,37 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 id="name" 
                 value={name} 
                 onChange={e => setName(e.target.value)} 
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 px-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all" 
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all text-sm" 
                 placeholder="Enter item name"
                 required 
               />
             </div>
 
-            {/* Description */}
+            {/* Description - Compact */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="description" className="block text-xs font-medium text-gray-300 mb-1">
                 Description
               </label>
               <textarea 
                 id="description" 
                 value={description} 
                 onChange={e => setDescription(e.target.value)} 
-                rows={3} 
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 px-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all resize-none" 
+                rows={2} 
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all resize-none text-sm" 
                 placeholder="A short, catchy description for the item..."
               />
             </div>
 
-            {/* Category */}
+            {/* Category - Compact */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="category" className="block text-xs font-medium text-gray-300 mb-1">
                 Category <span className="text-red-400">*</span>
               </label>
               <select 
                 id="category" 
                 value={category} 
                 onChange={e => setCategory(e.target.value)} 
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 px-4 text-white focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all text-sm"
                 required
               >
                 <option value="ADD_NEW_CATEGORY">-- Add New Category --</option>
@@ -198,10 +198,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               </select>
             </div>
 
-            {/* New Category */}
+            {/* New Category - Compact */}
             {isAddingNewCategory && (
               <div className="animate-fadeIn">
-                <label htmlFor="new-category" className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label htmlFor="new-category" className="block text-xs font-medium text-gray-300 mb-1">
                   New Category Name <span className="text-red-400">*</span>
                 </label>
                 <input 
@@ -209,23 +209,23 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   id="new-category" 
                   value={newCategory} 
                   onChange={e => setNewCategory(e.target.value)} 
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 px-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all" 
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all text-sm" 
                   placeholder="e.g., Desserts"
                   required 
                 />
               </div>
             )}
 
-            {/* Food Type */}
+            {/* Food Type - Compact */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Food Type <span className="text-red-400">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <button 
                   type="button" 
                   onClick={() => setFoodType('veg')} 
-                  className={`py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+                  className={`py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
                     foodType === 'veg' 
                       ? 'bg-green-600 text-white ring-2 ring-green-500 ring-offset-2 ring-offset-dark-navy' 
                       : 'bg-slate-700 hover:bg-slate-600 text-gray-300'
@@ -236,7 +236,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 <button 
                   type="button" 
                   onClick={() => setFoodType('non-veg')} 
-                  className={`py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+                  className={`py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
                     foodType === 'non-veg' 
                       ? 'bg-red-600 text-white ring-2 ring-red-500 ring-offset-2 ring-offset-dark-navy' 
                       : 'bg-slate-700 hover:bg-slate-600 text-gray-300'
@@ -247,19 +247,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               </div>
             </div>
 
-            {/* Price */}
+            {/* Price - Compact */}
             <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="price" className="block text-xs font-medium text-gray-300 mb-1">
                 Price <span className="text-red-400">*</span>
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 font-semibold">₹</span>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 font-semibold text-sm">₹</span>
                 <input 
                   type="number" 
                   id="price" 
                   value={price} 
                   onChange={e => setPrice(e.target.value)} 
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 pl-8 pr-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all" 
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 pl-7 pr-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-offo-orange focus:border-transparent outline-none transition-all text-sm" 
                   placeholder="99.00" 
                   min="0" 
                   step="0.01"
@@ -268,27 +268,27 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               </div>
             </div>
 
-            {/* Image Upload */}
+            {/* Image Upload - Compact */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Item Image <span className="text-red-400">*</span>
               </label>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 {imagePreview ? (
                   <img 
                     src={imagePreview} 
                     alt="Preview" 
-                    className="w-20 h-20 rounded-lg object-cover border-2 border-slate-600" 
+                    className="w-14 h-14 rounded-lg object-cover border-2 border-slate-600" 
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-lg bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500">
-                    <PhotoIcon className="w-8 h-8" />
+                  <div className="w-14 h-14 rounded-lg bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500">
+                    <PhotoIcon className="w-6 h-6" />
                   </div>
                 )}
                 <div className="flex flex-col">
                   <label 
                     htmlFor="image-upload" 
-                    className="cursor-pointer bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                    className="cursor-pointer bg-slate-600 hover:bg-slate-500 text-white font-semibold py-1.5 px-3 rounded-lg transition-colors text-xs"
                   >
                     Upload Image
                   </label>
@@ -299,26 +299,26 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     className="hidden" 
                     onChange={handleImageChange} 
                   />
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP (Max 400KB)</p>
+                  <p className="text-[10px] text-gray-400 mt-1">PNG, JPG, WEBP (Max 400KB)</p>
                   {imageError && (
-                    <p className="text-red-400 text-xs mt-1">{imageError}</p>
+                    <p className="text-red-400 text-[10px] mt-1">{imageError}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-700">
+            {/* Action Buttons - Compact */}
+            <div className="flex justify-end space-x-3 pt-3 border-t border-slate-700">
               <button 
                 type="button" 
                 onClick={handleClose} 
-                className="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors"
+                className="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-5 rounded-lg transition-colors text-sm"
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                className="bg-offo-orange hover:bg-offo-orange-dark text-white font-semibold py-2.5 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-offo-orange hover:bg-offo-orange-dark text-white font-semibold py-2 px-5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 disabled={isSaveDisabled}
               >
                 {itemToEdit ? 'Save Changes' : 'Add Item'}

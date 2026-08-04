@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
 
           {/* Left - Logo */}
           <div className="text-3xl font-bold tracking-wide">
-            OFFO
+            OFFO.
           </div>
 
           {/* Center - Title */}

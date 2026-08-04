@@ -310,13 +310,13 @@ const App: React.FC = () => {
         <Routes>
           <Route
             path="/"
-            element={<SplashScreen onFinish={() => navigate("/onboarding")} />}
+            element={<Navigate to='/onboarding' replace />}
           />
 
           <Route
             path="/onboarding"
             element={
-              <OnboardingScreen onGetStarted={() => navigate("/login")} />
+              <OnboardingScreen onGetStarted={() => navigate('/login')} />
             }
           />
 
@@ -325,11 +325,11 @@ const App: React.FC = () => {
             element={
               <LoginScreen
                 onLoginSuccess={async (flow) => {
-                  if (flow === "signup") {
-                    navigate("/location");
+                  if (flow === 'signup') {
+                    navigate('/location');
                   } else {
                     await refreshLocationFromContext();
-                    navigate("/home");
+                    navigate('/home');
                   }
                 }}
               />
@@ -343,7 +343,7 @@ const App: React.FC = () => {
                 onConfirm={async (loc) => {
                   setLocationData(loc);
                   await refreshLocationFromContext();
-                  navigate("/home");
+                  navigate('/home');
                 }}
               />
             }
@@ -370,7 +370,7 @@ const App: React.FC = () => {
                   cart={cart}
                   addToCart={addToCart}
                   isEditingOrder={isEditingOrder}
-                  onCancelEdit={() => navigate("/orders")}
+                  onCancelEdit={() => navigate('/orders')}
                 />
               ) : (
                 <Navigate to="/home" replace />
@@ -391,28 +391,58 @@ const App: React.FC = () => {
                 onOrderNow={() => {
                   const subtotal = cart.reduce(
                     (a, c) => a + c.item.price * c.quantity,
-                    0
+                    0,
                   );
+
+                  const packagingFee = 0;
+                  const deliveryFee = 0;
+                  const convenienceFee = 5;
+                  const gst = Number((convenienceFee * 0.18).toFixed(2));
+
+                  const total =
+                    subtotal +
+                    packagingFee +
+                    deliveryFee +
+                    convenienceFee +
+                    gst;
+
                   setOrderDetails({
                     items: cart,
                     subtotal,
-                    convenienceFee: 6,
-                    total: subtotal + 6,
+                    convenienceFee,
+                    gst,
+                    total,
                   });
-                  navigate("/payment");
+
+                  navigate('/payment');
                 }}
                 onSchedule={() => {
                   const subtotal = cart.reduce(
                     (a, c) => a + c.item.price * c.quantity,
-                    0
+                    0,
                   );
+
+                  const packagingFee = 0;
+                  const deliveryFee = 0;
+                  const convenienceFee = 5;
+                  const gst = Number((convenienceFee * 0.18).toFixed(2));
+
+                  const total =
+                    subtotal +
+                    packagingFee +
+                    deliveryFee +
+                    convenienceFee +
+                    gst;
+
                   setOrderDetails({
                     items: cart,
                     subtotal,
-                    convenienceFee: 6,
-                    total: subtotal + 6,
+                    convenienceFee,
+                    gst,
+                    total,
                   });
-                  navigate("/schedule");
+
+                  navigate('/schedule');
                 }}
               />
             }
@@ -469,13 +499,13 @@ const App: React.FC = () => {
                 onEditSchedule={(order) => {
                   setOrderToEdit(order);
                   setIsEditingOrder(true);
-                  navigate("/schedule");
+                  navigate('/schedule');
                 }}
                 onEditOrderItems={(order) => {
                   setOrderToEdit(order);
                   setIsEditingOrder(true);
                   setCart(order.items);
-                  navigate("/menu");
+                  navigate('/menu');
                 }}
               />
             }

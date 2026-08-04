@@ -18,7 +18,7 @@ const onboardingSteps = [
   {
     image: '../../assets/illustrations/flash6.jpg',
     title: 'Order from Anywhere',
-    description: 'Get all your favorite meals in one place — Order ahead, skip the line!',
+    description: 'Get all your favorite meals in one place!',
   }
 ];
 
@@ -32,7 +32,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onGetStarted }) => 
     if (step < onboardingSteps.length - 1) {
       autoSlideTimer.current = window.setTimeout(() => {
         setStep(prevStep => prevStep + 1);
-      }, 2500); // Auto-advance every 2.5 seconds
+      }, 2000); // Auto-advance every 2.5 seconds
     }
   };
 
@@ -87,19 +87,20 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onGetStarted }) => 
         onTouchEnd={handleTouchEnd}
       >
          <div
-          className="flex transition-transform duration-700 ease-in-out w-full"
+          className="flex transition-transform duration-500 ease-in-out"
           style={{ transform: `translateX(-${step * 100}%)` }}
         >
           {onboardingSteps.map((currentStep, index) => (
             <div key={index} className="w-full flex-shrink-0 px-8 flex flex-col items-center justify-center">
               {index === onboardingSteps.length - 1 ? (
                 <>
-                  <h2 className="text-5xl font-extrabold text-orange-500">OFFO</h2>
-                  <p className="text-gray-500 text-lg mt-1 mb-6">Order Food From Office</p>
+                  <h2 className="text-5xl font-extrabold text-orange-500">OFFO.</h2>
+                  <p className="text-gray-500 text-lg mt-1 mb-6">Order Food From Office.</p>
                   <img
                     src="../../assets/illustrations/flash1.jpg"
                     alt="Colleagues ordering food in an office"
-                    className="w-full max-w-sm sm:max-w-md object-contain mb-8 max-h-60"
+                  
+                    className="w-full max-w-xs sm:max-w-sm h-60 object-cover rounded-lg mb-8"  
                   />
                 </>
               ) : (

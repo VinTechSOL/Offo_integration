@@ -29,7 +29,7 @@ export const AuthScreen: React.FC = () => {
         <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5')] bg-cover bg-center mix-blend-overlay opacity-50"></div>
 
         <div className="relative z-20 flex flex-col justify-center px-16 text-white h-full">
-          <h1 className="text-6xl font-extrabold mb-6 tracking-tight">OFFO</h1>
+          <h1 className="text-6xl font-extrabold mb-6 tracking-tight">OFFO.</h1>
           <h2 className="text-3xl font-bold mb-4">Admin Panel</h2>
           <p className="text-lg opacity-90 max-w-md leading-relaxed">
             Manage your restaurants, branches, and analytics all in one place.
@@ -42,7 +42,7 @@ export const AuthScreen: React.FC = () => {
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden text-center mb-10">
             <h1 className="text-5xl font-extrabold text-offoOrange tracking-tight">
-              OFFO
+              OFFO.
             </h1>
             <p className="text-gray-500 mt-2 font-medium">Admin Panel</p>
           </div>

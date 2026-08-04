@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onLogout }) =
       } md:translate-x-0 md:relative md:flex md:flex-col`}
     >
       <div className="flex items-center justify-center h-16 bg-offoDark-light border-b border-offoDark-light px-4">
-        <h1 className="text-5xl font-bold text-offoOrange">OFFO</h1>
+        <h1 className="text-5xl font-bold text-offoOrange">OFFO.</h1>
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">

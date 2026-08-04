@@ -106,7 +106,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
             <h2 className="text-xl font-bold text-gray-800">
               Processing Payment...
             </h2>
-            <p className="text-gray-500">Redirecting to PhonePe</p>
+            <p className="text-gray-500">Redirecting securely to PhonePe</p>
           </>
         )}
 
@@ -135,7 +135,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
       <header className="p-4 flex items-center border-b">
         <button
           onClick={() =>
-            navigate(orderDetails.schedules ? "/schedule" : "/cart")
+            navigate(orderDetails.schedules ? '/schedule' : '/cart')
           }
         >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
@@ -147,30 +147,49 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
 
       <ScrollableContainer className="p-4">
         <div className="bg-white p-4 rounded-2xl shadow-sm border mb-6">
-          <h2 className="font-bold text-lg mb-3">Order Summary</h2>
+          <h2 className="font-bold text-lg mb-3">Bill Details</h2>
 
           {orderDetails.items.map(({ item, quantity }) => (
-            <div key={item.id} className="flex justify-between text-sm">
+            <div key={item.id} className="flex justify-between text-sm mb-1">
               <span>
-                {quantity}x {item.name}
+                {quantity} × {item.name}
               </span>
+
               <span>₹ {(item.price * quantity).toFixed(2)}</span>
             </div>
           ))}
 
-          <hr className="my-2" />
+          <hr className="my-3" />
 
           <div className="flex justify-between text-sm">
-            <span>Subtotal</span>
+            <span>Items Total</span>
             <span>₹ {orderDetails.subtotal.toFixed(2)}</span>
           </div>
+
           <div className="flex justify-between text-sm">
-            <span>Convenience Fee</span>
+            <span>Packaging Fee</span>
+            <span>₹ 0.00</span>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span>Delivery Fee</span>
+            <span>₹ 0.00</span>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span>Platform Fee</span>
             <span>₹ {orderDetails.convenienceFee.toFixed(2)}</span>
           </div>
 
-          <div className="flex justify-between font-bold mt-2">
-            <span>Total</span>
+          <div className="flex justify-between text-sm">
+            <span>GST (Govt. Tax)</span>
+            <span>₹ {(orderDetails.gst ?? 0).toFixed(2)}</span>
+          </div>
+
+          <hr className="my-3" />
+
+          <div className="flex justify-between font-bold text-base">
+            <span>To Pay</span>
             <span>₹ {orderDetails.total.toFixed(2)}</span>
           </div>
         </div>

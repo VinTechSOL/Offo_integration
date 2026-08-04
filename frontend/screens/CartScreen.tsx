@@ -26,15 +26,27 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOr
   const [bouncingItemId, setBouncingItemId] = useState<number | null>(null);
   const prevCartRef = useRef<CartItem[]>(cart);
 
-  const subtotal = cart.reduce((acc, cartItem) => acc + cartItem.item.price * cartItem.quantity, 0);
-  const convenienceFee = 6.00;
-  const total = subtotal + convenienceFee;
+  const itemSubtotal = cart.reduce(
+    (acc, cartItem) => acc + cartItem.item.price * cartItem.quantity,
+    0,
+  );
+
+  const packagingFee = 0;
+
+  const deliveryFee = 0;
+
+  const convenienceFee = 5;
+
+  const gst = Number((convenienceFee * 0.18).toFixed(2));
+
+  const total =
+    itemSubtotal + gst + packagingFee + deliveryFee + convenienceFee;
 
   useEffect(() => {
     const prevCart = prevCartRef.current;
     
     const oldTotal = prevCart.reduce((acc, ci) => acc + ci.item.price * ci.quantity, 0);
-    if (subtotal !== oldTotal) {
+    if (itemSubtotal !== oldTotal) {
       setHighlightTotal(true);
       setTimeout(() => setHighlightTotal(false), 500);
 
@@ -67,11 +79,11 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOr
     }
 
     prevCartRef.current = cart;
-  }, [cart, subtotal]);
+  }, [cart, itemSubtotal]);
 
   const handleProceed = (isScheduling: boolean) => {
     if (isEditingOrder) return;
-    const orderDetails: OrderDetails = { items: cart, subtotal, convenienceFee, total };
+    const orderDetails: OrderDetails = { items: cart, subtotal: itemSubtotal, convenienceFee, gst, total };
     setOrderDetails(orderDetails);
     navigate(isScheduling ? '/schedule' : '/payment');
   };
@@ -120,15 +132,33 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOr
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2] relative">
       {showClearConfirm && (
-        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20" aria-modal="true" role="dialog">
-            <div className="bg-white p-6 rounded-2xl shadow-xl text-center w-4/5">
-                <h2 className="text-lg font-bold mb-2 text-gray-800">Clear Cart?</h2>
-                <p className="text-gray-600 mb-6">Are you sure you want to remove all items from your cart?</p>
-                <div className="flex justify-center gap-4">
-                    <button onClick={() => setShowClearConfirm(false)} className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold">Cancel</button>
-                    <button onClick={confirmClearCart} className="px-6 py-2 rounded-lg bg-red-500 text-white font-semibold">Clear</button>
-                </div>
+        <div
+          className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="bg-white p-6 rounded-2xl shadow-xl text-center w-4/5">
+            <h2 className="text-lg font-bold mb-2 text-gray-800">
+              Clear Cart?
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to remove all items from your cart?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmClearCart}
+                className="px-6 py-2 rounded-lg bg-red-500 text-white font-semibold"
+              >
+                Clear
+              </button>
             </div>
+          </div>
         </div>
       )}
       <header className="p-4 flex items-center border-b">
@@ -138,81 +168,154 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOr
           </button>
         </div>
         <div className="w-3/5 text-center">
-          <h1 className="text-xl font-bold text-gray-800">{isEditingOrder ? 'Edit Order' : 'Your Cart'}</h1>
+          <h1 className="text-xl font-bold text-gray-800">
+            {isEditingOrder ? 'Edit Order' : 'Your Cart'}
+          </h1>
         </div>
         <div className="w-1/5 text-right">
-          <button onClick={handleClearCart} className="text-sm text-red-500 font-semibold pr-2">Clear All</button>
+          <button
+            onClick={handleClearCart}
+            className="text-sm text-red-500 font-semibold pr-2"
+          >
+            Clear All
+          </button>
         </div>
       </header>
-      
+
       <ScrollableContainer className="p-4 space-y-3">
         {cart.map(({ item, quantity }) => (
-          <div 
-            key={item.id} 
+          <div
+            key={item.id}
             className={`bg-white p-3 rounded-2xl shadow-md flex items-center transition-all duration-300 ease-in-out transform-gpu
-              ${highlightedItem === item.id ? 'ring-2 ring-orange-400 scale-105' : ''}
+              ${
+                highlightedItem === item.id
+                  ? 'ring-2 ring-orange-400 scale-105'
+                  : ''
+              }
               ${bouncingItemId === item.id ? 'animate-bounce-qty' : ''}
-              ${removingItemId === item.id ? 'animate-slide-out' : ''}`
-            }
+              ${removingItemId === item.id ? 'animate-slide-out' : ''}`}
           >
-            <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
+            <img
+              src={item.image}
+              alt={item.name}
+              className="w-16 h-16 rounded-lg object-cover"
+            />
             <div className="flex-grow ml-4">
               <p className="font-bold text-gray-800">{item.name}</p>
               <p className="text-xs text-gray-400">({item.cafe})</p>
               {/* <button onClick={() => handleRemoveItem(item.id)} className="text-xs text-red-500">Remove</button> */}
-              
             </div>
             <div className="text-right">
-                <p className="font-semibold text-gray-800 mb-2">₹ {(item.price * quantity).toFixed(2)}</p>
-                <div className="flex items-center space-x-2 bg-orange-500 text-white rounded-full px-2 py-1">
-                    <button onClick={() => quantity === 1 ? handleRemoveItem(item.id) : updateCartQuantity(item.id, quantity - 1)} className="w-5 h-5 flex items-center justify-center font-bold">-</button>
-                    <span className="w-5 text-center font-medium">{quantity}</span>
-                    <button onClick={() => updateCartQuantity(item.id, quantity + 1)} className="w-5 h-5 flex items-center justify-center font-bold">+</button>
-                </div>
+              <p className="font-semibold text-gray-800 mb-2">
+                ₹ {(item.price * quantity).toFixed(2)}
+              </p>
+              <div className="flex items-center space-x-2 bg-orange-500 text-white rounded-full px-2 py-1">
+                <button
+                  onClick={() =>
+                    quantity === 1
+                      ? handleRemoveItem(item.id)
+                      : updateCartQuantity(item.id, quantity - 1)
+                  }
+                  className="w-5 h-5 flex items-center justify-center font-bold"
+                >
+                  -
+                </button>
+                <span className="w-5 text-center font-medium">{quantity}</span>
+                <button
+                  onClick={() => updateCartQuantity(item.id, quantity + 1)}
+                  className="w-5 h-5 flex items-center justify-center font-bold"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
         ))}
         <div className="pt-2">
-            <button onClick={() => navigate(isEditingOrder ? '/menu' : '/home')} className="w-full text-center py-3 border-2 border-dashed border-orange-400 text-orange-600 font-semibold rounded-xl hover:bg-orange-50 transition-colors">
-              + Add More Items
-            </button>
+          <button
+            onClick={() => navigate(isEditingOrder ? '/menu' : '/home')}
+            className="w-full text-center py-3 border-2 border-dashed border-orange-400 text-orange-600 font-semibold rounded-xl hover:bg-orange-50 transition-colors"
+          >
+            + Add More Items
+          </button>
         </div>
       </ScrollableContainer>
 
       {cart.length > 0 && (
         <footer className="bg-white p-4 border-t rounded-t-2xl">
           <div className="space-y-2 text-sm text-gray-600">
+            <h3 className="text-base font-bold text-gray-800 mb-2">
+              Bill Details
+            </h3>
+
             {cart.map(({ item, quantity }) => (
               <div key={item.id} className="flex justify-between">
-                <span>{quantity}x {item.name}</span>
+                <span>
+                  {quantity} × {item.name}
+                </span>
+
                 <span>₹ {(item.price * quantity).toFixed(2)}</span>
               </div>
             ))}
-            <hr className="my-2"/>
-            <div className="flex justify-between font-semibold">
-              <span>Item Subtotal</span>
-              <span>₹ {subtotal.toFixed(2)}</span>
-            </div>
+
+            <hr className="my-2" />
+
             <div className="flex justify-between">
-              <span>Convenience Fee</span>
+              <span>Items Total</span>
+              <span>₹ {itemSubtotal.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Packaging Fee</span>
+              <span>₹ {packagingFee.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Delivery Fee</span>
+              <span>₹ {deliveryFee.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Platform Fee</span>
               <span>₹ {convenienceFee.toFixed(2)}</span>
             </div>
-            <div className={`flex justify-between font-bold text-base text-gray-800 p-2 rounded-lg transition-all duration-300 ${highlightTotal ? 'bg-orange-100 scale-105' : ''}`}>
-              <span>Total:</span>
+
+            <div className="flex justify-between">
+              <span>GST (Govt. Tax)</span>
+              <span>₹ {gst.toFixed(2)}</span>
+            </div>
+
+            <hr className="my-2" />
+
+            <div
+              className={`flex justify-between font-bold text-base text-gray-800 p-2 rounded-lg transition-all duration-300 ${
+                highlightTotal ? 'bg-orange-100 scale-105' : ''
+              }`}
+            >
+              <span>To Pay</span>
               <span>₹ {total.toFixed(2)}</span>
             </div>
           </div>
           <div className="mt-4">
             {isEditingOrder ? (
-               <button onClick={onUpdateOrder} className="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md">
-                  Update Order - ₹ {total.toFixed(2)}
-               </button>
+              <button
+                onClick={onUpdateOrder}
+                className="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md"
+              >
+                Update Order - ₹ {total.toFixed(2)}
+              </button>
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={onOrderNow} className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl shadow-md">
+                <button
+                  onClick={onOrderNow}
+                  className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl shadow-md"
+                >
                   Order Now
                 </button>
-                <button onClick={onSchedule} className="w-full bg-orange-100 text-orange-600 font-bold py-3 rounded-xl border border-orange-500">
+                <button
+                  onClick={onSchedule}
+                  className="w-full bg-orange-100 text-orange-600 font-bold py-3 rounded-xl border border-orange-500"
+                >
                   Schedule Order
                 </button>
               </div>

@@ -1,9 +1,10 @@
 import api from "./client";
+import { BranchFormData } from "@/components/branch/BranchFormtypes";
+import { buildBranchFormData } from "./BranchFormDataBuilder";
 
 export const CafeApi = {
-
   getCafeterias: async () => {
-    const res = await api.get("/vendors/cafeterias");
+    const res = await api.get('/vendors/cafeterias');
     return res.data;
   },
 
@@ -12,7 +13,7 @@ export const CafeApi = {
     phone_number: string;
     email_id?: string;
   }) => {
-    const res = await api.post("/vendors/cafeterias", data);
+    const res = await api.post('/vendors/cafeterias', data);
     return res.data;
   },
 
@@ -21,38 +22,39 @@ export const CafeApi = {
     return res.data;
   },
 
+  getBranchById: async (branchId: number) => {
+    const res = await api.get(`/vendors/branches/${branchId}`);
+    return res.data;
+  },
+
   updateBranchStatus: async (branchId: number, isActive: boolean) => {
     const res = await api.patch(`/vendors/branches/${branchId}/status`, {
-      is_active: isActive
+      is_active: isActive,
     });
     return res.data;
   },
 
-  updateBranch: async (
-    branchId: number,
-    payload: {
-      branch_name: string;
-      city_id: number;
-      campus_id: number;
-      building_id: number | null;
-      opens_at: string;
-      closes_at: string;
-      is_active: boolean;
-    }
-  ) => {
-    const res = await api.patch(
-      `/vendors/branches/${branchId}`,
-      payload
-    );
+  updateBranch: async (branchId: number, data: BranchFormData) => {
+    const formData = buildBranchFormData(null, data);
+
+    const res = await api.patch(`/vendors/branches/${branchId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
     return res.data;
   },
 
-  createBranch: async (formData: FormData) => {
-    const res = await api.post("/vendors/branches", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
-    return res.data;
-  }
+  createBranch: async (cafeId: string | number, data: BranchFormData) => {
+    const formData = buildBranchFormData(cafeId, data);
 
+    const res = await api.post('/vendors/branches', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return res.data;
+  },
 };

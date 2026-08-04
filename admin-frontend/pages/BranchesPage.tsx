@@ -6,7 +6,8 @@ import { Branch } from '../types';
 import { useBranch } from '../context/BranchContext';
 import { useCafe } from '../context/CafeContext';
 import { useNavigate } from 'react-router-dom';
-
+import { BranchForm } from '@/components/branch/BranchForm';
+import { BranchFormData, initialBranchFormData } from '@/components/branch/BranchFormtypes';
 import { CafeApi } from '@/apis/CafeApi';
 import { StaffApi } from '@/apis/StaffApi';
 
@@ -20,22 +21,29 @@ export const BranchesPage: React.FC = () => {
   /* ================= State ================= */
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
-  const [formData, setFormData] = useState<Partial<Branch>>({});
-
+  const [editingBranch, setEditingBranch] = useState<BranchFormData | null>(null);
+  const [editingBranchId, setEditingBranchId] = useState<number | null>(null);
   const [credentialModalOpen, setCredentialModalOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-
+  
   const [isEditingCredential, setIsEditingCredential] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const [vendorStaffId, setVendorStaffId] = useState<number | null>(null);
 
+  const [createdVendor, setCreatedVendor] = useState<{
+    firstName: string;
+    lastName: string;
+    username: string;
+    temporaryPassword: string;
+  } | null>(null);
+
+  const [showVendorCreatedModal, setShowVendorCreatedModal] = useState(false);
+
   const [credentialForm, setCredentialForm] = useState({
     firstName: '',
     lastName: '',
     username: '',
-    password: '',
     isActive: true,
     createdAt: '',
     lastReset: ''
@@ -144,7 +152,6 @@ export const BranchesPage: React.FC = () => {
           firstName: vendor.first_name,
           lastName: vendor.last_name,
           username: vendor.username,
-          password: "",
           isActive: vendor.is_active,
           createdAt: vendor.created_at,
           lastReset: vendor.created_at
@@ -168,7 +175,6 @@ export const BranchesPage: React.FC = () => {
           firstName: '',
           lastName: '',
           username: '',
-          password: '',
           isActive: true,
           createdAt: '',
           lastReset: ''
@@ -211,28 +217,31 @@ export const BranchesPage: React.FC = () => {
 
       } else {
 
-        await StaffApi.createVendor({
+        const result = await StaffApi.createVendor({
           first_name: credentialForm.firstName,
           last_name: credentialForm.lastName,
           username: credentialForm.username,
-          password: credentialForm.password,
           branch_id: Number(selectedBranch.id),
         });
 
+        setCreatedVendor({
+          firstName: result.vendor.first_name,
+          lastName: result.vendor.last_name,
+          username: result.vendor.username,
+          temporaryPassword: result.temporary_password,
+        });
 
-        setBranches(prev =>
-          prev.map(b =>
-            b.id === selectedBranch.id
-              ? { ...b, hasVendor: true}
-              : b
-          )
+        setBranches((prev) =>
+          prev.map((b) =>
+            b.id === selectedBranch.id ? { ...b, hasVendor: true } : b,
+          ),
         );
+
+        setCredentialModalOpen(false);
+        setShowVendorCreatedModal(true);
 
       }
 
-      setCredentialModalOpen(false);
-
-      openCredentialModal(selectedBranch);
 
     } catch (err) {
 
@@ -256,10 +265,14 @@ export const BranchesPage: React.FC = () => {
 
       const result = await StaffApi.resetVendorPassword(vendorStaffId);
 
-      setCredentialForm(prev => ({
-        ...prev,
-        password: result.new_password,
-      }));
+      setCreatedVendor({
+        firstName: credentialForm.firstName,
+        lastName: credentialForm.lastName,
+        username: credentialForm.username,
+        temporaryPassword: result.new_password,
+      });
+      setCredentialModalOpen(false);
+      setShowVendorCreatedModal(true);
 
 
     } catch (err) {
@@ -271,85 +284,93 @@ export const BranchesPage: React.FC = () => {
   };
 
   const handleCopyCredentials = () => {
+    if (!createdVendor) return;
 
-    const text = `Username: ${credentialForm.username}
-Password: ${credentialForm.password}`;
+    const text = `Vendor: ${createdVendor.firstName} ${createdVendor.lastName}
+
+  Username: ${createdVendor.username}
+
+  Temporary Password: ${createdVendor.temporaryPassword}`;
 
     navigator.clipboard.writeText(text);
 
     setCopied(true);
 
     setTimeout(() => setCopied(false), 3000);
-
   };
 
   /* ================= Branch Edit ================= */
 
-  const openEditModal = (branch: Branch) => {
+  const openEditModal = async (branch: Branch) => {
+    try {
+      const data = await CafeApi.getBranchById(Number(branch.id));
 
-    setEditingBranch(branch);
+      setEditingBranch({
+        ...initialBranchFormData,
 
-    setFormData({
-      name: branch.name,
+        branchName: data.branch_name,
 
-      cityId: branch.cityId,
-      campusId: branch.campusId,
+        cityId: String(data.city_id),
+        campusId: String(data.campus_id),
+        buildingId: data.building_id ? String(data.building_id) : '',
 
-      buildingId: branch.buildingId,
+        opensAt: data.opens_at,
+        closesAt: data.closes_at,
 
-      opensAt: branch.opensAt,
-      closesAt: branch.closesAt,
+        latitude: data.latitude?.toString() ?? '',
+        longitude: data.longitude?.toString() ?? '',
 
-      status: branch.status,
-    });
+        registeredAddress: data.registered_address ?? '',
+        businessAddress: data.business_address ?? '',
+        businessType: data.business_type ?? '',
 
-    setIsEditModalOpen(true);
+        fssaiLicenseNumber: data.fssai_license_number ?? '',
 
+        gstRegistrationNumber: data.gst_registration_number ?? '',
+
+        accountHolderName: data.account_holder_name ?? '',
+
+        bankAccountNumber: data.bank_account_number ?? '',
+
+        ifscCode: data.ifsc_code ?? '',
+
+        registeredOwnerName: data.registered_owner_name ?? '',
+
+        ownerPhoneNumber: data.owner_phone_number ?? '',
+
+        ownerEmail: data.owner_email ?? '',
+
+        isActive: data.is_active,
+
+        documents: [],
+      });
+      setEditingBranchId(Number(branch.id));
+      setIsEditModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to load branch.');
+    }
   };
 
-  const handleBranchSave = async (
-    e: React.FormEvent
-  ) => {
-
-    e.preventDefault();
-
-    if (!editingBranch) return;
+  const handleBranchSave = async (form: BranchFormData) => {
+    if (!editingBranchId) return;
 
     try {
+      const updated = await CafeApi.updateBranch(editingBranchId, form);
 
-      const updated = await CafeApi.updateBranch(
-        Number(editingBranch.id),
-        {
-          branch_name: formData.name || "",
-
-          city_id: Number(formData.cityId),
-
-          campus_id: Number(formData.campusId),
-
-          building_id: formData.buildingId
-            ? Number(formData.buildingId)
-            : null,
-
-          opens_at: formData.opensAt || "",
-
-          closes_at: formData.closesAt || "",
-
-          is_active:
-            formData.status === "Active",
-        }
-      );
-
-      setBranches(prev =>
-        prev.map(branch =>
-          branch.id === editingBranch.id
+      setBranches((prev) =>
+        prev.map((branch) =>
+          branch.id === String(editingBranchId)
             ? {
                 ...branch,
 
                 name: updated.branch_name,
 
                 cityId: String(updated.city_id),
+                cityName: updated.city_name,
 
                 campusId: String(updated.campus_id),
+                campusName: updated.campus_name,
 
                 buildingId: updated.building_id
                   ? String(updated.building_id)
@@ -358,43 +379,33 @@ Password: ${credentialForm.password}`;
                 buildingName: updated.building_name,
 
                 opensAt: updated.opens_at,
-
                 closesAt: updated.closes_at,
 
-                status: updated.is_active
-                  ? "Active"
-                  : "Disabled",
+                imageUrl: updated.image_url,
+
+                status: updated.is_active ? 'Active' : 'Disabled',
               }
-            : branch
-        )
+            : branch,
+        ),
       );
 
-      setIsEditModalOpen(false);
-
       setEditingBranch(null);
-
+      setEditingBranchId(null);
+      setIsEditModalOpen(false);
     } catch (err) {
-
       console.error(err);
 
-      alert("Failed to update branch");
-
+      alert('Failed to update branch.');
     }
-
   };
 
 
   const handleBranchStatusToggle = async (branch: Branch) => {
     try {
-      const updated = await CafeApi.updateBranch(Number(branch.id), {
-        branch_name: branch.name,
-        city_id: Number(branch.cityId),
-        campus_id: Number(branch.campusId),
-        building_id: branch.buildingId ? Number(branch.buildingId) : null,
-        opens_at: branch.opensAt || '',
-        closes_at: branch.closesAt || '',
-        is_active: branch.status !== 'Active',
-      });
+      const updated = await CafeApi.updateBranchStatus(
+        Number(branch.id), 
+        branch.status !== 'Active',
+      );
 
       setBranches((prev) =>
         prev.map((b) =>
@@ -418,13 +429,10 @@ Password: ${credentialForm.password}`;
   ========================================================= */
 
   return (
-
     <div className="space-y-10">
-
       {/* Header */}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             Vendors Management
@@ -436,7 +444,6 @@ Password: ${credentialForm.password}`;
         </div>
 
         <div className="flex gap-3">
-
           <button
             onClick={() => navigate(constants.routes.VIEW_CAFES)}
             className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50"
@@ -464,18 +471,14 @@ Password: ${credentialForm.password}`;
           >
             + Add Vendor
           </button>
-
         </div>
-
       </div>
 
       {/* Branch Cards */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {branches.map(b => {
-
-          const cafe = cafes.find(c => c.id === b.cafeId);
+        {branches.map((b) => {
+          const cafe = cafes.find((c) => c.id === b.cafeId);
 
           return (
             <div
@@ -581,98 +584,49 @@ Password: ${credentialForm.password}`;
               </div>
             </div>
           );
-
         })}
-
       </div>
 
       {/* ================= Edit Branch Modal ================= */}
 
       <Modal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => {
+          setEditingBranch(null);
+          setIsEditModalOpen(false);
+        }}
         title="Edit Branch"
       >
-
-        <form
-          onSubmit={handleBranchSave}
-          className="space-y-4"
-        >
-
-          <FormField
-            label="Branch Name"
-            value={formData.name || ""}
-            onChange={(e: any) =>
-              setFormData({
-                ...formData,
-                name: e.target.value,
-              })
-            }
+        {editingBranch && (
+          <BranchForm
+            initialData={editingBranch}
+            submitText="Save Changes"
+            onSubmit={handleBranchSave}
+            onBack={() => {
+              setEditingBranch(null);
+              setEditingBranchId(null);
+              setIsEditModalOpen(false);
+            }}
           />
-
-          <FormField
-            type="time"
-            label="Opening Time"
-            value={formData.opensAt || ""}
-            onChange={(e: any) =>
-              setFormData({
-                ...formData,
-                opensAt: e.target.value,
-              })
-            }
-          />
-
-
-          <FormField
-            type="time"
-            label="Closing Time"
-            value={formData.closesAt || ""}
-            onChange={(e: any) =>
-              setFormData({
-                ...formData,
-                closesAt: e.target.value,
-              })
-            }
-          />
-
-          <div className="flex justify-end gap-3">
-
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setIsEditModalOpen(false)
-              }
-            >
-              Cancel
-            </Button>
-
-            <Button type="submit">
-              Save Changes
-            </Button>
-
-          </div>
-
-        </form>
-
+        )}
       </Modal>
-
-
 
       {/* ================= Credential Modal ================= */}
 
       <Modal
         isOpen={credentialModalOpen}
-        onClose={() => setCredentialModalOpen(false)}
+        onClose={() => {
+          setCredentialModalOpen(false);
+          setSelectedBranch(null);
+          setVendorStaffId(null);
+          setIsEditingCredential(false);
+        }}
         title="Vendor Credentials"
       >
-
         <div className="space-y-6">
-
           {!isEditingCredential ? (
-
             <>
               <div className="bg-gray-50 rounded-xl p-5 border">
-
                 <p className="text-xs uppercase text-gray-400 font-semibold">
                   Vendor Profile
                 </p>
@@ -681,116 +635,137 @@ Password: ${credentialForm.password}`;
                   {credentialForm.firstName} {credentialForm.lastName}
                 </h3>
 
+                <p className="text-sm text-gray-500 mt-1">
+                  {selectedBranch?.name}
+                </p>
               </div>
 
-              <div className="space-y-3">
-
+              <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span>Username</span>
+                  <span className="font-medium">Username</span>
+
                   <span>{credentialForm.username}</span>
                 </div>
 
                 <div className="space-y-2">
-
                   <div className="flex justify-between items-center">
-
-                    <span>Password</span>
+                    <span className="font-medium">Password</span>
 
                     <div className="flex items-center gap-3">
-
-                      <span className="text-gray-500">
-                        {credentialForm.password
-                          ? credentialForm.password
-                          : "Password hidden"}
-                      </span>
+                      <span className="text-gray-500">Password hidden</span>
 
                       <button
                         onClick={handleResetPassword}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                       >
                         Reset Password
                       </button>
-
                     </div>
-            
                   </div>
 
-                  {!credentialForm.password && (
-                    <p className="text-xs text-gray-500">
-                      Passwords cannot be viewed after creation for security reasons.
-                      Click <strong>Reset Password</strong> to generate a temporary password only if one don't remember the password,
-                      then share it with the vendor.
-                    </p>
-                  )}
-
+                  <p className="text-xs text-gray-500">
+                    Note: Password cannot be viewed after creation. Reset Password to
+                    generate a temporary password.
+                  </p>
+                
                 </div>
 
+                <div className="flex justify-between">
+                  <span>Status</span>
+
+                  <span
+                    className={
+                      credentialForm.isActive
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }
+                  >
+                    {credentialForm.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>Created</span>
+
+                  <span>{formatDate(credentialForm.createdAt)}</span>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3">
-
-                <Button onClick={() => setCredentialModalOpen(false)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setCredentialModalOpen(false)}
+                >
                   Close
                 </Button>
 
-                <Button 
-                  onClick={ () => {
-                    setIsEditingCredential(true);
-                  }}
-                >
+                <Button onClick={() => setIsEditingCredential(true)}>
                   Edit
                 </Button>
-
               </div>
-
             </>
-
           ) : (
-
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  First Name
+                </label>
 
-              <FormField
-                label="First Name"
-                value={credentialForm.firstName}
-                onChange={(e: any) =>
-                  setCredentialForm({ ...credentialForm, firstName: e.target.value })
-                }
-              />
-
-              <FormField
-                label="Last Name"
-                value={credentialForm.lastName}
-                onChange={(e: any) =>
-                  setCredentialForm({ ...credentialForm, lastName: e.target.value })
-                }
-              />
-
-              <FormField
-                label="Username"
-                value={credentialForm.username}
-                onChange={(e: any) =>
-                  setCredentialForm({ ...credentialForm, username: e.target.value })
-                }
-              />
-
-
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-
-                <p className="text-sm text-amber-800 font-medium">
-                  Password cannot be viewed or edited.
-                </p>
-
-                <p className="text-xs text-amber-700 mt-1">
-                  If the vendor forgets the password, use
-                  <strong> Reset Password</strong> from the credentials screen.
-                  A temporary password will be generated.
-                </p>
-
+                <input
+                  value={credentialForm.firstName}
+                  onChange={(e) =>
+                    setCredentialForm({
+                      ...credentialForm,
+                      firstName: e.target.value,
+                    })
+                  }
+                  className="w-full border rounded-lg p-3"
+                />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Last Name
+                </label>
+
+                <input
+                  value={credentialForm.lastName}
+                  onChange={(e) =>
+                    setCredentialForm({
+                      ...credentialForm,
+                      lastName: e.target.value,
+                    })
+                  }
+                  className="w-full border rounded-lg p-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Username
+                </label>
+
+                <input
+                  value={credentialForm.username}
+                  onChange={(e) =>
+                    setCredentialForm({
+                      ...credentialForm,
+                      username: e.target.value,
+                    })
+                  }
+                  className="w-full border rounded-lg p-3"
+                />
+              </div>
+
+              {vendorStaffId && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm text-amber-800">
+                    Password cannot be edited. Use Reset Password instead.
+                  </p>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3">
-
                 <Button
                   variant="ghost"
                   onClick={() => setIsEditingCredential(false)}
@@ -798,43 +773,94 @@ Password: ${credentialForm.password}`;
                   Cancel
                 </Button>
 
-                <Button onClick={handleSaveVendor}>
-                  Save
-                </Button>
-
+                <Button onClick={handleSaveVendor}>Save</Button>
               </div>
-
             </div>
-
           )}
-
         </div>
-
       </Modal>
 
-    </div>
+      <Modal
+        isOpen={showVendorCreatedModal}
+        onClose={() => {
+          setShowVendorCreatedModal(false);
+          setCreatedVendor(null);
 
+          if (selectedBranch) {
+            openCredentialModal(selectedBranch);
+          }
+        }}
+        title="Vendor Credentials Generated"
+      >
+        {createdVendor && (
+          <div className="space-y-6">
+            <div className="rounded-xl bg-green-50 border border-green-200 p-5 text-center">
+              <div className="text-4xl mb-3">✅</div>
+
+              <h3 className="text-lg font-semibold text-green-700">
+                Credentials Generated Successfully
+              </h3>
+
+              <p className="text-sm text-gray-600 mt-2">
+                Share these credentials securely with the vendor.
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-4 space-y-3">
+              <div className="flex justify-between">
+                <span className="font-medium">Vendor</span>
+
+                <span>
+                  {createdVendor.firstName} {createdVendor.lastName}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-medium">Username</span>
+
+                <span>{createdVendor.username}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-medium">Temporary Password</span>
+
+                <span className="font-mono text-blue-600">
+                  {createdVendor.temporaryPassword}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+              <p className="text-sm text-yellow-800">
+                Share these credentials with the vendor. Ask them to log in once
+                using the temporary password and immediately change it using the
+                Forgot Password option.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={handleCopyCredentials}>
+                {copied ? 'Copied!' : 'Copy Credentials'}
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setShowVendorCreatedModal(false);
+                  setCreatedVendor(null);
+
+                  if (selectedBranch) {
+                    openCredentialModal(selectedBranch);
+                  }
+                }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
   );
 
 };
 
-/* ================= Reusable Form Field ================= */
-
-const FormField = ({ label, value, onChange, type = "text" }: any) => (
-
-  <div>
-
-    <label className="block text-sm font-medium text-gray-600 mb-1">
-      {label}
-    </label>
-
-    <input
-      type={type}
-      value={value}
-      onChange={onChange}
-      className="w-full border rounded-lg p-2"
-    />
-
-  </div>
-
-);

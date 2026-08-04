@@ -49,6 +49,7 @@ export interface OrderDetails {
   items: CartItem[];
   subtotal: number;
   convenienceFee: number;
+  gst: number;
   total: number;
   schedules?: ScheduledItem[];
   paymentMethod?: string;

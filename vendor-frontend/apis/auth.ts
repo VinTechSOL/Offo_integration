@@ -1,5 +1,9 @@
 import api from "./client";
 
+// =========================================================
+// LOGIN
+// =========================================================
+
 export interface StaffLoginPayload {
   username: string;
   password: string;
@@ -30,4 +34,63 @@ export async function getStaffMe() {
 export function staffLogout() {
   localStorage.removeItem("access_token");
   window.location.href = "/";
+}
+
+// =========================================================
+// FORGOT PASSWORD
+// =========================================================
+
+export interface StaffSendOTPRequest {
+  mobile_number: string;
+}
+
+export interface StaffVerifyOTPRequest {
+  mobile_number: string;
+  otp: string;
+}
+
+export interface StaffVerifyOTPResponse {
+  reset_token: string;
+}
+
+export interface StaffResetPasswordRequest {
+  reset_token: string;
+  new_password: string;
+}
+
+export interface StaffResetPasswordResponse {
+  message: string;
+}
+
+export async function sendResetOTP(
+  payload: StaffSendOTPRequest
+) {
+  const res = await api.post(
+    "/staff/auth/send-reset-otp",
+    payload
+  );
+
+  return res.data;
+}
+
+export async function verifyResetOTP(
+  payload: StaffVerifyOTPRequest
+): Promise<StaffVerifyOTPResponse> {
+  const res = await api.post<StaffVerifyOTPResponse>(
+    "/staff/auth/verify-reset-otp",
+    payload
+  );
+
+  return res.data;
+}
+
+export async function resetStaffPassword(
+  payload: StaffResetPasswordRequest
+): Promise<StaffResetPasswordResponse> {
+  const res = await api.post<StaffResetPasswordResponse>(
+    "/staff/auth/reset-password",
+    payload
+  );
+
+  return res.data;
 }

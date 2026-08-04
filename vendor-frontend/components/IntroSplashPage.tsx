@@ -9,8 +9,6 @@ interface IntroSplashPageProps {
   showBrand?: boolean;
 }
 
-
-
 export const IntroSplashPage: React.FC<IntroSplashPageProps> = ({
   backgroundImage,
   title,
@@ -35,19 +33,20 @@ export const IntroSplashPage: React.FC<IntroSplashPageProps> = ({
       
       {/* Content */}
       <div className="relative z-10 text-center animate-fadeIn">
-        {/* OFFO Brand Logo with Dot */}
+        {/* OFFO Brand Logo with Dot - All Orange */}
         {showBrand && (
           <>
             <div className="flex items-center justify-center gap-1 mb-3">
               <span className="text-5xl sm:text-7xl font-black text-[#E66A00] drop-shadow-lg">O</span>
-              <span className="text-5xl sm:text-7xl font-black text-white drop-shadow-lg">FF</span>
+              <span className="text-5xl sm:text-7xl font-black text-[#E66A00] drop-shadow-lg">F</span>
+              <span className="text-5xl sm:text-7xl font-black text-[#E66A00] drop-shadow-lg">F</span>
               <span className="text-5xl sm:text-7xl font-black text-[#E66A00] drop-shadow-lg">O</span>
-              <span className="text-5xl sm:text-7xl font-black text-white drop-shadow-lg">.</span>
+              <span className="text-5xl sm:text-7xl font-black text-[#E66A00] drop-shadow-lg">.</span>
             </div>
 
             {/* Tagline */}
             <p className={`text-sm sm:text-base ${textColorClass} opacity-60 mb-6 drop-shadow-md tracking-[0.2em] uppercase`}>
-              Order Food From Office
+              Order Food From Office.
             </p>
           </>
         )}
@@ -57,11 +56,8 @@ export const IntroSplashPage: React.FC<IntroSplashPageProps> = ({
           {title}
         </h2>
         
-        {/* Subtitle */}
-        <p className={`text-base sm:text-lg ${textColorClass} opacity-80 drop-shadow-md`}>
-          {subtitle}
-        </p>
+
       </div>
     </div>
   );
-};  
+};
