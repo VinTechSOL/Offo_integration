@@ -16,31 +16,31 @@ enum AppScreen {
 
 const SPLASH_PAGE_CONFIGS = [
   {
-    backgroundImage: '../../assets/food items/chickentikka.jpg', // Example: Butter Chicken (from data.ts)
+    backgroundImage: '../../assets/food items/chikentikka.jpg', // Example: Butter Chicken (from data.ts)
     title: 'Savor Every Flavor',
     subtitle: 'From gourmet meals to everyday delights, bring your culinary masterpieces to hungry customers.',
     backgroundColorClass: 'bg-dark-navy',
     textColorClass: 'text-white',
   },
   {
-    backgroundImage: '../../assets/food items/coffeee.jpg', // Example: Coffee (from data.ts)
+    backgroundImage: '../../assets/food items/cofeee.jpg', // Example: Coffee (from data.ts)
     title: 'Growing Success Together',
     subtitle: 'Capture the essence of corporate dining with seamless food solutions.',
     backgroundColorClass: 'bg-dark-navy',
     textColorClass: 'text-white',
   },
   {
-    backgroundImage: '../../assets/food items/mutton.jpg', // Example: Samosa (from data.ts)
+    backgroundImage: '../../assets/food items/muton.jpg', // Example: Samosa (from data.ts)
     title: 'Seamless Management, Delighted Customers',
     subtitle: 'OFFO Vendor: Your partner in streamlined operations and growth.',
-    backgroundColorClass: 'bg-offo-orange',
+    backgroundColorClass: 'bg-dark-navy',
     textColorClass: 'text-white',
   },
 ];
 
 // Extracted and renamed original SplashScreen for clarity
 const BrandSplashScreen: React.FC = () => {
-  const brandName = "OFFO";
+  const brandName = "OFFO.";
   return (
     <div className="min-h-screen flex justify-center items-center bg-offo-tan-light">
       <div className="animate-fadeIn">

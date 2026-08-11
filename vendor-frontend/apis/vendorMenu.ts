@@ -19,7 +19,7 @@ const normalizeMenu = (rows: any[]): MenuItem[] => {
 export const VendorMenuApi = {
 
   async getMenu(): Promise<MenuItem[]> {
-    const res = await api.get("/menu/branchMenu/");
+    const res = await api.get("/menu/branchMenu");
     return normalizeMenu(res.data);
   },
 

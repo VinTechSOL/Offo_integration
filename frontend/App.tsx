@@ -20,6 +20,8 @@ import MenuScreen from "./screens/MenuScreen";
 import CartScreen from "./screens/CartScreen";
 import ScheduleScreen from "./screens/ScheduleScreen";
 import PaymentScreen from "./screens/PaymentScreen";
+import PaymentStatusScreen from "./screens/PaymentStatusScreen";
+import PaymentFailedScreen from "./screens/PaymentFailedScreen";
 import SuccessScreen from "./screens/SuccessScreen";
 import OrdersScreen from "./screens/OrdersScreen";
 import HelpScreen from "./screens/HelpScreen";
@@ -308,10 +310,7 @@ const App: React.FC = () => {
     <div className="min-h-[100dvh] w-full bg-[#F3DDCA] sm:bg-slate-900 flex justify-center items-center overflow-hidden p-0">
       <div className="relative bg-[#F3DDCA] overflow-hidden w-full h-[100dvh] max-w-[412px] max-h-[892px] sm:rounded-[3rem] sm:shadow-2xl sm:border-8 sm:border-slate-800">
         <Routes>
-          <Route
-            path="/"
-            element={<Navigate to='/onboarding' replace />}
-          />
+          <Route path="/" element={<Navigate to="/onboarding" replace />} />
 
           <Route
             path="/onboarding"
@@ -477,6 +476,10 @@ const App: React.FC = () => {
               )
             }
           />
+
+          <Route path="/payment/status" element={<PaymentStatusScreen />} />
+
+          <Route path="/payment-failed" element={<PaymentFailedScreen />} />
 
           <Route
             path="/success"

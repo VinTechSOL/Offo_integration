@@ -5,7 +5,7 @@ from sqlalchemy import text
 from contextlib import asynccontextmanager
 from app.core.database import get_db, engine
 from app.core.redis import redis_client
-import os
+
 from app.modules.auth.api import router as auth_router
 from app.modules.users.api import router as users_router
 from app.modules.vendor.api import router as vendor_router
@@ -16,31 +16,28 @@ from app.modules.notifications.api import router as notifications_router
 from app.modules.staff.api import router as staff_auth_router
 from app.modules.payments.api import router as payments_router
 from app.modules.locations.api import router as locations_router
-from app.workers.dev_scheduler import start_scheduler,shutdown_scheduler
 from app.modules.payments.gateways.phonepe.webhook import router as phonepe_webhook_router
 from app.modules.reports.api import router as reports_router
 from app.modules.crm.api import router as crm_router
 from app.middlewares.rate_limit import RateLimitMiddleware
+from contextlib import asynccontextmanager
+from app.modules.orders.scheduler_service import ( start_scheduler, stop_scheduler,)
 
 
 
-
-'''
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #Startup
-    
-    print("application start")
+
     start_scheduler()
+
     yield
-    #Shutdown
-    print("application stop")
-    shutdown_scheduler()
-'''
+
+    stop_scheduler()
+
 app = FastAPI(
     title="OFFO Backend",
     version="1.0.0",
-    #lifespan=lifespan
+    lifespan=lifespan
 )
 
 app.include_router(auth_router)
@@ -61,7 +58,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://localhost:3001"
+        "http://localhost:3001",
         
     ],
     allow_credentials=True,

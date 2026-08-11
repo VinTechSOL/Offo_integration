@@ -58,7 +58,33 @@ class PaymentAttempt(Base):
     )
 
     gateway: Mapped[str] = mapped_column(String(20), nullable=False)
-    gateway_transaction_id: Mapped[str | None] = mapped_column(String(100), unique=True)
+    # OFFO merchant order id sent to PhonePe
+    merchant_order_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+    )
+
+    # PhonePe generated order id
+    phonepe_order_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+    )
+    
+    gateway_transaction_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+    )
+
+    merchant_refund_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+    )
+
+    gateway_refund_id: Mapped[str | None] = mapped_column(
+        String(100),
+       unique=True,
+    )
+    
 
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -73,9 +99,3 @@ class PaymentAttempt(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     intent = relationship("PaymentIntent", back_populates="attempts")
-
-    
-
-    
-
-

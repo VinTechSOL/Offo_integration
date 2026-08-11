@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type { OrderDetails } from "../types";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
-import CheckIcon from "../components/icons/CheckIcon";
 import ScrollableContainer from "../components/ScrollableContainer";
 import { placeOrderApi } from "../api/order";
+import { initiatePaymentApi } from "@/api/payment";
+
+
 
 const phonePeMethod = {
   name: "PhonePe",
@@ -22,110 +24,67 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
 }) => {
 
   const navigate = useNavigate();
-  const [paymentStatus, setPaymentStatus] = useState<
-    "idle" | "processing" | "success"
-  >("idle");
-
-  // ============================
-  // PAYMENT ANIMATION CONTROLLER
-  // ============================
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
-    if (paymentStatus === "processing") {
-      timer = setTimeout(() => {
-        setPaymentStatus("success");
-      }, 2000);
-    }
-
-    if (paymentStatus === "success") {
-      timer = setTimeout(() => {
-        navigate("/success"); // or "orders" later
-      }, 1500);
-    }
-
-    return () => clearTimeout(timer);
-  }, [paymentStatus, navigate]);
+  const [loading, setLoading] = useState(false);
 
   // ============================
   // PLACE ORDER HANDLER
   // ============================
   const handlePlaceOrder = async () => {
-    try {
-      // 🔹 Start animation immediately
-      setPaymentStatus("processing");
+    if(loading){
+      return;
+    }
 
-      // 🔹 Prepare payload
+    setLoading(true);
+
+    try {
       let payload: any = {
-        order_type: "INSTANT",
+        order_type: 'INSTANT',
       };
 
-
-      // If schedules exist → Scheduled Order
       if (orderDetails.schedules && orderDetails.schedules.length > 0) {
         payload = {
-          order_type: "SCHEDULED",
+          order_type: 'SCHEDULED',
           schedules: orderDetails.schedules.map((s) => ({
-            scheduled_date: s.date.toLocaleDateString("en-CA"),
+            scheduled_date: s.date.toLocaleDateString('en-CA'),
             scheduled_time: s.time,
           })),
-          repeat_weekly: false, // repeat already expanded in ScheduleScreen
+          repeat_weekly: false,
         };
       }
 
-      console.log("placing order payload:",payload)
+      const orderResponse = await placeOrderApi(payload);
 
-      // 🔥 Backend call
-      await placeOrderApi(payload);
+      const orderId = orderResponse.order_id ?? orderResponse.order_ids?.[0];
 
-      // ✅ Do nothing else
-      // animation continues via useEffect
-    } catch (err) {
+      if (!orderId) {
+        throw new Error('Order ID missing');
+      }
+
+
+
+      const payment = await initiatePaymentApi(orderId);
+
+
+      if (!payment.checkout_url) {
+        throw new Error('Checkout URL missing');
+      }
+
+      sessionStorage.setItem('pendingOrderId', String(orderId));
+
+      window.location.assign(payment.checkout_url);
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to place order. Please try again.");
-      setPaymentStatus("idle");
+
+      const message = err?.response?.data?.detail ?? 'Unable to start payment.';
+
+      alert(message);
+
+      setLoading(false);
     }
   };
 
   const amountToPay = orderDetails.total;
 
-  // ============================
-  // PROCESSING / SUCCESS UI
-  // ============================
-  if (paymentStatus !== "idle") {
-    return (
-      <div className="flex flex-col h-full bg-white items-center justify-center p-8 text-center">
-        {paymentStatus === "processing" && (
-          <>
-            <img
-              src={phonePeMethod.icon}
-              alt={phonePeMethod.name}
-              className="h-20 mb-6"
-            />
-            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
-            <h2 className="text-xl font-bold text-gray-800">
-              Processing Payment...
-            </h2>
-            <p className="text-gray-500">Redirecting securely to PhonePe</p>
-          </>
-        )}
-
-        {paymentStatus === "success" && (
-          <>
-            <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mb-6 ring-8 ring-green-500/30">
-              <CheckIcon className="w-14 h-14 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800">
-              Payment Successful!
-            </h2>
-            <p className="text-gray-500 mt-2">
-              Preparing your order summary…
-            </p>
-          </>
-        )}
-      </div>
-    );
-  }
 
   // ============================
   // PAYMENT SELECTION UI
@@ -208,9 +167,16 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
       <footer className="p-4 border-t bg-white">
         <button
           onClick={handlePlaceOrder}
-          className="w-full bg-orange-500 text-white font-bold py-4 rounded-xl"
+          disabled={loading}
+          className={`w-full font-bold py-4 rounded-xl text-white transition ${
+            loading
+              ? 'bg-orange-300 cursor-not-allowed'
+              : 'bg-orange-500 hover:bg-orange-600'
+          }`}
         >
-          Place Order – ₹{amountToPay.toFixed(2)}
+          {loading
+            ? 'Redirecting to PhonePe...'
+            : `Place Order – ₹${amountToPay.toFixed(2)}`}
         </button>
       </footer>
     </div>

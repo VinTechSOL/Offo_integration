@@ -2,10 +2,11 @@ from sqlalchemy.orm import Session
 from app.modules.cart.repository import CartRepository
 from app.modules.vendor.models import CafeBranch
 from app.modules.orders.repository import OrderRepository
-from app.modules.orders.constants import OrderStatus
+from app.modules.orders.constants import OrderStatus, PaymentStatus
 from app.modules.orders.models import Order
 from app.modules.orders.validators import (validate_transition,validate_scheduled_visibility,)
 from app.modules.staff.access_control import validate_branch_access
+from app.modules.orders.payment_service import OrderPaymentService
 from app.modules.orders.priority import OrderPriority,calculate_priority
 from app.modules.notifications.service import NotificationService
 from app.modules.notifications.constants import (
@@ -14,25 +15,49 @@ from app.modules.notifications.constants import (
     NotificationPriority,
 )
 from datetime import timedelta,datetime,timezone
-from datetime import datetime
 from fastapi import HTTPException
-from app.core.time_utils import ist_to_utc,now_utc,IST
+from app.core.time_utils import now_utc,IST
 from datetime import timezone
 
-def build_scheduled_datetime(scheduled_date, scheduled_time):
+
+def build_scheduled_datetime(
+    scheduled_date,
+    scheduled_time,
+):
     if not scheduled_date or not scheduled_time:
-        return None
+        raise HTTPException(
+            status_code=400,
+            detail="Scheduled date and time are required",
+        )
 
-    time_obj = datetime.strptime(scheduled_time, "%I:%M %p").time()
+    try:
+        time_obj = datetime.strptime(
+            scheduled_time,
+            "%I:%M %p",
+        ).time()
 
-    # Combine as naive
-    naive_dt = datetime.combine(scheduled_date, time_obj)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid scheduled time format. Use HH:MM AM/PM",
+        )
 
-    # Localize to IST
+    naive_dt = datetime.combine(
+        scheduled_date,
+        time_obj,
+    )
+
     ist_dt = IST.localize(naive_dt)
 
-    # Convert to UTC
-    return ist_dt.astimezone(timezone.utc)
+    scheduled_utc = ist_dt.astimezone(timezone.utc)
+
+    if scheduled_utc <= now_utc():
+        raise HTTPException(
+            status_code=400,
+            detail="Scheduled time must be in the future",
+        )
+
+    return scheduled_utc
 
 
 class OrderService:
@@ -90,7 +115,7 @@ class OrderService:
                 scheduled_time=None,
                 total_amount=total_amount,
                 order_status=OrderStatus.CREATED,
-                payment_status="PENDING",
+                payment_status=PaymentStatus.PENDING,
             )
 
             db.add(order)
@@ -135,7 +160,7 @@ class OrderService:
                     scheduled_time=scheduled_dt,
                     total_amount=total_amount,
                     order_status=OrderStatus.CREATED,
-                    payment_status="PENDING",
+                    payment_status=PaymentStatus.PENDING,
                 )
 
                 db.add(order)
@@ -168,7 +193,7 @@ class OrderService:
                             scheduled_time=weekly_dt,
                             total_amount=total_amount,
                             order_status=OrderStatus.CREATED,
-                            payment_status="PENDING",
+                            payment_status=PaymentStatus.PENDING,
                         )
 
                         db.add(weekly_order)
@@ -205,23 +230,7 @@ class OrderService:
             db.refresh(order)
 
         # -------------------------
-        # 6️⃣ Notify Vendor
-        # -------------------------
-
-        for order in created_orders:
-            NotificationService.trigger(
-                db=db,
-                event=NotificationEvent.ORDER_PLACED,
-                recipient_type=NotificationRecipient.STAFF,
-                recipient_id=order.branch_id,
-                title="New Order Placed",
-                message=f"Order {OrderRepository.build_display_order_id(order)} received",
-                priority=NotificationPriority.MEDIUM,
-                order_id=order.order_id,
-            )
-
-        # -------------------------
-        # 7️⃣ Return Proper Model(s)
+        # 6 Return Proper Model(s)
         # -------------------------
 
         if len(created_orders) == 1:
@@ -246,7 +255,7 @@ class OrderService:
         scheduled_time=order.scheduled_time + timedelta(days=7),
         total_amount=order.total_amount,
         order_status=OrderStatus.CREATED,   # ✅ FIXED
-        payment_status="PENDING",
+        payment_status=PaymentStatus.PENDING,
         repeat_weekly=True,
         repeat_remaining=order.repeat_remaining - 1,
        )
@@ -281,6 +290,12 @@ class OrderService:
            changed_by_id=user_id,
         )
 
+        if order.payment_status == PaymentStatus.PAID:
+            OrderPaymentService.mark_refund_pending_in_transaction(
+                db=db,
+                order=order,
+            )
+
         db.commit()
         db.refresh(order)
 
@@ -290,7 +305,7 @@ class OrderService:
         }
 
 
-
+#vendor order service 
 
 class VendorOrderService:
 
@@ -303,6 +318,12 @@ class VendorOrderService:
 
         # Role-based branch validation
         validate_branch_access(staff, order.branch_id)
+
+        if order.payment_status != PaymentStatus.PAID:
+            raise HTTPException(
+                status_code=400,
+                detail="Order payment is not completed"
+            )
 
         # Scheduled visibility rule
         validate_scheduled_visibility(order)
@@ -353,6 +374,13 @@ class VendorOrderService:
             raise HTTPException(404, "Order not found")
 
         validate_branch_access(staff, order.branch_id)
+
+        if order.payment_status != PaymentStatus.PAID:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Order payment is not completed"
+                    )
+        
         validate_scheduled_visibility(order)
 
         validate_transition(
@@ -362,6 +390,20 @@ class VendorOrderService:
 
         order.order_status = OrderStatus.REJECTED
         order.updated_at = now_utc()
+
+        OrderRepository.add_status_log(
+            db,
+            order_id=order.order_id,
+            status=OrderStatus.REJECTED,
+            changed_by="STAFF",
+            changed_by_id=staff.staff_id,
+        )
+
+        if order.payment_status == PaymentStatus.PAID:
+            OrderPaymentService.mark_refund_pending_in_transaction(
+                db=db,
+                order=order,
+            )
 
         db.commit()
         db.refresh(order)
@@ -380,6 +422,7 @@ class VendorOrderService:
         return {
             "order_id": order.order_id,
             "status": order.order_status,
+            "payment_status": order.payment_status,
         }
 
     @staticmethod
@@ -395,6 +438,14 @@ class VendorOrderService:
             raise HTTPException(404, "Order not found")
 
         validate_branch_access(staff, order.branch_id)
+
+        if order.payment_status != PaymentStatus.PAID:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Order payment is not completed"
+                    )
+
+        
         validate_scheduled_visibility(order)
         current = OrderStatus(order.order_status)
 
