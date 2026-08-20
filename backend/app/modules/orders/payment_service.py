@@ -32,19 +32,19 @@ class OrderPaymentService:
         commit: bool = True,
     ):
         """
-        Synchronize the Order payment status.
+        Synchronize Order.payment_status.
 
-        This is the authoritative business layer for:
+        This is the authoritative service for changing:
 
             Order.payment_status
 
-        It also records the corresponding PaymentEvent.
+        It also records PaymentEvent entries.
 
         commit=True:
-            Used when this method is called as a standalone operation.
+            Standalone operation.
 
         commit=False:
-            Used when the caller is already inside a larger transaction.
+            Caller owns the surrounding transaction.
         """
 
         order = db.get(Order, order_id)
@@ -74,6 +74,8 @@ class OrderPaymentService:
 
         if payment_status == PaymentStatus.PAID:
 
+            # A refund flow is irreversible from the order's
+            # payment-state perspective.
             if current in (
                 PaymentStatus.REFUND_PENDING,
                 PaymentStatus.REFUNDED,
@@ -102,10 +104,8 @@ class OrderPaymentService:
                 db.commit()
                 db.refresh(order)
 
-                # ------------------------------------------------
-                # Vendor notification ONLY after successful payment
-                # ------------------------------------------------
-
+                # Vendor notification happens only after the
+                # payment transaction has successfully committed.
                 NotificationService.trigger(
                     db=db,
                     event=NotificationEvent.ORDER_PLACED,
@@ -121,7 +121,6 @@ class OrderPaymentService:
                     order_id=order.order_id,
                 )
 
-                # NotificationService may create DB records.
                 db.commit()
 
             return {
@@ -137,12 +136,15 @@ class OrderPaymentService:
 
         if payment_status == PaymentStatus.FAILED:
 
+            # Once paid, the payment cannot simply become FAILED.
             if current == PaymentStatus.PAID:
                 raise HTTPException(
                     status_code=400,
                     detail="Paid order cannot become FAILED",
                 )
 
+            # Refund states are controlled exclusively by the
+            # refund flow.
             if current in (
                 PaymentStatus.REFUND_PENDING,
                 PaymentStatus.REFUNDED,
@@ -193,38 +195,28 @@ class OrderPaymentService:
         order: Order,
     ):
         """
-        Mark a paid order as REFUND_PENDING.
+        Move a PAID order into REFUND_PENDING.
 
-        IMPORTANT:
-        This method NEVER commits.
+        Does NOT commit.
 
-        It is intended for callers such as:
+        Used inside larger order transactions such as:
 
-            - order rejection
-            - automatic order cancellation
-            - other multi-step transactions
+            - user cancellation
+            - vendor rejection
+            - automatic cancellation
         """
 
         current = PaymentStatus(order.payment_status)
 
-        # --------------------------------------------------------
-        # Already pending
-        # --------------------------------------------------------
-
+        # Already waiting for refund.
         if current == PaymentStatus.REFUND_PENDING:
             return False
 
-        # --------------------------------------------------------
-        # Already refunded
-        # --------------------------------------------------------
-
+        # Already refunded.
         if current == PaymentStatus.REFUNDED:
             return False
 
-        # --------------------------------------------------------
-        # Only PAID orders can enter refund flow
-        # --------------------------------------------------------
-
+        # Only a paid order can enter refund flow.
         if current != PaymentStatus.PAID:
             return False
 
@@ -251,7 +243,8 @@ class OrderPaymentService:
         order_id: int,
     ):
         """
-        Standalone version of mark_refund_pending_in_transaction().
+        Standalone version of
+        mark_refund_pending_in_transaction().
         """
 
         order = db.get(Order, order_id)
@@ -264,10 +257,6 @@ class OrderPaymentService:
 
         current = PaymentStatus(order.payment_status)
 
-        # --------------------------------------------------------
-        # Idempotent
-        # --------------------------------------------------------
-
         if current == PaymentStatus.REFUND_PENDING:
             return {
                 "order_id": order.order_id,
@@ -275,20 +264,12 @@ class OrderPaymentService:
                 "changed": False,
             }
 
-        # --------------------------------------------------------
-        # Already refunded
-        # --------------------------------------------------------
-
         if current == PaymentStatus.REFUNDED:
             return {
                 "order_id": order.order_id,
                 "payment_status": current,
                 "changed": False,
             }
-
-        # --------------------------------------------------------
-        # Must be paid first
-        # --------------------------------------------------------
 
         if current != PaymentStatus.PAID:
             raise HTTPException(
@@ -324,7 +305,9 @@ class OrderPaymentService:
         commit: bool = True,
     ):
         """
-        Mark an order as successfully refunded.
+        Mark the order as REFUNDED.
+
+        This is only allowed from REFUND_PENDING.
         """
 
         order = db.get(Order, order_id)
@@ -337,20 +320,13 @@ class OrderPaymentService:
 
         current = PaymentStatus(order.payment_status)
 
-        # --------------------------------------------------------
-        # Idempotency
-        # --------------------------------------------------------
-
+        # Idempotent.
         if current == PaymentStatus.REFUNDED:
             return {
                 "order_id": order.order_id,
                 "payment_status": PaymentStatus.REFUNDED,
                 "changed": False,
             }
-
-        # --------------------------------------------------------
-        # Refund must have been pending
-        # --------------------------------------------------------
 
         if current != PaymentStatus.REFUND_PENDING:
             raise HTTPException(
@@ -394,17 +370,18 @@ class OrderPaymentService:
         commit: bool = True,
     ):
         """
-        Record a failed refund attempt.
+        Record a failed gateway refund attempt.
 
         IMPORTANT:
 
-        A failed refund does NOT mean the money was refunded.
+        A failed refund does NOT mean the customer received
+        their money.
 
         Therefore:
 
-            Order.payment_status remains REFUND_PENDING
+            Order.payment_status = REFUND_PENDING
 
-        This allows the refund operation to be retried later.
+        The refund processor can retry later.
         """
 
         order = db.get(Order, order_id)
@@ -429,7 +406,7 @@ class OrderPaymentService:
             }
 
         # --------------------------------------------------------
-        # Refund must be pending
+        # Refund must still be pending
         # --------------------------------------------------------
 
         if current != PaymentStatus.REFUND_PENDING:

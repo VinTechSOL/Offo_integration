@@ -303,235 +303,238 @@ const App: React.FC = () => {
   }
 
   /* =======================
-     UI
+     UI - Sticky Mobile View (App Doesn't Move)
   ======================= */
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#F3DDCA] sm:bg-slate-900 flex justify-center items-center overflow-hidden p-0">
-      <div className="relative bg-[#F3DDCA] overflow-hidden w-full h-[100dvh] max-w-[412px] max-h-[892px] sm:rounded-[3rem] sm:shadow-2xl sm:border-8 sm:border-slate-800">
-        <Routes>
-          <Route path="/" element={<Navigate to="/onboarding" replace />} />
+    <div className="fixed inset-0 w-full h-full bg-[#e5d1bc] flex justify-center items-center overflow-hidden">
+      <div className="relative bg-[#F3DDCA] overflow-hidden w-full h-full max-w-full sm:max-w-[390px] sm:max-h-[844px] sm:rounded-[2rem] sm:shadow-2xl sm:border-0.5 sm:border-slate-800">
+        {/* Scrollable Content */}
+        <div className="w-full h-full bg-[#F3DDCA] overflow-y-auto overflow-x-hidden">
+          <Routes>
+            <Route path="/" element={<Navigate to="/onboarding" replace />} />
 
-          <Route
-            path="/onboarding"
-            element={
-              <OnboardingScreen onGetStarted={() => navigate('/login')} />
-            }
-          />
+            <Route
+              path="/onboarding"
+              element={
+                <OnboardingScreen onGetStarted={() => navigate('/login')} />
+              }
+            />
 
-          <Route
-            path="/login"
-            element={
-              <LoginScreen
-                onLoginSuccess={async (flow) => {
-                  if (flow === 'signup') {
-                    navigate('/location');
-                  } else {
+            <Route
+              path="/login"
+              element={
+                <LoginScreen
+                  onLoginSuccess={async (flow) => {
+                    if (flow === 'signup') {
+                      navigate('/location');
+                    } else {
+                      await refreshLocationFromContext();
+                      navigate('/home');
+                    }
+                  }}
+                />
+              }
+            />
+
+            <Route
+              path="/location"
+              element={
+                <LocationScreen
+                  onConfirm={async (loc) => {
+                    setLocationData(loc);
                     await refreshLocationFromContext();
                     navigate('/home');
-                  }
-                }}
-              />
-            }
-          />
+                  }}
+                />
+              }
+            />
 
-          <Route
-            path="/location"
-            element={
-              <LocationScreen
-                onConfirm={async (loc) => {
-                  setLocationData(loc);
-                  await refreshLocationFromContext();
-                  navigate('/home');
-                }}
-              />
-            }
-          />
-
-          <Route
-            path="/home"
-            element={
-              <HomeScreen
-                cart={cart}
-                addToCart={addToCart}
-                setSelectedCafe={setSelectedCafe}
-                onViewFoodItem={setFoodDetailItem}
-              />
-            }
-          />
-
-          <Route
-            path="/menu"
-            element={
-              selectedCafe ? (
-                <MenuScreen
-                  cafe={selectedCafe}
+            <Route
+              path="/home"
+              element={
+                <HomeScreen
                   cart={cart}
                   addToCart={addToCart}
+                  setSelectedCafe={setSelectedCafe}
+                  onViewFoodItem={setFoodDetailItem}
+                />
+              }
+            />
+
+            <Route
+              path="/menu"
+              element={
+                selectedCafe ? (
+                  <MenuScreen
+                    cafe={selectedCafe}
+                    cart={cart}
+                    addToCart={addToCart}
+                    isEditingOrder={isEditingOrder}
+                    onCancelEdit={() => navigate('/orders')}
+                  />
+                ) : (
+                  <Navigate to="/home" replace />
+                )
+              }
+            />
+
+            <Route
+              path="/cart"
+              element={
+                <CartScreen
+                  cart={cart}
+                  updateCartQuantity={updateCartQuantity}
+                  clearCart={clearCart}
+                  setOrderDetails={setOrderDetails}
                   isEditingOrder={isEditingOrder}
-                  onCancelEdit={() => navigate('/orders')}
+                  onUpdateOrder={() => {}}
+                  onOrderNow={() => {
+                    const subtotal = cart.reduce(
+                      (a, c) => a + c.item.price * c.quantity,
+                      0,
+                    );
+
+                    const packagingFee = 0;
+                    const deliveryFee = 0;
+                    const convenienceFee = 5;
+                    const gst = Number((convenienceFee * 0.18).toFixed(2));
+
+                    const total =
+                      subtotal +
+                      packagingFee +
+                      deliveryFee +
+                      convenienceFee +
+                      gst;
+
+                    setOrderDetails({
+                      items: cart,
+                      subtotal,
+                      convenienceFee,
+                      gst,
+                      total,
+                    });
+
+                    navigate('/payment');
+                  }}
+                  onSchedule={() => {
+                    const subtotal = cart.reduce(
+                      (a, c) => a + c.item.price * c.quantity,
+                      0,
+                    );
+
+                    const packagingFee = 0;
+                    const deliveryFee = 0;
+                    const convenienceFee = 5;
+                    const gst = Number((convenienceFee * 0.18).toFixed(2));
+
+                    const total =
+                      subtotal +
+                      packagingFee +
+                      deliveryFee +
+                      convenienceFee +
+                      gst;
+
+                    setOrderDetails({
+                      items: cart,
+                      subtotal,
+                      convenienceFee,
+                      gst,
+                      total,
+                    });
+
+                    navigate('/schedule');
+                  }}
                 />
-              ) : (
-                <Navigate to="/home" replace />
-              )
-            }
-          />
+              }
+            />
 
-          <Route
-            path="/cart"
-            element={
-              <CartScreen
-                cart={cart}
-                updateCartQuantity={updateCartQuantity}
-                clearCart={clearCart}
-                setOrderDetails={setOrderDetails}
-                isEditingOrder={isEditingOrder}
-                onUpdateOrder={() => {}}
-                onOrderNow={() => {
-                  const subtotal = cart.reduce(
-                    (a, c) => a + c.item.price * c.quantity,
-                    0,
-                  );
+            <Route
+              path="/schedule"
+              element={
+                orderDetails ? (
+                  <ScheduleScreen
+                    orderDetails={orderDetails!}
+                    setOrderDetails={setOrderDetails}
+                    orderToEdit={orderToEdit}
+                    onUpdateOrder={handleUpdateOrder}
+                  />
+                ) : (
+                  <Navigate to="/cart" replace />
+                )
+              }
+            />
 
-                  const packagingFee = 0;
-                  const deliveryFee = 0;
-                  const convenienceFee = 5;
-                  const gst = Number((convenienceFee * 0.18).toFixed(2));
+            <Route
+              path="/payment"
+              element={
+                orderDetails ? (
+                  <PaymentScreen
+                    orderDetails={orderDetails!}
+                    setOrderDetails={setOrderDetails}
+                  />
+                ) : (
+                  <Navigate to="/cart" replace />
+                )
+              }
+            />
 
-                  const total =
-                    subtotal +
-                    packagingFee +
-                    deliveryFee +
-                    convenienceFee +
-                    gst;
+            <Route path="/payment/status" element={<PaymentStatusScreen />} />
 
-                  setOrderDetails({
-                    items: cart,
-                    subtotal,
-                    convenienceFee,
-                    gst,
-                    total,
-                  });
+            <Route path="/payment-failed" element={<PaymentFailedScreen />} />
 
-                  navigate('/payment');
-                }}
-                onSchedule={() => {
-                  const subtotal = cart.reduce(
-                    (a, c) => a + c.item.price * c.quantity,
-                    0,
-                  );
-
-                  const packagingFee = 0;
-                  const deliveryFee = 0;
-                  const convenienceFee = 5;
-                  const gst = Number((convenienceFee * 0.18).toFixed(2));
-
-                  const total =
-                    subtotal +
-                    packagingFee +
-                    deliveryFee +
-                    convenienceFee +
-                    gst;
-
-                  setOrderDetails({
-                    items: cart,
-                    subtotal,
-                    convenienceFee,
-                    gst,
-                    total,
-                  });
-
-                  navigate('/schedule');
-                }}
-              />
-            }
-          />
-
-          <Route
-            path="/schedule"
-            element={
-              orderDetails ? (
-                <ScheduleScreen
-                  orderDetails={orderDetails!}
-                  setOrderDetails={setOrderDetails}
-                  orderToEdit={orderToEdit}
-                  onUpdateOrder={handleUpdateOrder}
+            <Route
+              path="/success"
+              element={
+                <SuccessScreen
+                  clearCart={clearCart}
+                  orderDetails={orderDetails}
                 />
-              ) : (
-                <Navigate to="/cart" replace />
-              )
-            }
-          />
+              }
+            />
 
-          <Route
-            path="/payment"
-            element={
-              orderDetails ? (
-                <PaymentScreen
-                  orderDetails={orderDetails!}
-                  setOrderDetails={setOrderDetails}
+            <Route path="/notifications" element={<NotificationScreen />} />
+
+            <Route
+              path="/orders"
+              element={
+                <OrdersScreen
+                  orders={orders}
+                  setOrders={setOrders}
+                  onEditSchedule={(order) => {
+                    setOrderToEdit(order);
+                    setIsEditingOrder(true);
+                    navigate('/schedule');
+                  }}
+                  onEditOrderItems={(order) => {
+                    setOrderToEdit(order);
+                    setIsEditingOrder(true);
+                    setCart(order.items);
+                    navigate('/menu');
+                  }}
                 />
-              ) : (
-                <Navigate to="/cart" replace />
-              )
-            }
-          />
+              }
+            />
 
-          <Route path="/payment/status" element={<PaymentStatusScreen />} />
+            <Route path="/help" element={<HelpScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/about" element={<AboutScreen />} />
+            <Route path="/my-account" element={<MyAccountScreen />} />
+            <Route path="/payment-methods" element={<PaymentMethodsScreen />} />
 
-          <Route path="/payment-failed" element={<PaymentFailedScreen />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
 
-          <Route
-            path="/success"
-            element={
-              <SuccessScreen
-                clearCart={clearCart}
-                orderDetails={orderDetails}
-              />
-            }
-          />
+          <ErrorToast />
 
-          <Route path="/notifications" element={<NotificationScreen />} />
-
-          <Route
-            path="/orders"
-            element={
-              <OrdersScreen
-                orders={orders}
-                setOrders={setOrders}
-                onEditSchedule={(order) => {
-                  setOrderToEdit(order);
-                  setIsEditingOrder(true);
-                  navigate('/schedule');
-                }}
-                onEditOrderItems={(order) => {
-                  setOrderToEdit(order);
-                  setIsEditingOrder(true);
-                  setCart(order.items);
-                  navigate('/menu');
-                }}
-              />
-            }
-          />
-
-          <Route path="/help" element={<HelpScreen />} />
-          <Route path="/profile" element={<ProfileScreen />} />
-          <Route path="/about" element={<AboutScreen />} />
-          <Route path="/my-account" element={<MyAccountScreen />} />
-          <Route path="/payment-methods" element={<PaymentMethodsScreen />} />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-
-        <ErrorToast />
-
-        {foodDetailItem && (
-          <FoodItemDetailModal
-            item={foodDetailItem}
-            onClose={() => setFoodDetailItem(null)}
-            onAddToCart={() => {}}
-          />
-        )}
+          {foodDetailItem && (
+            <FoodItemDetailModal
+              item={foodDetailItem}
+              onClose={() => setFoodDetailItem(null)}
+              onAddToCart={() => {}}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

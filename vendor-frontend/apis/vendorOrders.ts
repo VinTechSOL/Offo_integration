@@ -92,8 +92,8 @@ export const VendorOrdersApi = {
    * POST /orders/{order_id}/move?status=READY|PICKED_UP
    */
   async move(orderId: string, status: OrderStatus) {
-    return api.post(`/orders/${orderId}/move`, null, {
-      params: { status },
+    return api.post(`/orders/${orderId}/move`, {
+      status ,
     });
   },
 };

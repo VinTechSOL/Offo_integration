@@ -30,6 +30,32 @@ class PaymentRepository:
             .first()
         )
 
+
+    @staticmethod
+    def get_intent_by_order_for_update(
+        db: Session,
+        order_id: int,
+    ):
+        """
+        Fetch the payment intent while locking its row.
+
+        Used during payment initiation to prevent two
+        simultaneous requests from creating multiple
+        active payment attempts for the same order.
+
+        PostgreSQL SELECT ... FOR UPDATE ensures that
+        concurrent requests serialize on this intent row.
+        """
+
+        return (
+            db.query(PaymentIntent)
+            .filter(
+                PaymentIntent.order_id == order_id
+            )
+            .with_for_update()
+            .first()
+        )
+
     @staticmethod
     def create_intent(
         db: Session,
@@ -477,13 +503,67 @@ class PaymentRepository:
             .first()
         )
 
+
+    @staticmethod
+    def get_refund_attempt_for_update(
+        db: Session,
+        intent_id: int,
+    ):
+        """
+        Return the latest refund attempt while locking it.
+
+        Used when a refund operation needs to safely inspect
+        and modify an existing refund attempt.
+        """
+
+        return (
+            db.query(PaymentAttempt)
+            .filter(
+                PaymentAttempt.intent_id == intent_id,
+                PaymentAttempt.parent_payment_id.isnot(None),
+            )
+            .order_by(
+                PaymentAttempt.attempt_number.desc()
+            )
+            .with_for_update()
+            .first()
+        )
+
+    # ============================================================
+    # REFUND ATTEMPT HELPERS
+    # ============================================================
+
+    @staticmethod
+    def get_latest_refund_attempt(
+        db: Session,
+        intent_id: int,
+    ):
+        """
+        Return the latest refund attempt for an intent.
+        """
+
+        return (
+            db.query(PaymentAttempt)
+            .filter(
+                PaymentAttempt.intent_id == intent_id,
+                PaymentAttempt.parent_payment_id.isnot(None),
+            )
+            .order_by(
+                PaymentAttempt.attempt_number.desc()
+            )
+            .first()
+        )
+
     @staticmethod
     def get_active_refund_attempt(
         db: Session,
         intent_id: int,
     ):
         """
-        Return an active refund attempt, if one exists.
+        Return an active refund attempt that is currently
+        being processed.
+
+        An active refund must NOT be duplicated.
         """
 
         return (
@@ -501,6 +581,31 @@ class PaymentRepository:
             )
             .first()
         )
+
+    @staticmethod
+    def get_failed_refund_attempt(
+        db: Session,
+        intent_id: int,
+    ):
+        """
+        Return the latest failed refund attempt.
+        """
+
+        return (
+            db.query(PaymentAttempt)
+            .filter(
+                PaymentAttempt.intent_id == intent_id,
+                PaymentAttempt.parent_payment_id.isnot(None),
+                PaymentAttempt.status
+                == PaymentAttemptStatus.FAILED.value,
+            )
+            .order_by(
+                PaymentAttempt.attempt_number.desc()
+            )
+            .first()
+        )
+
+
 
     # ============================================================
     # PHONEPE REFUND

@@ -5,28 +5,40 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.modules.orders.models import Order
 from app.modules.orders.constants import PaymentStatus
-from app.modules.payments.models import PaymentIntent, PaymentAttempt
+from app.modules.payments.models import (
+    PaymentIntent,
+)
 from app.modules.payments.constants import (
     PaymentIntentStatus,
-    PaymentAttemptStatus,
 )
 from app.modules.payments.service import PaymentService
+
 
 logger = logging.getLogger(__name__)
 
 
+MAX_REFUNDS_PER_RUN = 20
+
+
 def process_pending_refunds():
     """
-    Process orders whose payment is waiting for refund.
+    Process orders that are waiting for refund.
 
-    This job is intentionally small:
-    - find REFUND_PENDING orders
-    - lock one order
-    - verify its payment state
-    - initiate refund through PaymentService
+    Flow:
 
-    PhonePe communication happens outside the initial
-    database selection transaction.
+        REFUND_PENDING
+              ↓
+        PaymentIntent.SUCCEEDED
+              ↓
+        initiate_refund_internal()
+              ↓
+        REFUND_INITIATED
+              ↓
+        PhonePe
+              ↓
+        sync_refund_status()
+              ↓
+        REFUNDED / REFUND_FAILED
     """
 
     db: Session = SessionLocal()
@@ -37,9 +49,9 @@ def process_pending_refunds():
 
     try:
 
-        # --------------------------------------------------
+        # --------------------------------------------------------
         # Find refund-pending orders
-        # --------------------------------------------------
+        # --------------------------------------------------------
 
         orders = (
             db.query(Order)
@@ -50,7 +62,7 @@ def process_pending_refunds():
             .order_by(
                 Order.updated_at.asc()
             )
-            .limit(20)
+            .limit(MAX_REFUNDS_PER_RUN)
             .with_for_update(
                 skip_locked=True,
             )
@@ -66,9 +78,9 @@ def process_pending_refunds():
 
             try:
 
-                # --------------------------------------------------
-                # Re-check order state
-                # --------------------------------------------------
+                # ------------------------------------------------
+                # Re-check payment state
+                # ------------------------------------------------
 
                 if (
                     order.payment_status
@@ -77,9 +89,9 @@ def process_pending_refunds():
                     skipped += 1
                     continue
 
-                # --------------------------------------------------
-                # Get payment intent
-                # --------------------------------------------------
+                # ------------------------------------------------
+                # Get intent
+                # ------------------------------------------------
 
                 intent = (
                     db.query(PaymentIntent)
@@ -91,94 +103,120 @@ def process_pending_refunds():
                 )
 
                 if not intent:
+
                     logger.error(
-                        "Refund pending order has no payment intent | "
-                        "order=%s",
+                        "Refund pending order has no "
+                        "payment intent | order=%s",
                         order.order_id,
                     )
 
                     skipped += 1
                     continue
 
-                # --------------------------------------------------
-                # Already refunded
-                # --------------------------------------------------
+                # =================================================
+                # ALREADY REFUNDED
+                # =================================================
 
                 if (
                     intent.status
                     == PaymentIntentStatus.REFUNDED.value
                 ):
+
                     logger.info(
                         "Refund already completed | order=%s",
                         order.order_id,
                     )
 
-                    order.payment_status = (
-                        PaymentStatus.REFUNDED
-                    )
-
-                    db.commit()
-
                     skipped += 1
                     continue
 
-                # --------------------------------------------------
-                # Already being processed
-                # --------------------------------------------------
+                # =================================================
+                # REFUND CURRENTLY PROCESSING
+                # =================================================
 
                 if (
                     intent.status
                     == PaymentIntentStatus.REFUND_INITIATED.value
                 ):
+
                     logger.info(
-                        "Refund already initiated | order=%s",
+                        "Checking existing refund | order=%s",
                         order.order_id,
                     )
 
-                    db.commit()
+                    # Do not create another refund.
+                    #
+                    # Ask PhonePe for the status of the
+                    # existing refund attempt.
 
-                    skipped += 1
+                    PaymentService.sync_refund_status(
+                        db=db,
+                        order_id=order.order_id,
+                    )
+
+                    processed += 1
                     continue
 
-                # --------------------------------------------------
-                # Payment must have succeeded
-                # --------------------------------------------------
+                # =================================================
+                # REFUND FAILED
+                #
+                # This is retryable.
+                # =================================================
 
                 if (
                     intent.status
-                    != PaymentIntentStatus.SUCCEEDED.value
+                    == PaymentIntentStatus.REFUND_FAILED.value
                 ):
-                    logger.error(
-                        "Invalid refund state | "
-                        "order=%s intent_status=%s",
+
+                    logger.warning(
+                        "Retrying failed refund | order=%s",
                         order.order_id,
-                        intent.status,
                     )
 
-                    skipped += 1
+                    # initiate_refund_internal() accepts
+                    # REFUND_FAILED and creates a new attempt.
+                    PaymentService.initiate_refund_internal(
+                        db=db,
+                        order_id=order.order_id,
+                    )
+
+                    processed += 1
                     continue
 
-                # --------------------------------------------------
-                # Commit the selection transaction
-                # --------------------------------------------------
+                # =================================================
+                # INITIAL REFUND
+                # =================================================
 
-                db.commit()
+                if (
+                    intent.status
+                    == PaymentIntentStatus.SUCCEEDED.value
+                ):
 
-                # --------------------------------------------------
-                # Initiate refund
-                # --------------------------------------------------
+                    logger.info(
+                        "Starting refund | order=%s",
+                        order.order_id,
+                    )
 
-                logger.info(
-                    "Starting refund processing | order=%s",
+                    PaymentService.initiate_refund_internal(
+                        db=db,
+                        order_id=order.order_id,
+                    )
+
+                    processed += 1
+                    continue
+
+                # =================================================
+                # INVALID STATE
+                # =================================================
+
+                logger.error(
+                    "Invalid refund state | "
+                    "order=%s intent_status=%s",
                     order.order_id,
+                    intent.status,
                 )
 
-                PaymentService.initiate_refund_internal(
-                    db=db,
-                    order_id=order.order_id,
-                )
-
-                processed += 1
+                skipped += 1
 
             except Exception:
 
@@ -204,7 +242,7 @@ def process_pending_refunds():
         db.rollback()
 
         logger.exception(
-            "Refund processor crashed"
+            "Refund processor crashed",
         )
 
     finally:

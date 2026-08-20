@@ -60,6 +60,26 @@ class OrderRepository:
         )
         return db.execute(stmt).scalar_one_or_none()
 
+
+    @staticmethod
+    def get_user_order_with_cafe(
+        db: Session,
+        user_id: int,
+        order_id: int,
+    ):
+        return (
+            db.query(Order, Cafe)
+            .join(
+                Cafe,
+                Cafe.cafe_id == Order.cafe_id,
+            )
+            .filter(
+                Order.order_id == order_id,
+                Order.user_id == user_id,
+            )
+            .first()
+        )
+
     
     @staticmethod
     def get_order_items(db: Session, order_id: int):

@@ -9,7 +9,7 @@ const faqItems = [
     q: "Privacy Policy",
     a: (
       <div className="space-y-3 text-sm text-gray-700">
-        <p className="font-semibold">Last Updated: June 2026</p>
+        <p className="font-semibold">Last Updated: July 2026</p>
 
         <ol className="list-decimal pl-5 space-y-3">
           <li>
@@ -375,12 +375,30 @@ const HelpScreen: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-8 bg-white p-4 rounded-lg border border-gray-200 text-center shadow-sm">
+        {/* Contact Support Section - Updated */}
+        <div className="mt-8 bg-white p-6 rounded-lg border border-gray-200 text-center shadow-sm">
           <h3 className="font-bold text-lg text-gray-800 mb-2">Still need help?</h3>
-          <p className="text-gray-600 mb-4">Contact our support team.</p>
-          <a href="mailto:support@offo.co.in" className="font-semibold text-orange-600 hover:text-orange-700 transition-colors">
-            support@offo.co.in
-          </a>
+          <p className="text-gray-600 mb-4">Contact our support team:</p>
+          
+          <div className="space-y-3">
+            <a 
+              href="mailto:support@offo.co.in" 
+              className="block font-semibold text-orange-600 hover:text-orange-700 transition-colors"
+            >
+              support@offo.co.in
+            </a>
+            
+            <a 
+              href="tel:+919492121427" 
+              className="block text-gray-600 hover:text-orange-600 transition-colors"
+            >
+              +91 94921 21427
+            </a>
+            
+            <p className="text-sm text-gray-500 pt-2 border-t border-gray-100">
+              VinTech Solutions
+            </p>
+          </div>
         </div>
       </main>
 

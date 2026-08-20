@@ -24,8 +24,18 @@ export const getMyActiveOrdersApi = async () => {
   return res.data;
 };
 
+export const getOrderApi = async (orderId: string | number) => {
+  const res = await api.get(`/users/orders/${orderId}`);
+  return res.data;
+};
+
 
 export const getOrderTimelineApi = async (orderId: string) => {
   const res = await api.get(`/users/orders/${orderId}/timeline`);
+  return res.data;
+};
+
+export const cancelOrderApi = async (orderId: string | number) => {
+  const res = await api.post(`/users/${orderId}/cancel`);
   return res.data;
 };

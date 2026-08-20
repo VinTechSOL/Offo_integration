@@ -8,6 +8,7 @@ export const constants = {
     ADD_VENDOR: '/add-vendor',
     VIEW_CAFES: '/cafes',
     MANAGE_USERS:'/manage-users',
+    MANAGE_TICKETS:'/manage-tickets',
     REPORTS: '/reports',
     SETTINGS: '/settings',
     PROFILE: '/profile',

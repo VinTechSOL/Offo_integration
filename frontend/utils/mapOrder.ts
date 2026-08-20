@@ -16,6 +16,7 @@ export function mapBackendOrder(o: any): Order {
     status: mapStatus(o.order_status),
 
     items: (o.items || []).map((i: any) => ({
+      orderItemId: Number(i.order_item_id ?? i.orderItemId),
       item: {
         id: i.item_id,
         name: i.name,
@@ -41,14 +42,13 @@ function mapStatus(status: string): Order["status"] {
   switch (status) {
     case "CREATED":
       return "Pending";
-    case "ACCEPTED":
-      return "Accepted";
     case "PREPARING":
       return "Preparing";
     case "READY":
       return "Ready for Pickup";
+    case "PICKED_UP":
     case "COMPLETED":
-      return "Delivered";
+      return "Completed";
     case "CANCELLED":
       return "Cancelled";
     case "REJECTED":

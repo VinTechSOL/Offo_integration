@@ -19,6 +19,7 @@ from app.modules.locations.api import router as locations_router
 from app.modules.payments.gateways.phonepe.webhook import router as phonepe_webhook_router
 from app.modules.reports.api import router as reports_router
 from app.modules.crm.api import router as crm_router
+from app.modules.support.api import router as support_router
 from app.middlewares.rate_limit import RateLimitMiddleware
 from contextlib import asynccontextmanager
 from app.modules.orders.scheduler_service import ( start_scheduler, stop_scheduler,)
@@ -53,12 +54,14 @@ app.include_router(phonepe_webhook_router)
 app.include_router(locations_router)
 app.include_router(reports_router)
 app.include_router(crm_router)
+app.include_router(support_router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:3002",
         
     ],
     allow_credentials=True,

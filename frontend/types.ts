@@ -58,8 +58,10 @@ export interface OrderDetails {
 }
 
 export interface OrderItem {
+    orderItemId: number;
     item: FoodItem;
     quantity: number;
+  
 }
 
 export interface OrderTimelineItem {
@@ -76,10 +78,12 @@ export interface Order {
   total: number;
   status:
     | 'Delivered'
+    | 'Completed'
     | 'Pending'
     | 'Cancelled'
     | 'Preparing'
     | 'Ready for Pickup'
+    | 'Picked Up'
     | 'Scheduled'
     | 'Out for Delivery'
     | 'Accepted'
@@ -89,7 +93,7 @@ export interface Order {
   // 🔹 Backend-aligned (optional, non-breaking)
   backendStatus?: string;        // CREATED / ACCEPTED / etc
   orderType?: 'INSTANT' | 'SCHEDULED';
-  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUND_PENDING' | 'REFUNDED';
   branchId?: number;
   cafeId?: number;
 

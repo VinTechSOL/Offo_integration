@@ -2,13 +2,13 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from datetime import datetime, timezone
 import logging
-
+from sqlalchemy.exc import IntegrityError
 from requests.exceptions import ReadTimeout, ConnectionError
 from phonepe.sdk.pg.common.exceptions import PhonePeException
 
 from app.modules.orders.repository import OrderRepository
 from app.modules.orders.payment_service import OrderPaymentService
-from app.modules.orders.constants import PaymentStatus
+from app.modules.orders.constants import PaymentStatus, OrderStatus
 
 from app.modules.payments.repository import PaymentRepository
 from app.modules.payments.constants import (
@@ -22,6 +22,7 @@ from app.modules.payments.utils import (
     generate_merchant_refund_id,
 )
 
+from requests.exceptions import ReadTimeout, ConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,15 @@ class PaymentService:
                 detail="Order not found",
             )
 
+        if order.order_status not in (
+            OrderStatus.CREATED.value,
+            OrderStatus.CANCELLED.value,
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Order is not eligible for payment"
+            )
+
         if order.payment_status in [
             PaymentStatus.PAID.value,
             PaymentStatus.REFUNDED.value,
@@ -59,17 +69,63 @@ class PaymentService:
                 detail="Order already paid",
             )
 
+        # --------------------------------------------------------
+        # Get or create payment intent
+        # --------------------------------------------------------
+
         intent = PaymentRepository.get_intent_by_order(
             db,
             order_id,
         )
 
         if not intent:
-            intent = PaymentRepository.create_intent(
-                db,
-                order_id=order.order_id,
-                amount=order.total_amount,
+
+            try:
+                intent = PaymentRepository.create_intent(
+                    db,
+                    order_id=order.order_id,
+                    amount=order.total_amount,
+                )
+
+                db.commit()
+
+            except IntegrityError:
+
+                
+                # Another concurrent request may have created
+                # the unique payment intent for this order.
+                db.rollback()
+
+                intent = PaymentRepository.get_intent_by_order(
+                    db,
+                    order_id,
+                )
+
+                if not intent:
+                    raise
+
+
+        # --------------------------------------------------------
+        # LOCK PAYMENT INTENT
+        # --------------------------------------------------------
+        #
+        # This is the important race-condition protection.
+        #
+        # Only one request can inspect/create an active attempt
+        # for this payment intent at a time.
+        #
+
+        intent = PaymentRepository.get_intent_by_order_for_update(
+            db,
+            order_id,
+        )
+
+        if not intent:
+            raise HTTPException(
+                status_code=404,
+                detail="Payment intent not found",
             )
+
 
         # --------------------------------------------------------
         # Reuse active attempt
@@ -411,7 +467,7 @@ class PaymentService:
                 detail="Order is not eligible for refund",
             )
 
-        intent = PaymentRepository.get_intent_by_order(
+        intent = PaymentRepository.get_intent_by_order_for_update(
             db,
             order_id,
         )
@@ -485,7 +541,7 @@ class PaymentService:
         # 5. Check for existing refund attempt
         # -----------------------------------------
 
-        existing_refund = PaymentRepository.get_refund_attempt(
+        existing_refund = PaymentRepository.get_refund_attempt_for_update(
            db,
            intent.intent_id,
         )
@@ -494,12 +550,22 @@ class PaymentService:
             if existing_refund.status in (
                 PaymentAttemptStatus.INITIATED.value,
                 PaymentAttemptStatus.REDIRECTED.value,
-                PaymentAttemptStatus.SUCCESS.value,
             ):
                 raise HTTPException(
                   status_code=400,
                   detail="Refund already initiated",
                 )
+
+
+            if existing_refund.status in (
+                PaymentAttemptStatus.SUCCESS.value,
+            ):
+                raise HTTPException(
+                  status_code=400,
+                  detail="Refund already completed",
+                )
+
+            #Failed refund attempts are allowed to be retried
 
         # --------------------------------------------------------
         # Create refund attempt
@@ -636,6 +702,7 @@ class PaymentService:
     def sync_payment_status(
         db: Session,
         order_id: int,
+        merchant_order_id: str | None = None,
     ):
         """
         Fetch latest payment status from PhonePe and synchronize:
@@ -679,35 +746,33 @@ class PaymentService:
         # Get attempts
         # --------------------------------------------------------
 
-        attempts = PaymentRepository.get_attempts_for_intent(
-            db,
-            intent.intent_id,
-        )
-
-        if not attempts:
-            return intent
-
-        # --------------------------------------------------------
-        # IMPORTANT:
-        #
-        # Do NOT blindly use attempts[-1].
-        #
-        # A refund attempt is also stored under the same intent.
-        # Therefore we must select the latest ORIGINAL payment
-        # attempt.
-        # --------------------------------------------------------
-
-        payment_attempt = next(
-            (
-                attempt
-                for attempt in reversed(attempts)
-                if (
-                    attempt.parent_payment_id is None
-                    and attempt.merchant_order_id
+        if merchant_order_id:
+            payment_attempt = (
+               PaymentRepository.get_attempt_by_merchant_order_id(
+                    db,
+                    merchant_order_id,
                 )
-            ),
-            None,
-        )
+            )
+
+            if not payment_attempt:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Payment attempt not found",
+                )
+
+            if payment_attempt.intent_id != intent.intent_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Payment attempt does not belong to order",
+                )
+
+        else:
+            payment_attempt = (
+                PaymentRepository.get_latest_payment_attempt(
+                  db,
+                  intent.intent_id,
+                )
+            )
 
         if not payment_attempt:
             return intent
@@ -790,6 +855,52 @@ class PaymentService:
             payment_attempt.gateway_transaction_id = (
                 transaction_id
             )
+
+
+        # ========================================================
+        #PAYMENT AMOUNT VERIFICATION
+        # ========================================================
+
+        gateway_amount = status.get("amount")
+
+        if gateway_amount is not None:
+            expected_amount = int(intent.amount * 100)
+
+            if int(gateway_amount) != expected_amount:
+                logger.error(
+                    "Payment amount mismatch | "
+                    "order=%s expected=%s gateway=%s",
+                    order_id,
+                    expected_amount,
+                    gateway_amount,
+                )
+
+                payment_attempt.status = (
+                    PaymentAttemptStatus.FAILED.value
+                )
+
+                intent.status = (
+                    PaymentIntentStatus.FAILED.value
+                )
+
+                OrderPaymentService.sync_payment_status(
+                    db=db,
+                    order_id=order_id,
+                    payment_status=PaymentStatus.FAILED,
+                    provider_reference=(
+                        payment_attempt.merchant_order_id
+                    ),
+                    commit=False,
+                )
+
+                db.commit()
+
+                raise HTTPException(
+                    status_code=400,
+                    detail="Payment amount verification failed",
+                )
+
+        
 
         # ========================================================
         # EXPIRY
@@ -921,6 +1032,9 @@ class PaymentService:
             )
 
             return intent
+
+
+        
 
         # --------------------------------------------------------
         # Still pending
@@ -1109,6 +1223,11 @@ class PaymentService:
         - system workflows
 
         This method does NOT perform user authorization.
+
+        Important:
+
+        This method creates a NEW refund attempt only when
+        there is no currently active refund attempt.
         """
 
         order = OrderRepository.get_order(
@@ -1122,13 +1241,13 @@ class PaymentService:
                 detail="Order not found",
             )
 
-        if order.payment_status != "REFUND_PENDING":
+        if order.payment_status != PaymentStatus.REFUND_PENDING.value:
             raise HTTPException(
                 status_code=400,
                 detail="Order is not awaiting refund",
             )
 
-        intent = PaymentRepository.get_intent_by_order(
+        intent = PaymentRepository.get_intent_by_order_for_update(
             db,
             order_id,
         )
@@ -1151,12 +1270,53 @@ class PaymentService:
                 "order_id": order_id,
             }
 
-        if intent.status != PaymentIntentStatus.SUCCEEDED.value:
+        # --------------------------------------------------------
+        # Existing active refund
+        #
+        # NEVER create another refund while one is active.
+        # --------------------------------------------------------
+
+        active_refund = (
+            PaymentRepository.get_active_refund_attempt(
+                db,
+                intent.intent_id,
+            )
+        )
+
+        if active_refund:
+
+            logger.info(
+                "Refund already active | "
+                "order=%s refund_attempt=%s",
+                order_id,
+                active_refund.attempt_id,
+            )
+
+            return {
+                "status": "already_initiated",
+                "order_id": order_id,
+                "refund_attempt": active_refund,
+                "merchant_refund_id": (
+                    active_refund.merchant_refund_id
+                ),
+            }
+
+        # --------------------------------------------------------
+        # Payment must have succeeded
+        # --------------------------------------------------------
+
+        if intent.status not in (
+            PaymentIntentStatus.SUCCEEDED.value,
+            PaymentIntentStatus.REFUND_FAILED.value,
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Payment is not eligible for refund",
             )
 
+        # --------------------------------------------------------
+        # Find successful original payment
+        # --------------------------------------------------------
         payment_attempt = (
             PaymentRepository
             .get_latest_successful_payment_attempt(
@@ -1170,6 +1330,10 @@ class PaymentService:
                 status_code=400,
                 detail="Successful payment attempt not found",
             )
+
+        # --------------------------------------------------------
+        # Create refund attempt
+        # --------------------------------------------------------
 
         refund_attempt = (
             PaymentRepository.create_refund_attempt(
@@ -1194,6 +1358,22 @@ class PaymentService:
 
         db.commit()
 
+        db.refresh(refund_attempt)
+        db.refresh(intent)
+
+        logger.info(
+            "REFUND INITIATED | "
+            "order=%s intent=%s attempt=%s merchant_refund_id=%s",
+            order_id,
+            intent.intent_id,
+            refund_attempt.attempt_id,
+            merchant_refund_id,
+        )
+
+        # --------------------------------------------------------
+        # Call PhonePe
+        # --------------------------------------------------------
+
         client = PhonePeClient()
 
         try:
@@ -1206,7 +1386,50 @@ class PaymentService:
                 ),
             )
 
-        except PhonePeException as e:
+        except (ReadTimeout, ConnectionError) as e:
+
+            logger.warning(
+                "PhonePe refund request outcome unknown | "
+                "order=%s merchant_refund_id=%s error=%s",
+                order_id,
+                merchant_refund_id,
+                str(e),
+            )     
+
+            # We do NOT know whether PhonePe received the request.
+            #
+            # Therefore:
+            # - keep refund attempt INITIATED
+            # - keep intent REFUND_INITIATED
+            # - DO NOT create another refund attempt
+            #
+            # The next processor run will call
+            # sync_refund_status() using this same merchant_refund_id.
+
+            refund_attempt.status = (
+               PaymentAttemptStatus.INITIATED.value
+            )
+
+            refund_attempt.response_payload = {
+               "error": str(e),
+               "outcome": "UNKNOWN",
+            }
+
+            intent.status = (
+                PaymentIntentStatus.REFUND_INITIATED.value
+            )
+
+            db.commit()
+
+            return {
+                "status": "processing",
+                "order_id": order_id,
+                "refund_attempt": refund_attempt,
+                "merchant_refund_id": merchant_refund_id,
+                "state": "UNKNOWN",
+            }  
+
+        except (PhonePeException) as e:
 
             logger.exception(
                 "PhonePe internal refund failed: %s",
@@ -1236,14 +1459,66 @@ class PaymentService:
 
             db.commit()
 
+            # IMPORTANT:
+            #
+            # Order.payment_status remains REFUND_PENDING.
+            #
+            # The refund processor can retry.
+
             raise
 
         PaymentRepository.save_phonepe_refund(
             db=db,
             attempt=refund_attempt,
-            refund_id=response["refund_id"],
+            merchant_refund_id=merchant_refund_id,
+            gateway_refund_id=response["refund_id"],
             response=response,
         )
+
+        # --------------------------------------------------------
+        # PhonePe may return PROCESSING.
+        #
+        # Do NOT mark the refund SUCCESS here unless PhonePe
+        # explicitly says COMPLETED.
+        # --------------------------------------------------------
+
+        if response["state"] == "COMPLETED":
+
+            refund_attempt.status = (
+                PaymentAttemptStatus.SUCCESS.value
+            )
+
+            refund_attempt.completed_at = (
+                datetime.now(timezone.utc)
+            )
+
+            intent.status = (
+                PaymentIntentStatus.REFUNDED.value
+            )
+
+            OrderPaymentService.mark_refunded(
+                db=db,
+                order_id=order_id,
+                provider_reference=merchant_refund_id,
+                provider_transaction_id=None,
+                commit=False,
+            )
+
+            db.commit()
+
+            return {
+                "status": "refunded",
+                "order_id": order_id,
+                "refund_attempt": refund_attempt,
+                "merchant_refund_id": merchant_refund_id,
+                "refund_id": response["refund_id"],
+                "state": response["state"],
+                "amount": response["amount"],
+            }
+
+        # --------------------------------------------------------
+        # Still processing
+        # --------------------------------------------------------
 
         return {
             "status": "initiated",
@@ -1299,7 +1574,6 @@ class PaymentService:
 
         if intent.status in [
             PaymentIntentStatus.REFUNDED.value,
-            PaymentIntentStatus.REFUND_FAILED.value,
         ]:
             return intent
 
@@ -1444,7 +1718,7 @@ class PaymentService:
                 db=db,
                 order_id=order_id,
                 provider_reference=(
-                    refund_attempt.merchant_order_id
+                    refund_attempt.merchant_refund_id
                 ),
                 provider_transaction_id=(
                     refund_transaction_id
@@ -1490,7 +1764,7 @@ class PaymentService:
                 db=db,
                 order_id=order_id,
                 provider_reference=(
-                    refund_attempt.merchant_order_id
+                    refund_attempt.merchant_refund_id
                 ),
                 provider_transaction_id=(
                     refund_transaction_id

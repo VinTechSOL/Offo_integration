@@ -70,3 +70,7 @@ class OrderTimelineItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MoveOrderRequest(BaseModel):
+    status: OrderStatus

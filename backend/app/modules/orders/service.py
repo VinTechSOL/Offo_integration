@@ -4,7 +4,7 @@ from app.modules.vendor.models import CafeBranch
 from app.modules.orders.repository import OrderRepository
 from app.modules.orders.constants import OrderStatus, PaymentStatus
 from app.modules.orders.models import Order
-from app.modules.orders.validators import (validate_transition,validate_scheduled_visibility,)
+from app.modules.orders.validators import (validate_transition,validate_scheduled_visibility,validate_user_cancellation)
 from app.modules.staff.access_control import validate_branch_access
 from app.modules.orders.payment_service import OrderPaymentService
 from app.modules.orders.priority import OrderPriority,calculate_priority
@@ -262,73 +262,171 @@ class OrderService:
 
        db.add(new_order)
 
-    @staticmethod
-    def cancel_order_by_user(db: Session, order_id: int, user_id: int):
+    @staticmethod  
+    def cancel_order_by_user(
+        db: Session,
+        order_id: int,
+        user_id: int,
+    ):
+        """
+        Cancel an order initiated by the customer.
+
+        Rules:
+
+            CREATED
+                → cancellation allowed
+
+            PREPARING+
+                → cancellation rejected
+
+        If the order has already been paid:
+
+            CREATED + PAID
+                → CANCELLED
+                → REFUND_PENDING
+
+        If payment has not completed:
+
+            CREATED + PENDING/FAILED
+                → CANCELLED
+                → no refund
+        """
 
         order = db.get(Order, order_id)
 
         if not order:
-          raise HTTPException(404, "Order not found")
-        
+            raise HTTPException(
+                status_code=404,
+                detail="Order not found",
+            )
+
+        # --------------------------------------------------------
+        # Ownership
+        # --------------------------------------------------------
+
         if order.user_id != user_id:
-          raise HTTPException(403, "Not allowed")
-        
-        # Only cancel if still CREATED
+            raise HTTPException(
+                status_code=403,
+                detail="Not allowed",
+            )
+
+        # --------------------------------------------------------
+        # Cancellation eligibility
+        # --------------------------------------------------------
+
+        validate_user_cancellation(order)
+
+        current_status = OrderStatus(order.order_status)
+
+        # --------------------------------------------------------
+        # State transition
+        # --------------------------------------------------------
+
         validate_transition(
-          OrderStatus(order.order_status),
-          OrderStatus.CANCELLED,
+            current_status,
+            OrderStatus.CANCELLED,
         )
+
+        # --------------------------------------------------------
+        # Cancel order
+        # --------------------------------------------------------
 
         order.order_status = OrderStatus.CANCELLED
         order.updated_at = now_utc()
 
         OrderRepository.add_status_log(
-           db,
-           order_id=order.order_id,
-           status=OrderStatus.CANCELLED,
-           changed_by="USER",
-           changed_by_id=user_id,
+            db,
+            order_id=order.order_id,
+            status=OrderStatus.CANCELLED,
+            changed_by="USER",
+            changed_by_id=user_id,
         )
 
+        # --------------------------------------------------------
+        # Paid order → refund pending
+        # --------------------------------------------------------
+
+        refund_pending = False
+
         if order.payment_status == PaymentStatus.PAID:
-            OrderPaymentService.mark_refund_pending_in_transaction(
-                db=db,
+
+            refund_pending = (
+                OrderPaymentService
+                .mark_refund_pending_in_transaction(
+                    db=db,
                 order=order,
+                )
             )
+
+        # --------------------------------------------------------
+        # Commit entire cancellation transaction
+        # --------------------------------------------------------
 
         db.commit()
         db.refresh(order)
 
         return {
-          "order_id": order.order_id,
-          "status": order.order_status,
+            "order_id": order.order_id,
+            "order_status": order.order_status,
+            "payment_status": order.payment_status,
+            "refund_pending": refund_pending,
         }
+
+    
 
 
 #vendor order service 
 
 class VendorOrderService:
 
+    # ============================================================
+    # ACCEPT ORDER
+    # CREATED → PREPARING
+    # ============================================================
+
     @staticmethod
-    def accept_order(db: Session, order_id: int, staff):
+    def accept_order(
+        db: Session,
+        order_id: int,
+        staff,
+    ):
         order = db.get(Order, order_id)
 
         if not order:
-            raise HTTPException(404, "Order not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Order not found",
+            )
 
-        # Role-based branch validation
-        validate_branch_access(staff, order.branch_id)
+        # --------------------------------------------------------
+        # Branch access
+        # --------------------------------------------------------
+
+        validate_branch_access(
+            staff,
+            order.branch_id,
+        )
+
+        # --------------------------------------------------------
+        # Payment must be completed
+        # --------------------------------------------------------
 
         if order.payment_status != PaymentStatus.PAID:
             raise HTTPException(
                 status_code=400,
-                detail="Order payment is not completed"
+                detail="Order payment is not completed",
             )
 
-        # Scheduled visibility rule
+        # --------------------------------------------------------
+        # Scheduled order visibility
+        # --------------------------------------------------------
+
         validate_scheduled_visibility(order)
 
-        # Strict state transition
+        # --------------------------------------------------------
+        # CREATED → PREPARING
+        # --------------------------------------------------------
+
         validate_transition(
             OrderStatus(order.order_status),
             OrderStatus.PREPARING,
@@ -348,40 +446,79 @@ class VendorOrderService:
         db.commit()
         db.refresh(order)
 
-    
-        # TRIGGER NOTIFICATION 
+        # --------------------------------------------------------
+        # Notify user
+        # --------------------------------------------------------
+
         NotificationService.trigger(
-            db,
-            event=NotificationEvent.ORDER_PLACED,
-            recipient_type=NotificationRecipient.STAFF,
-            recipient_id=order.branch_id,   # branch-level notification
-            title="New Order Placed",
-            message=f"New order {OrderRepository.build_display_order_id(order)} received",
+            db=db,
+            event=NotificationEvent.ORDER_ACCEPTED,
+            recipient_type=NotificationRecipient.USER,
+            recipient_id=order.user_id,
+            title="Order Accepted 👨‍🍳",
+            message=(
+                f"Order "
+                f"{OrderRepository.build_display_order_id(order)} "
+                f"is being prepared."
+            ),
             priority=NotificationPriority.MEDIUM,
             order_id=order.order_id,
         )
+
+        db.commit()
 
         return {
             "order_id": order.order_id,
             "status": order.order_status,
         }
 
+    # ============================================================
+    # REJECT ORDER
+    # CREATED → REJECTED
+    # ============================================================
+
     @staticmethod
-    def reject_order(db: Session, order_id: int, staff):
+    def reject_order(
+        db: Session,
+        order_id: int,
+        staff,
+    ):
         order = db.get(Order, order_id)
 
         if not order:
-            raise HTTPException(404, "Order not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Order not found",
+            )
 
-        validate_branch_access(staff, order.branch_id)
+        # --------------------------------------------------------
+        # Branch access
+        # --------------------------------------------------------
+
+        validate_branch_access(
+            staff,
+            order.branch_id,
+        )
+
+        # --------------------------------------------------------
+        # Payment must be completed
+        # --------------------------------------------------------
 
         if order.payment_status != PaymentStatus.PAID:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Order payment is not completed"
-                    )
-        
+            raise HTTPException(
+                status_code=400,
+                detail="Order payment is not completed",
+            )
+
+        # --------------------------------------------------------
+        # Scheduled visibility
+        # --------------------------------------------------------
+
         validate_scheduled_visibility(order)
+
+        # --------------------------------------------------------
+        # CREATED → REJECTED
+        # --------------------------------------------------------
 
         validate_transition(
             OrderStatus(order.order_status),
@@ -399,14 +536,21 @@ class VendorOrderService:
             changed_by_id=staff.staff_id,
         )
 
-        if order.payment_status == PaymentStatus.PAID:
-            OrderPaymentService.mark_refund_pending_in_transaction(
-                db=db,
-                order=order,
-            )
+        # --------------------------------------------------------
+        # Paid rejected order → refund pending
+        # --------------------------------------------------------
+
+        OrderPaymentService.mark_refund_pending_in_transaction(
+            db=db,
+            order=order,
+        )
 
         db.commit()
         db.refresh(order)
+
+        # --------------------------------------------------------
+        # Notify user
+        # --------------------------------------------------------
 
         NotificationService.trigger(
             db=db,
@@ -414,16 +558,29 @@ class VendorOrderService:
             recipient_type=NotificationRecipient.USER,
             recipient_id=order.user_id,
             title="Order Rejected",
-            message=f"Order {OrderRepository.build_display_order_id(order)} was rejected",
+            message=(
+                f"Order "
+                f"{OrderRepository.build_display_order_id(order)} "
+                f"was rejected."
+            ),
             priority=NotificationPriority.HIGH,
             order_id=order.order_id,
         )
+
+        db.commit()
 
         return {
             "order_id": order.order_id,
             "status": order.order_status,
             "payment_status": order.payment_status,
         }
+
+    # ============================================================
+    # MOVE ORDER
+    #
+    # PREPARING → READY
+    # READY → PICKED_UP → COMPLETED
+    # ============================================================
 
     @staticmethod
     def move_order(
@@ -435,67 +592,172 @@ class VendorOrderService:
         order = db.get(Order, order_id)
 
         if not order:
-            raise HTTPException(404, "Order not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Order not found",
+            )
 
-        validate_branch_access(staff, order.branch_id)
+        # --------------------------------------------------------
+        # Branch access
+        # --------------------------------------------------------
+
+        validate_branch_access(
+            staff,
+            order.branch_id,
+        )
+
+        # --------------------------------------------------------
+        # Payment check
+        # --------------------------------------------------------
 
         if order.payment_status != PaymentStatus.PAID:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Order payment is not completed"
-                    )
+            raise HTTPException(
+                status_code=400,
+                detail="Order payment is not completed",
+            )
 
-        
+        # --------------------------------------------------------
+        # Scheduled visibility
+        # --------------------------------------------------------
+
         validate_scheduled_visibility(order)
-        current = OrderStatus(order.order_status)
+
+        current_status = OrderStatus(order.order_status)
+
+        # --------------------------------------------------------
+        # IMPORTANT:
+        #
+        # Vendor's move endpoint is NOT allowed to:
+        #
+        # CREATED → READY
+        # CREATED → PICKED_UP
+        # PREPARING → PICKED_UP
+        # READY → COMPLETED
+        #
+        # The state machine prevents this.
+        # --------------------------------------------------------
 
         validate_transition(
-            current,next_status,
+            current_status,
+            next_status,
         )
 
-        order.order_status = next_status
-        order.updated_at = now_utc()
-
-        OrderRepository.add_status_log(
-            db,
-            order_id=order.order_id,
-            status=next_status,
-            changed_by="STAFF",
-            changed_by_id=staff.staff_id,
-        )
-
-        db.commit()
-        db.refresh(order)
-
-        # -------------------------
-        # USER NOTIFICATIONS
-        # -------------------------
+        # ========================================================
+        # PREPARING → READY
+        # ========================================================
 
         if next_status == OrderStatus.READY:
+
+            order.order_status = OrderStatus.READY
+            order.updated_at = now_utc()
+
+            OrderRepository.add_status_log(
+                db,
+                order_id=order.order_id,
+                status=OrderStatus.READY,
+                changed_by="STAFF",
+                changed_by_id=staff.staff_id,
+            )
+
+            db.commit()
+            db.refresh(order)
+
             NotificationService.trigger(
                 db=db,
                 event=NotificationEvent.ORDER_READY,
                 recipient_type=NotificationRecipient.USER,
                 recipient_id=order.user_id,
                 title="Your Order is Ready 🎉",
-                message=f"Order {OrderRepository.build_display_order_id(order)} is ready for pickup.",
+                message=(
+                    f"Order "
+                    f"{OrderRepository.build_display_order_id(order)} "
+                    f"is ready for pickup."
+                ),
                 priority=NotificationPriority.HIGH,
                 order_id=order.order_id,
             )
 
-        elif next_status == OrderStatus.PREPARING:
+            db.commit()
+
+            return {
+                "order_id": order.order_id,
+                "status": order.order_status,
+            }
+
+        # ========================================================
+        # READY → PICKED_UP → COMPLETED
+        # ========================================================
+
+        if next_status == OrderStatus.PICKED_UP:
+
+            # ----------------------------------------------------
+            # Timeline event: PICKED_UP
+            # ----------------------------------------------------
+
+            OrderRepository.add_status_log(
+                db,
+                order_id=order.order_id,
+                status=OrderStatus.PICKED_UP,
+                changed_by="STAFF",
+                changed_by_id=staff.staff_id,
+            )
+
+            # ----------------------------------------------------
+            # Actual database state becomes COMPLETED immediately
+            # ----------------------------------------------------
+
+            order.order_status = OrderStatus.COMPLETED
+            order.updated_at = now_utc()
+
+            # ----------------------------------------------------
+            # Timeline event: COMPLETED
+            # ----------------------------------------------------
+
+            OrderRepository.add_status_log(
+                db,
+                order_id=order.order_id,
+                status=OrderStatus.COMPLETED,
+                changed_by="SYSTEM",
+                changed_by_id=None,
+            )
+
+            db.commit()
+            db.refresh(order)
+
+            # ----------------------------------------------------
+            # Notify user
+            # ----------------------------------------------------
+
             NotificationService.trigger(
                 db=db,
-                event=NotificationEvent.ORDER_ACCEPTED,
+                event=NotificationEvent.ORDER_COMPLETED,
                 recipient_type=NotificationRecipient.USER,
                 recipient_id=order.user_id,
-                title="Order Accepted 👨‍🍳",
-                message=f"Order {OrderRepository.build_display_order_id(order)} is being prepared.",
+                title="Order Completed 🎉",
+                message=(
+                    f"Order "
+                    f"{OrderRepository.build_display_order_id(order)} "
+                    f"has been picked up and completed."
+                ),
                 priority=NotificationPriority.MEDIUM,
                 order_id=order.order_id,
             )
 
-        return {
-            "order_id": order.order_id,
-            "status": order.order_status,
-        }
+            db.commit()
+
+            return {
+                "order_id": order.order_id,
+                "status": order.order_status,
+            }
+
+        # --------------------------------------------------------
+        # Defensive fallback
+        # --------------------------------------------------------
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unsupported vendor transition: "
+                f"{current_status.value} → {next_status.value}"
+            ),
+        )

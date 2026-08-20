@@ -46,7 +46,35 @@ def get_payment_for_order(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    return PaymentRepository.get_intent_by_order(db, order_id)
+    order = OrderRepository.get_order(
+        db,
+        order_id,
+    )
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found",
+        )
+
+    if order.user_id != user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Unauthorized",
+        )
+
+    intent = PaymentRepository.get_intent_by_order(
+        db,
+        order_id,
+    )
+
+    if not intent:
+        raise HTTPException(
+            status_code=404,
+            detail="Payment not found",
+        )
+
+    return intent
 
 
 @router.post("/refund/{order_id}")
