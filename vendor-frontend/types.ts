@@ -3,7 +3,8 @@ export enum OrderStatus {
   Preparing = "PREPARING",
   Ready = "READY",
   PickedUp = "PICKED_UP",
-  completed = "COMPLETED",
+  Completed = "COMPLETED",
+  Rejected = "REJECTED",
   Cancelled = "CANCELLED",
 }
 

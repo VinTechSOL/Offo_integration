@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import type { OrderDetails } from '../types';
 import CheckIcon from '../components/icons/CheckIcon';
 
@@ -8,17 +8,50 @@ interface SuccessScreenProps {
   orderDetails: OrderDetails | null;
 }
 
-const SuccessScreen: React.FC<SuccessScreenProps> = ({ clearCart, orderDetails }) => {
+const SuccessScreen: React.FC<SuccessScreenProps> = ({
+  clearCart,
+  orderDetails,
+}) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const orderId = location.state?.orderId;
+
+  useEffect(() => {
+    // Prevent browser/Android back from returning to
+    // payment status / PhonePe / payment / cart.
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = () => {
+      navigate('/home', { replace: true });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [navigate]);
 
   const goTo = (path: string) => {
-    clearCart(); // always clear cart on leaving success
-    navigate(path, { replace: true });
+    clearCart();
+
+    if (path === '/orders') {
+      navigate('/orders', {
+        replace: true,
+        state: {
+          paymentCompleted: true,
+          orderId,
+        },
+      });
+      return;
+    }
+
+    navigate('/home', { replace: true });
   };
 
   const handleDownloadReceipt = () => {
     if (!orderDetails) {
-      alert("Order details not available for download.");
+      alert('Order details not available for download.');
       return;
     }
 
@@ -32,7 +65,7 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({ clearCart, orderDetails }
 
     if (orderDetails.schedules && orderDetails.schedules.length > 0) {
       receiptContent += `This is a scheduled order for ${orderDetails.schedules.length} day(s):\n`;
-      orderDetails.schedules.forEach(schedule => {
+      orderDetails.schedules.forEach((schedule) => {
         const scheduleDate = schedule.date.toLocaleDateString('en-GB');
         receiptContent += `- ${scheduleDate} at ${schedule.time}\n`;
       });
@@ -41,19 +74,25 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({ clearCart, orderDetails }
       receiptContent += `Items:\n`;
     }
 
-    orderDetails.items.forEach(cartItem => {
+    orderDetails.items.forEach((cartItem) => {
       const itemTotal = cartItem.item.price * cartItem.quantity;
-      receiptContent += `- ${cartItem.quantity} x ${cartItem.item.name}: ₹${itemTotal.toFixed(2)}\n`;
+      receiptContent += `- ${cartItem.quantity} x ${
+        cartItem.item.name
+      }: ₹${itemTotal.toFixed(2)}\n`;
     });
 
     receiptContent += `\n---------------------\n`;
     receiptContent += `Subtotal: ₹${orderDetails.subtotal.toFixed(2)}\n`;
-    receiptContent += `Convenience Fee: ₹${orderDetails.convenienceFee.toFixed(2)}\n`;
+    receiptContent += `Convenience Fee: ₹${orderDetails.convenienceFee.toFixed(
+      2,
+    )}\n`;
 
     if (orderDetails.schedules && orderDetails.schedules.length > 0) {
       const perOrderTotal = orderDetails.subtotal + orderDetails.convenienceFee;
       receiptContent += `Total per order: ₹${perOrderTotal.toFixed(2)}\n\n`;
-      receiptContent += `GRAND TOTAL for ${orderDetails.schedules.length} orders: ₹${orderDetails.total.toFixed(2)}\n`;
+      receiptContent += `GRAND TOTAL for ${
+        orderDetails.schedules.length
+      } orders: ₹${orderDetails.total.toFixed(2)}\n`;
 
       const isPartialPayment =
         orderDetails.paymentOption === 'partial' &&
@@ -61,7 +100,9 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({ clearCart, orderDetails }
         orderDetails.paymentAmount < orderDetails.total;
 
       if (isPartialPayment) {
-        receiptContent += `\nAmount Paid Today: ₹${orderDetails.paymentAmount.toFixed(2)}\n`;
+        receiptContent += `\nAmount Paid Today: ₹${orderDetails.paymentAmount.toFixed(
+          2,
+        )}\n`;
         const remaining = orderDetails.total - orderDetails.paymentAmount;
         receiptContent += `Remaining Due: ₹${remaining.toFixed(2)}\n`;
       }
@@ -69,10 +110,14 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({ clearCart, orderDetails }
       receiptContent += `Total: ₹${orderDetails.total.toFixed(2)}\n`;
     }
 
-    receiptContent += `Payment Method: ${orderDetails.paymentMethod || 'N/A'}\n\n`;
+    receiptContent += `Payment Method: ${
+      orderDetails.paymentMethod || 'N/A'
+    }\n\n`;
     receiptContent += `Thank you for your order!`;
 
-    const blob = new Blob([receiptContent], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([receiptContent], {
+      type: 'text/plain;charset=utf-8',
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -95,31 +140,25 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({ clearCart, orderDetails }
       </p>
 
       <p className="text-sm text-gray-400 mb-4">
-        <button
-          onClick={() => goTo("/orders")}
-          className="underline"
-        >
+        <button onClick={() => goTo('/orders')} className="underline">
           View Order Details
         </button>
-        {" / "}
-        <button
-          onClick={handleDownloadReceipt}
-          className="underline"
-        >
+        {' / '}
+        <button onClick={handleDownloadReceipt} className="underline">
           Download Receipt
         </button>
       </p>
 
       <div className="w-full max-w-xs grid grid-cols-2 gap-4">
         <button
-          onClick={() => goTo("/home")}
+          onClick={() => goTo('/home')}
           className="bg-orange-500 text-white font-bold py-3 rounded-xl"
         >
           Menu
         </button>
 
         <button
-          onClick={() => goTo("/orders")}
+          onClick={() => goTo('/orders')}
           className="bg-gray-600 text-white font-bold py-3 rounded-xl"
         >
           My Orders

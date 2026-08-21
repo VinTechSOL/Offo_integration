@@ -87,6 +87,10 @@ export const VendorOrdersApi = {
     return api.post(`/orders/${orderId}/accept`);
   },
 
+  async reject(orderId: string) {
+    return api.post(`/orders/${orderId}/reject`);
+  },
+
   /**
    * Move order status
    * POST /orders/{order_id}/move?status=READY|PICKED_UP

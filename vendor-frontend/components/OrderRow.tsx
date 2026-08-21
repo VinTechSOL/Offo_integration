@@ -65,6 +65,12 @@ const StatusPill: React.FC<{ status: OrderStatus }> = ({ status }) => {
   let textColor = 'text-red-600';
 
   switch (status) {
+
+    case OrderStatus.Incoming:
+      text = 'Incoming';
+      bgColor = 'bg-red-100';
+      textColor = 'text-red-600';
+      break;
     case OrderStatus.Preparing:
       text = 'Preparing';
       bgColor = 'bg-yellow-100';
@@ -80,11 +86,21 @@ const StatusPill: React.FC<{ status: OrderStatus }> = ({ status }) => {
       bgColor = 'bg-green-100';
       textColor = 'text-green-600';
       break;
+    case OrderStatus.Completed:
+      text = 'Completed';
+      bgColor = 'bg-green-100';
+      textColor = 'text-green-600';
+      break;
     case OrderStatus.Cancelled:
         text = 'Cancelled';
         bgColor = 'bg-gray-200';
         textColor = 'text-gray-600';
         break;
+    case OrderStatus.Rejected:
+      text = 'Rejected';
+      bgColor = 'bg-red-100';
+      textColor = 'text-red-600';
+      break;
   }
 
   return (
@@ -97,7 +113,7 @@ const StatusPill: React.FC<{ status: OrderStatus }> = ({ status }) => {
 
 const UpdateStatusButtons: React.FC<{ order: Order; onStatusChange: (orderId: string, newStatus: OrderStatus) => void; onRequestCancel: (orderId: string) => void; }> = ({ order, onStatusChange, onRequestCancel }) => {
     const handleAccept = () => onStatusChange(order.id, OrderStatus.Preparing);
-    const handleCancel = () => onRequestCancel(order.id);
+    const handleReject = () => onRequestCancel(order.id);
     const handleReady = () => onStatusChange(order.id, OrderStatus.Ready);
     const handlePickedUp = () => onStatusChange(order.id, OrderStatus.PickedUp);
 
@@ -108,7 +124,7 @@ const UpdateStatusButtons: React.FC<{ order: Order; onStatusChange: (orderId: st
             return (
                 <div className="flex space-x-2">
                     <button onClick={handleAccept} className={`${buttonBaseClass} bg-offo-green hover:opacity-90`}>Accept</button>
-                    <button onClick={handleCancel} className={`${buttonBaseClass} bg-offo-orange hover:opacity-90`}>Cancel</button>
+                    <button onClick={handleReject} className={`${buttonBaseClass} bg-offo-orange hover:opacity-90`}>Reject</button>
                 </div>
             );
         case OrderStatus.Preparing:

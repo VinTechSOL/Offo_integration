@@ -106,11 +106,7 @@ const ProfileScreen: React.FC = () => {
   /* -------- MENU CONFIG -------- */
   const generalOptions = [
     { label: "My Account", icon: UserIcon, action: () => navigate("/my-account") },
-    {
-      label: "Payment Methods",
-      icon: CreditCardIcon,
-      action: () => navigate("/payment-methods"),
-    },
+  
     {
       label: "Order History",
       icon: ReceiptIcon,

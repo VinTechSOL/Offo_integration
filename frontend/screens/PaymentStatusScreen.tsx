@@ -30,7 +30,7 @@ const PaymentStatusScreen = () => {
               clearInterval(interval);
             }
             clearTimeout(timeout);
-            navigate('/success', { replace: true });
+            navigate('/success', { replace: true, state:{ orderId: orderId, paymentCompleted: true}, });
             return;
 
           case 'FAILED':

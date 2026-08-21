@@ -265,8 +265,21 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
     } finally {
       
     }
-      
     
+  };
+
+  const handleRejectOrder = async (orderId: string) => {
+    try {
+      await VendorOrdersApi.reject(orderId);
+
+      // Rejected orders should disappear from Live Orders.
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+
+      setSelectedOrders((prev) => prev.filter((id) => id !== orderId));
+    } catch (e) {
+      console.error('Order rejection failed:', e);
+      alert('Failed to reject order. Please try again.');
+    }
   };
   
   const handleToggleSelection = (id: string) => {
@@ -285,16 +298,16 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
   
   const handleRequestCancel = (orderId: string) => {
     setConfirmation({
-        isOpen: true,
-        title: 'Cancel Order',
-        message: `Are you sure you want to cancel order ${orderId}? This action cannot be undone.`,
-        onConfirm: () => {
-            handleStatusChange(orderId, OrderStatus.Cancelled);
-            setConfirmation(null);
-        },
-        confirmText: 'Yes, Cancel',
-        cancelText: 'No, Keep Order',
-        confirmColor: 'red',
+      isOpen: true,
+      title: 'Reject Order',
+      message: `Are you sure you want to reject order ${orderId}? The customer will be refunded.`,
+      onConfirm: async () => {
+        await handleRejectOrder(orderId);
+        setConfirmation(null);
+      },
+      confirmText: 'Yes, Reject',
+      cancelText: 'No, Keep Order',
+      confirmColor: 'red',
     });
   };
 
@@ -456,11 +469,11 @@ export const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ isScheduledVie
             <StatCard title="Total Orders Today" value={orders.length} />
             <StatCard
               title="Completed"
-              value={orders.filter(o => o.status === OrderStatus.PickedUp).length}
+              value={orders.filter(o => o.status === OrderStatus.Completed).length}
             />
             <StatCard
-              title="Cancelled"
-              value={orders.filter(o => o.status === OrderStatus.Cancelled).length}
+              title="Rejected"
+              value={orders.filter(o => o.status === OrderStatus.Rejected).length}
             />
             <StatCard
               title="Active"

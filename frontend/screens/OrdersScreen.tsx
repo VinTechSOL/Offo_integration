@@ -358,7 +358,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
 
             <div className="flex justify-between">
               <span className="text-gray-600">
-                Convenience fee
+                (Platform Fee + GST)
               </span>
 
               <span className="font-medium text-gray-800">
@@ -1185,7 +1185,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   onEditOrderItems,
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"scheduled" | "ongoing" | "past">("past");
+  const [activeTab, setActiveTab] = useState<"scheduled" | "ongoing" | "past">("ongoing");
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -1432,7 +1432,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
 
       {/* HEADER */}
       <header className="p-4 flex items-center border-b bg-white sticky top-0 z-10">
-        <button onClick={() => navigate('/home')} className="w-1/5">
+        <button onClick={() => navigate('/home', {replace: true})} className="w-1/5">
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
         <h1 className="w-3/5 text-center text-xl font-bold text-gray-800">
