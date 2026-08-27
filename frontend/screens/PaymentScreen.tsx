@@ -10,7 +10,7 @@ import { initiatePaymentApi } from "@/api/payment";
 
 const phonePeMethod = {
   name: "PhonePe",
-  icon: "/assets/icons/phonepe.jpeg",
+  icon: "/assets/icons/upi-logo.png",
 };
 
 interface PaymentScreenProps {
@@ -25,6 +25,14 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
+  const scheduleCount = orderDetails.schedules?.length ?? 0;
+
+  const isScheduledOrder = scheduleCount > 0;
+
+  const itemsTotal = isScheduledOrder
+    ? orderDetails.subtotal * scheduleCount
+    : orderDetails.subtotal;
 
   // ============================
   // PLACE ORDER HANDLER
@@ -54,22 +62,26 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
 
       const orderResponse = await placeOrderApi(payload);
 
-      const orderId = orderResponse.order_id ?? orderResponse.order_ids?.[0];
+      const orderIds: number[] =
+        orderResponse.order_ids ??
+        (orderResponse.order_id ? [orderResponse.order_id] : []);
 
-      if (!orderId) {
+      if (orderIds.length === 0) {
         throw new Error('Order ID missing');
       }
 
-
-
-      const payment = await initiatePaymentApi(orderId);
-
+      const payment = await initiatePaymentApi(orderIds);
 
       if (!payment.checkout_url) {
         throw new Error('Checkout URL missing');
       }
 
-      sessionStorage.setItem('pendingOrderId', String(orderId));
+      // Store ALL orders belonging to this payment.
+      sessionStorage.setItem('pendingOrderIds', JSON.stringify(orderIds));
+
+      // Keep the first one for backward compatibility
+      // with existing payment-status logic.
+      sessionStorage.setItem('pendingOrderId', String(orderIds[0]));
 
       window.location.assign(payment.checkout_url);
     } catch (err: any) {
@@ -108,31 +120,55 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
         <div className="bg-white p-4 rounded-2xl shadow-sm border mb-6">
           <h2 className="font-bold text-lg mb-3">Bill Details</h2>
 
-          {orderDetails.items.map(({ item, quantity }) => (
-            <div key={item.id} className="flex justify-between text-sm mb-1">
-              <span>
-                {quantity} × {item.name}
-              </span>
+          {orderDetails.schedules && orderDetails.schedules.length > 0 ? (
+            <div className="space-y-3">
+              {orderDetails.schedules.map((schedule) => (
+                <div
+                  key={schedule.id}
+                  className="border-b border-gray-100 pb-3"
+                >
+                  <div className="font-semibold text-gray-800 mb-1">
+                    {schedule.date.toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                    {' • '}
+                    {schedule.time}
+                  </div>
 
-              <span>₹ {(item.price * quantity).toFixed(2)}</span>
+                  {orderDetails.items.map(({ item, quantity }) => (
+                    <div
+                      key={`${schedule.id}-${item.id}`}
+                      className="flex justify-between text-sm text-gray-600"
+                    >
+                      <span>
+                        {quantity} × {item.name}
+                      </span>
+
+                      <span>₹{(item.price * quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            orderDetails.items.map(({ item, quantity }) => (
+              <div key={item.id} className="flex justify-between text-sm mb-1">
+                <span>
+                  {quantity} × {item.name}
+                </span>
+
+                <span>₹{(item.price * quantity).toFixed(2)}</span>
+              </div>
+            ))
+          )}
 
           <hr className="my-3" />
 
           <div className="flex justify-between text-sm">
             <span>Items Total</span>
-            <span>₹ {orderDetails.subtotal.toFixed(2)}</span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span>Packaging Fee</span>
-            <span>₹ 0.00</span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span>Delivery Fee</span>
-            <span>₹ 0.00</span>
+            <span>₹ {itemsTotal.toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between text-sm">
@@ -158,7 +194,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
         <div className="bg-orange-50 border border-orange-500 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center">
             <img src={phonePeMethod.icon} className="h-8 mr-4" />
-            <span className="font-semibold">PhonePe</span>
+            <span className="font-semibold"> All UPIs</span>
           </div>
           <div className="w-5 h-5 rounded-full bg-orange-500" />
         </div>

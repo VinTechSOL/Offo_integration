@@ -2,10 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
-import CheckIcon from "@/components/icons/CheckIcon";
 import { getMyProfileApi } from "../api/user";
 import { getUserContextDetails } from "../api/userContext";
-
+import { logout } from "@/api/auth";
 
 
 // Icon Components
@@ -23,6 +22,29 @@ const ReceiptIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
+);
+const TicketIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15.5 5.5h-7A2.5 2.5 0 006 8v1a2 2 0 010 4v1a2.5 2.5 0 002.5 2.5h7A2.5 2.5 0 0018 16v-1a2 2 0 010-4V9a2.5 2.5 0 00-2.5-2.5z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M10 9.5h4M10 13.5h2"
+    />
+  </svg>
 );
 const BellIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
@@ -112,6 +134,12 @@ const ProfileScreen: React.FC = () => {
       icon: ReceiptIcon,
       action: () => navigate("/orders"),
     },
+
+    {
+      label: "View Tickets",
+      icon: TicketIcon,
+      action: () => navigate("/support/tickets"),
+    },
   ];
 
   const moreOptions = [
@@ -119,13 +147,27 @@ const ProfileScreen: React.FC = () => {
     { label: "About Us", icon: InfoIcon, action: () => navigate("/about") },
   ];
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      localStorage.removeItem('access_token');
+
+      navigate('/login', {
+        replace: true,
+      });
+    }
+  };
+
   /* ---------------- UI ---------------- */
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2]">
       {/* Header */}
       <header className="p-4 flex items-center border-b">
         <div className="w-1/5">
-          <button onClick={() => navigate("/home")}>
+          <button onClick={() => navigate('/home')}>
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>
@@ -153,13 +195,11 @@ const ProfileScreen: React.FC = () => {
                 {avatarLetter}
               </div>
               <div>
-                <h2 className="font-bold text-2xl">{fullName || "User"}</h2>
+                <h2 className="font-bold text-2xl">{fullName || 'User'}</h2>
                 <p className="text-sm opacity-90">{user?.mobile_number}</p>
                 <p className="text-xs opacity-80 mt-1">
                   {context?.campus_name}
-                  {context?.building_name
-                    ? ` · ${context.building_name}`
-                    : ""}
+                  {context?.building_name ? ` · ${context.building_name}` : ''}
                 </p>
               </div>
             </>
@@ -194,8 +234,7 @@ const ProfileScreen: React.FC = () => {
 
         {/* Logout */}
         <button
-          
-          onClick={() => navigate("/login")}
+          onClick={handleLogout}
           className="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 font-semibold"
         >
           <LogoutIcon className="w-6 h-6" />
@@ -203,7 +242,7 @@ const ProfileScreen: React.FC = () => {
         </button>
       </main>
 
-      <BottomNav  />
+      <BottomNav />
     </div>
   );
 };

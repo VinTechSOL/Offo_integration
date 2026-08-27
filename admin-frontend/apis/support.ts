@@ -6,6 +6,17 @@ export type TicketStatus =
   | "resolved"
   | "closed";
 
+
+  
+export interface TicketMessage {
+  message_id: number;
+  ticket_id: number;
+  sender_type: "USER" | "ADMIN";
+  sender_id: number;
+  message: string;
+  created_at: string;
+}
+
 export interface AdminTicket {
   ticket_id: number;
   display_ticket_id: string;
@@ -32,7 +43,11 @@ export interface AdminTicket {
 
   created_at: string;
   updated_at: string;
+
+  messages: TicketMessage[];
 }
+
+
 
 export interface AdminFeedback {
   feedback_id: number;
@@ -95,6 +110,20 @@ export const updateTicketStatusApi = async (
   return res.data;
 };
 
+
+export const sendAdminTicketMessageApi = async (
+  ticketId: number,
+  message: string
+) => {
+  const res = await api.post(
+    `/support/admin/tickets/${ticketId}/messages`,
+    {
+      message,
+    }
+  );
+
+  return res.data as TicketMessage;
+};
 
 // =====================================================
 // FEEDBACK

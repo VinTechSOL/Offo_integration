@@ -33,7 +33,7 @@ interface BranchMenuApi {
 interface MenuScreenProps {
   cafe: Cafe;
   cart: CartItem[];
-  addToCart: (item: FoodItem) => void;
+  addToCart: (item: FoodItem, quantity?: number) => void;
   isEditingOrder?: boolean;
   onCancelEdit?: () => void;
 }
@@ -58,18 +58,12 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
   /* ================= LOAD MENU ================= */
 
   useEffect(() => {
-    console.log("menu cafe",cafe);
-    console.log("branch id",cafe.branch_id);
-  }, [cafe]);
-
-  useEffect(() => {
     let active = true;
 
     const loadMenu = async () => {
       try {
         setLoading(true);
         const data = await getBranchMenuForUser(cafe.branch_id);
-        console.log("menu api response",data);
         if (active) {
           setMenu(data);
         }
@@ -116,6 +110,67 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
     0
   );
 
+  const getItemQuantity = (id: string | number) => {
+    const cartItem = cart.find((c) => c.item.id === id);
+    return cartItem && cartItem.quantity > 0 ? cartItem.quantity : 0;
+  };
+
+  /* ================= REUSABLE QUANTITY CONTROL ================= */
+
+  const QuantityControl = ({ item }: { item: MenuItemApi }) => {
+    const qty = getItemQuantity(item.branch_menu_item_id);
+
+    const foodPayload: FoodItem = {
+      id: item.branch_menu_item_id,
+      branchId: cafe.branch_id,
+      name: item.name,
+      price: item.price,
+      image: item.imageUrl || "",
+      isVeg: item.is_veg,
+      cafe: cafe.name,
+      category: item.category_name,
+    };
+
+    if (qty <= 0) {
+      return (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            addToCart(foodPayload, 1);
+          }}
+          className="w-full bg-orange-100 text-orange-600 font-bold py-1.5 text-sm rounded-lg active:scale-95 transition"
+        >
+          Add +
+        </button>
+      );
+    }
+
+    return (
+      <div
+        className="flex items-center justify-between bg-orange-500 text-white rounded-lg font-bold text-sm overflow-hidden w-full"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        <button
+          onClick={() => addToCart(foodPayload, -1)}
+          className="px-3 py-1 hover:bg-orange-600 active:scale-90 transition"
+        >
+          -
+        </button>
+        <span className="text-xs px-1">{qty}</span>
+        <button
+          onClick={() => addToCart(foodPayload, 1)}
+          className="px-3 py-1 hover:bg-orange-600 active:scale-90 transition"
+        >
+          +
+        </button>
+      </div>
+    );
+  };
+
   /* ================= RENDER ================= */
 
   if (loading) {
@@ -154,13 +209,13 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
         </div>
 
         <div className="text-center">
-          <h1 className="text-xl font-bold">{cafe.name}</h1>
+          <h1 className="text-xl font-bold text-gray-800">{cafe.name}</h1>
           <p className="text-sm text-gray-500">{cafe.location}</p>
         </div>
 
         <div className="mt-4 flex gap-3">
           <input
-            className="flex-1 p-2 border rounded-lg"
+            className="flex-1 p-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-400"
             placeholder="Search your food"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -168,23 +223,23 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
 
           <button
             onClick={() => setIsVegOnly(!isVegOnly)}
-            className={`px-4 rounded-full font-semibold ${
-              isVegOnly ? 'bg-green-500 text-white' : 'bg-gray-200'
+            className={`px-4 rounded-full font-semibold text-sm transition ${
+              isVegOnly ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'
             }`}
           >
             Veg
           </button>
         </div>
 
-        <div className="mt-4 flex gap-2 overflow-x-auto">
+        <div className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap ${
+              className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-semibold transition ${
                 selectedCategory === cat
                   ? 'bg-orange-500 text-white'
-                  : 'bg-white border'
+                  : 'bg-white border border-gray-200 text-gray-700'
               }`}
             >
               {cat}
@@ -193,43 +248,40 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
         </div>
       </header>
 
-      {/* ================= ITEMS ================= */}
+      {/* ================= ITEMS GRID ================= */}
       <ScrollableContainer className="p-4">
         <div className="grid grid-cols-2 gap-4">
           {filteredItems.map((item) => (
             <div
               key={item.branch_menu_item_id}
-              className="bg-white rounded-xl p-3 shadow"
+              className="bg-white rounded-xl p-3 shadow-sm flex flex-col justify-between h-full border border-gray-100"
             >
-              <img
-                src={item.imageUrl || '/placeholder-food.png'}
-                className="w-full h-24 object-cover rounded-lg mb-2"
-              />
-              <p className="font-bold text-sm">{item.name}</p>
-              <p className="text-sm text-gray-600">₹ {item.price}</p>
+              <div>
+                <img
+                  src={item.imageUrl || '/placeholder-food.png'}
+                  alt={item.name}
+                  className="w-full h-28 object-cover rounded-lg mb-2"
+                />
+                <p 
+                  className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight min-h-[2.5rem]"
+                  title={item.name}
+                >
+                  {item.name}
+                </p>
+              </div>
 
-              <button
-                onClick={() =>
-                  addToCart({
-                    id: item.branch_menu_item_id,
-                    branchId: cafe.branch_id,
-                    name: item.name,
-                    price: item.price,
-                    image: item.imageUrl || '',
-                    isVeg: item.is_veg,
-                    cafe: cafe.name,
-                    category: item.category_name,
-                  })
-                }
-                className="mt-2 w-full bg-orange-100 text-orange-600 rounded-lg py-1 font-semibold"
-              >
-                Add +
-              </button>
+              <div className="mt-3">
+                <p className="text-sm font-semibold text-gray-800 mb-2">
+                  ₹ {item.price.toFixed(2)}
+                </p>
+                <QuantityControl item={item} />
+              </div>
             </div>
           ))}
         </div>
+
         {/* ================= RESTAURANT INFORMATION ================= */}
-        <div className="px-4 pb-6 pt-2">
+        <div className="px-2 pb-6 pt-6">
           <div className="border-t border-gray-200 pt-5 text-xs text-gray-500 space-y-2">
             <p className="font-semibold text-gray-900">Disclaimer</p>
 
@@ -260,25 +312,26 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
 
             <div className="pt-2">
               <p className="font-semibold text-gray-700">FSSAI License No.</p>
-
-              <p className="mt-1">
-                {/* TODO: Map FSSAI license number from backend */}
-                Not available
-              </p>
+              <p className="mt-1">Not available</p>
             </div>
           </div>
         </div>
       </ScrollableContainer>
+
+      {/* ================= FLOATING CART SUMMARY ================= */}
       {cartItemCount > 0 && cafe.status === 'Open' && (
-        <footer className="p-4 bg-gray-100 border-t flex-shrink-0">
-          <div className="bg-gray-800 text-white rounded-lg shadow-lg flex justify-between items-center p-3">
-            <p>
-              {cartItemCount} items | ₹{' '}
+        <footer className="p-4 bg-transparent border-t flex-shrink-0">
+          <div className="bg-gray-800 text-white rounded-xl shadow-lg flex justify-between items-center p-3">
+            <p className="text-sm font-medium">
+              {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} | ₹{' '}
               {cart
                 .reduce((acc, cv) => acc + cv.item.price * cv.quantity, 0)
                 .toFixed(2)}
             </p>
-            <button onClick={() => navigate('/cart')} className="font-bold">
+            <button 
+              onClick={() => navigate('/cart')} 
+              className="font-bold text-sm hover:text-orange-400 transition"
+            >
               View Cart &gt;
             </button>
           </div>

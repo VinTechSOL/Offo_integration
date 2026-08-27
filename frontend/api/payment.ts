@@ -23,11 +23,11 @@ export interface PaymentStatusResponse {
 }
 
 export const initiatePaymentApi = async (
-  orderId: number,
+  orderIds: number[],
 ): Promise<PaymentInitiateResponse> => {
 
   const { data } = await api.post("/payments/initiate", {
-    order_id: orderId,
+    order_ids: orderIds,
     gateway: "PHONEPE",
   });
 

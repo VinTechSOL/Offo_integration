@@ -112,36 +112,44 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess}) => {
 
   // ✅ VERIFY OTP (backend call)
   const handleVerifyOtp = async (otp: string) => {
-    console.log("otp sent from ui",otp);
+    console.log('otp sent from ui', otp);
+
     try {
-      
       setLoading(true);
+      setErrorMessage(null);
+
       let response;
 
-      if (activeTab == "signup"){
-        response = await signupVerify(phone,otp);
+      if (activeTab === 'signup') {
+        response = await signupVerify(phone, otp);
       } else {
         response = await verifyOtp(phone, otp);
       }
-      localStorage.setItem("access_token",response.access_token)
-      
-      onLoginSuccess(activeTab); // cookie already set by backend
-    } catch (error: any) {
 
+      // Store ONLY the short-lived access token.
+      //
+      // The refresh token is handled automatically by the browser
+      // as an HttpOnly cookie set by the backend.
+      localStorage.setItem('access_token', response.access_token);
+
+      onLoginSuccess(activeTab);
+    } catch (error: any) {
       const status = error?.response?.status;
 
-      const backendMessage =
-        error?.response?.data?.detail?.toLowerCase() || "";
+      const backendMessage = error?.response?.data?.detail?.toLowerCase() || '';
 
       if (status === 429) {
-        setErrorMessage("Too many failed attempts. Try again later.");
-      } else if (backendMessage.includes("invalid")) {
-        setErrorMessage("Invalid or expired OTP.");
+        setErrorMessage('Too many failed attempts. Try again later.');
+      } else if (
+        backendMessage.includes('invalid') ||
+        backendMessage.includes('expired')
+      ) {
+        setErrorMessage('Invalid or expired OTP.');
       } else {
-        setErrorMessage("Verification failed. Please try again.");
+        setErrorMessage('Verification failed. Please try again.');
       }
 
-      setOtpResetKey(prev => prev + 1);
+      setOtpResetKey((prev) => prev + 1);
     } finally {
       setLoading(false);
     }

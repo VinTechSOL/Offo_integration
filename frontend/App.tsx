@@ -25,16 +25,19 @@ import PaymentFailedScreen from "./screens/PaymentFailedScreen";
 import SuccessScreen from "./screens/SuccessScreen";
 import OrdersScreen from "./screens/OrdersScreen";
 import HelpScreen from "./screens/HelpScreen";
-import PaymentMethodsScreen from "./screens/PaymentMethodsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import MyAccountScreen from "./screens/MyAccountScreen";
 import OfflineScreen from "./screens/OfflineScreen";
 import AboutScreen from "./screens/AboutScreen";
 import NotificationScreen from "./screens/NotificationsScreen";
+import TicketDetail from "./screens/TicketDetail";
+import TicketsScreen from "./screens/TicketScreen";
 import FoodItemDetailModal from "./components/FoodItemDetailModal";
 import { useToastStore } from "./store/toastStore";
 import { unlockAudio } from "./utils/sound";
 import { getUserContextDetails } from "./api/userContext";
+import api, {refreshApi} from "./api/client";
+
 import {
   getActiveCart,
   addToCartApi,
@@ -67,9 +70,9 @@ const App: React.FC = () => {
   const [foodDetailItem, setFoodDetailItem] = useState<FoodItem | null>(null);
 
   const [locationData, setLocationData] = useState({
-    city: "",
-    company: "",
-    building: "",
+    city: '',
+    company: '',
+    building: '',
   });
 
   /* =======================
@@ -79,12 +82,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const unlock = () => {
       unlockAudio();
-      window.removeEventListener("click", unlock);
+      window.removeEventListener('click', unlock);
     };
 
-    window.addEventListener("click", unlock);
+    window.addEventListener('click', unlock);
 
-    return () => window.removeEventListener("click", unlock);
+    return () => window.removeEventListener('click', unlock);
   }, []);
 
   /* =======================
@@ -103,9 +106,9 @@ const App: React.FC = () => {
         id: i.item_id,
         name: i.name ?? `Item #${i.item_id}`,
         price: i.price_at_time,
-        image: i.image ?? "/placeholder.png",
-        cafe: data.branch_name ?? selectedCafe?.name ?? "",
-        category: "",
+        image: i.image ?? '/placeholder.png',
+        cafe: data.branch_name ?? selectedCafe?.name ?? '',
+        category: '',
         isVeg: i.is_veg ?? true,
       },
       quantity: i.quantity,
@@ -114,27 +117,76 @@ const App: React.FC = () => {
     setCart(mapped);
   };
 
-  const addToCart = async (item: FoodItem, quantity = 1) => {
+  const addToCart = async (item: FoodItem, delta = 1) => {
     const branchId = item.branchId ?? selectedCafe?.branch_id;
     if (!branchId) return;
 
-    await addToCartApi({
-      branch_id: branchId,
-      item_id: item.id,
-      quantity,
-    });
+    const existingItem = cart.find((c) => c.item.id === item.id);
+    const currentQty = existingItem ? existingItem.quantity : 0;
+    const newQty = currentQty + delta;
 
-    await loadCart();
+    // 1. Optimistic UI update (Instant UI response)
+    if (newQty <= 0) {
+      setCart((prev) => prev.filter((c) => c.item.id !== item.id));
+    } else {
+      setCart((prev) => {
+        const exists = prev.some((c) => c.item.id === item.id);
+        if (exists) {
+          return prev.map((c) =>
+            c.item.id === item.id ? { ...c, quantity: newQty } : c,
+          );
+        }
+        return [...prev, { item, quantity: newQty }];
+      });
+    }
+
+    // 2. Sync with Backend
+    try {
+      if (newQty <= 0) {
+        // If quantity drops to 0 or below, update/delete via updateCartItemApi
+        await updateCartItemApi(item.id, 0);
+      } else {
+        await addToCartApi({
+          branch_id: branchId,
+          item_id: item.id,
+          quantity: delta,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update cart:', err);
+    } finally {
+      // 3. Final sync with database state
+      await loadCart();
+    }
   };
 
   const updateCartQuantity = async (itemId: number, quantity: number) => {
-    await updateCartItemApi(itemId, quantity);
-    await loadCart();
+    // Optimistic UI update
+    if (quantity <= 0) {
+      setCart((prev) => prev.filter((c) => c.item.id !== itemId));
+    } else {
+      setCart((prev) =>
+        prev.map((c) => (c.item.id === itemId ? { ...c, quantity } : c)),
+      );
+    }
+
+    try {
+      await updateCartItemApi(itemId, quantity);
+    } catch (err) {
+      console.error('Failed to update cart quantity:', err);
+    } finally {
+      await loadCart();
+    }
   };
 
   const clearCart = async () => {
-    await clearCartApi();
     setCart([]);
+    try {
+      await clearCartApi();
+    } catch (err) {
+      console.error('Failed to clear cart:', err);
+      await loadCart();
+    }
   };
 
   /* =======================
@@ -148,40 +200,125 @@ const App: React.FC = () => {
     setLocationData({
       city: ctx.city_name,
       company: ctx.campus_name,
-      building: ctx.building_name || "",
+      building: ctx.building_name || '',
     });
 
     return true;
   };
 
+
+
   /* =======================
-     BOOTSTRAP
+   BOOTSTRAP / SESSION RESTORE
   ======================= */
 
   useEffect(() => {
+    let mounted = true;
+
     const bootstrap = async () => {
-      const token = localStorage.getItem("access_token");
-
-      if (!token) {
-        setIsBootstrapping(false);
-        return;
-      }
-
       try {
-        const hasContext = await refreshLocationFromContext();
-        if (locationRouter.pathname === "/") {
-          navigate(hasContext ? "/home" : "/location", { replace: true });
+        const token = localStorage.getItem('access_token');
+
+        // ------------------------------------------------------
+        // CASE 1: Access token already exists
+        // ------------------------------------------------------
+
+        if (token) {
+          try {
+            const hasContext = await refreshLocationFromContext();
+
+            if (!mounted) return;
+
+            if (locationRouter.pathname === '/') {
+              navigate(hasContext ? '/home' : '/location', { replace: true });
+            }
+
+            return;
+          } catch (error: any) {
+            // --------------------------------------------------
+            // Existing access token is invalid/expired.
+            //
+            // Remove it and try refresh-session restoration.
+            // --------------------------------------------------
+
+            if (error?.response?.status !== 401) {
+              throw error;
+            }
+
+            localStorage.removeItem('access_token');
+          }
         }
-      } catch (err: any) {
-        if (err.code === "ERR_NETWORK") {
-          setIsOffline(true);
+
+        // ------------------------------------------------------
+        // CASE 2: No valid access token
+        //
+        // Try the HttpOnly refresh cookie.
+        // ------------------------------------------------------
+
+        try {
+          const response = await refreshApi.post('/auth/refresh');
+
+          const newAccessToken = response.data?.access_token;
+
+          if (!newAccessToken) {
+            throw new Error('Refresh response did not contain access token');
+          }
+
+          localStorage.setItem('access_token', newAccessToken);
+
+          // ----------------------------------------------------
+          // Session successfully restored
+          // ----------------------------------------------------
+
+          const hasContext = await refreshLocationFromContext();
+
+          if (!mounted) return;
+
+          if (locationRouter.pathname === '/') {
+            navigate(hasContext ? '/home' : '/location', { replace: true });
+          }
+
+          return;
+        } catch (error: any) {
+          // ----------------------------------------------------
+          // No refresh session.
+          //
+          // This is NORMAL for a new/unauthenticated user.
+          // Do not show an error.
+          // Do not mark the application offline.
+          // ----------------------------------------------------
+
+          if (error?.code === 'ERR_NETWORK') {
+            if (mounted) {
+              setIsOffline(true);
+            }
+
+            return;
+          }
+
+          // 401 from /auth/refresh simply means:
+          // user is not logged in.
+
+          localStorage.removeItem('access_token');
+
+          // Do NOT redirect here.
+          //
+          // Let the existing router show:
+          // /onboarding
+          // /login
         }
       } finally {
-        setIsBootstrapping(false);
+        if (mounted) {
+          setIsBootstrapping(false);
+        }
       }
     };
 
     bootstrap();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   /* =======================
@@ -189,23 +326,23 @@ const App: React.FC = () => {
   ======================= */
 
   useEffect(() => {
-    if (locationRouter.pathname === "/home") {
+    if (locationRouter.pathname === '/home') {
       loadCart();
     }
   }, [locationRouter.pathname]);
 
   useEffect(() => {
     if (
-      (locationRouter.pathname === "/schedule" ||
-        locationRouter.pathname === "/payment") &&
+      (locationRouter.pathname === '/schedule' ||
+        locationRouter.pathname === '/payment') &&
       !orderDetails
     ) {
-      navigate("/cart");
+      navigate('/cart');
     }
   }, [locationRouter.pathname, orderDetails]);
 
   useEffect(() => {
-    if (locationRouter.pathname !== "/orders") return;
+    if (locationRouter.pathname !== '/orders') return;
 
     let isMounted = true;
     let interval: number | undefined;
@@ -216,7 +353,7 @@ const App: React.FC = () => {
         if (!isMounted) return;
         setOrders(history.map(mapBackendOrder));
       } catch (err) {
-        console.error("Failed to load order history", err);
+        console.error('Failed to load order history', err);
       }
     };
 
@@ -230,7 +367,7 @@ const App: React.FC = () => {
           ...prev.filter((o) => !mappedActive.find((a) => a.id === o.id)),
         ]);
       } catch (err) {
-        console.error("Active polling failed", err);
+        console.error('Active polling failed', err);
       }
     };
 
@@ -248,7 +385,7 @@ const App: React.FC = () => {
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === 'visible') {
         pollActiveOnly();
         startPolling();
       } else {
@@ -260,22 +397,22 @@ const App: React.FC = () => {
     pollActiveOnly();
     startPolling();
 
-    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       isMounted = false;
       stopPolling();
-      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [locationRouter.pathname]);
 
   useEffect(() => {
     const handleOnline = () => {
-      useToastStore.getState().showError("Back online ✅");
+      useToastStore.getState().showError('Back online ✅');
     };
 
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
   }, []);
 
   /* =======================
@@ -287,7 +424,7 @@ const App: React.FC = () => {
     setOrderToEdit(null);
     setIsEditingOrder(false);
     setCart([]);
-    navigate("/orders");
+    navigate('/orders');
   };
 
   /* =======================
@@ -520,7 +657,8 @@ const App: React.FC = () => {
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/about" element={<AboutScreen />} />
             <Route path="/my-account" element={<MyAccountScreen />} />
-            <Route path="/payment-methods" element={<PaymentMethodsScreen />} />
+            <Route path="/support/tickets" element={<TicketsScreen />} />
+            <Route path="/support/tickets/:ticketId" element={<TicketDetail />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

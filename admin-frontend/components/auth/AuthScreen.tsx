@@ -51,7 +51,7 @@ export const AuthScreen: React.FC = () => {
 
           <div className="mt-10 pt-6 border-t border-gray-100 text-center">
             <p className="text-sm text-gray-400">
-              © 2025 OFFO. All rights reserved.
+              © 2026 OFFO. All rights reserved.
             </p>
           </div>
         </div>

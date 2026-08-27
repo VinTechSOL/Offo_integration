@@ -186,8 +186,9 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
     }));
 
     const total =
-      (orderDetails.subtotal + orderDetails.convenienceFee)
-      * schedules.length;
+      (orderDetails.subtotal * schedules.length)
+      + orderDetails.convenienceFee
+      + orderDetails.gst ;
 
     setOrderDetails({
       ...orderDetails,
@@ -233,8 +234,9 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
 
   const checkoutTotal =
     !isEditMode && orderDetails
-      ? (orderDetails.subtotal + orderDetails.convenienceFee)
-        * selectedDates.length
+      ? (orderDetails.subtotal * selectedDates.length)
+        + orderDetails.convenienceFee
+        + orderDetails.gst
       : 0;
 
   return (

@@ -1,4 +1,4 @@
-import api from "./client";
+import api, {refreshApi} from "./client";
 
 export const sendOtp = (mobileNumber: string) => {
   return api.post("/auth/send-otp", {
@@ -45,4 +45,26 @@ export const checkUserExists = async (phone: string) => {
   return res.data.exists;
 };
 
+//refresh the token
+export const refreshToken = async () => {
 
+  const res = await refreshApi.post(
+    "/auth/refresh"
+  );
+
+  return res.data;
+};
+
+
+// ============================================================
+// LOGOUT
+// ============================================================
+
+export const logout = async () => {
+
+  const res = await api.post(
+    "/auth/logout"
+  );
+
+  return res.data;
+};

@@ -265,15 +265,6 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOr
               <span>₹ {itemSubtotal.toFixed(2)}</span>
             </div>
 
-            <div className="flex justify-between">
-              <span>Packaging Fee</span>
-              <span>₹ {packagingFee.toFixed(2)}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Delivery Fee</span>
-              <span>₹ {deliveryFee.toFixed(2)}</span>
-            </div>
 
             <div className="flex justify-between">
               <span>Platform Fee</span>

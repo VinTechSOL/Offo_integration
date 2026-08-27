@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import type { CartItem, FoodItem, Cafe, CafeForUser } from "../types";
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import type { CartItem, FoodItem, Cafe, CafeForUser } from '../types';
 
-import BottomNav from "../components/BottomNav";
-import CartIcon from "../components/icons/CartIcon";
-import ScrollableContainer from "../components/ScrollableContainer";
-import ChangeLocationModal from "@/components/ChangeLocationModal";
+import BottomNav from '../components/BottomNav';
+import CartIcon from '../components/icons/CartIcon';
+import ScrollableContainer from '../components/ScrollableContainer';
+import ChangeLocationModal from '@/components/ChangeLocationModal';
 
-import { getCafesForUser } from "../api/cafes";
-import { getBranchMenuForUser } from "../api/menu";
-import { useUserContext } from "../hooks/useUserContext";
-import { useNotifications } from "@/context/NotificationContext";
+import { getCafesForUser } from '../api/cafes';
+import { getBranchMenuForUser } from '../api/menu';
+import { useUserContext } from '../hooks/useUserContext';
+import { useNotifications } from '@/context/NotificationContext';
+
 /* ------------------------------------------------------------------ */
 
 interface HomeScreenProps {
@@ -28,9 +29,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onViewFoodItem,
   setSelectedCafe,
 }) => {
-
   const navigate = useNavigate();
-  const { unreadCount, animateBell} = useNotifications();
+  const { unreadCount, animateBell } = useNotifications();
   const [showChangeLocation, setShowChangeLocation] = useState(false);
 
   /* ---------------- USER CONTEXT ---------------- */
@@ -67,20 +67,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         const openCafes = cafes.filter((c) => c.is_open);
 
         const menus = await Promise.all(
-          openCafes.map((cafe) =>
-            getBranchMenuForUser(cafe.branch_id)
-          )
+          openCafes.map((cafe) => getBranchMenuForUser(cafe.branch_id)),
         );
 
         const balanced: FoodItem[] = [];
-
-        const maxItemsPerCafe = 4
+        const maxItemsPerCafe = 4;
 
         openCafes.forEach((cafe, index) => {
           const cafeMenu = menus[index];
 
           cafeMenu.categories.forEach((category: any) => {
-            category.items.slice(0,maxItemsPerCafe).forEach((item: any) => {
+            category.items.slice(0, maxItemsPerCafe).forEach((item: any) => {
               balanced.push({
                 id: item.branch_menu_item_id,
                 branchId: cafe.branch_id,
@@ -97,7 +94,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
         setFoodItems(balanced);
       } catch (err) {
-        console.error("Failed to load food items", err);
+        console.error('Failed to load food items', err);
       } finally {
         setFoodLoading(false);
       }
@@ -109,15 +106,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   /* ---------------- LOCATION LABEL ---------------- */
   const locationLabel = context
     ? `${context.campus_name}${
-        context.building_name ? ` · ${context.building_name}` : ""
+        context.building_name ? ` · ${context.building_name}` : ''
       }`
-    : "Select your location";
+    : 'Select your location';
 
-  /* ---------------- CART COUNT ---------------- */
+  /* ---------------- CART HELPERS ---------------- */
   const cartItemCount = cart.reduce(
     (total, current) => total + current.quantity,
-    0
+    0,
   );
+
+  const getItemQuantity = (id: string | number) => {
+    const cartItem = cart.find((c) => c.item.id === id);
+    // Guard against undefined, null, or zero/negative quantities
+    return cartItem && cartItem.quantity > 0 ? cartItem.quantity : 0;
+  };
 
   /* ---------------- MARQUEE ---------------- */
   const marqueeContentRef = useRef<HTMLDivElement>(null);
@@ -150,6 +153,51 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     };
   }, [foodItems, animateMarquee]);
 
+  /* ---------------- REUSABLE QUANTITY BUTTON ---------------- */
+  const QuantityControl = ({ item }: { item: FoodItem }) => {
+    const qty = getItemQuantity(item.id);
+
+    // If quantity is 0 or less, show the standard "+ Add" button
+    if (qty <= 0) {
+      return (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            addToCart({ ...item }, 1);
+          }}
+          className="bg-orange-100 text-orange-600 font-bold px-4 py-1.5 text-sm rounded-lg active:scale-95 transition"
+        >
+          + Add
+        </button>
+      );
+    }
+
+    return (
+      <div
+        className="flex items-center bg-orange-500 text-white rounded-lg font-bold text-sm overflow-hidden"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        <button
+          onClick={() => addToCart({ ...item }, -1)}
+          className="px-2.5 py-1 hover:bg-orange-600 active:scale-90 transition"
+        >
+          -
+        </button>
+        <span className="px-1 text-xs">{qty}</span>
+        <button
+          onClick={() => addToCart({ ...item }, 1)}
+          className="px-2.5 py-1 hover:bg-orange-600 active:scale-90 transition"
+        >
+          +
+        </button>
+      </div>
+    );
+  };
+
   /* ---------------- FOOD CARD ---------------- */
   const FoodItemCard: React.FC<{ item: FoodItem }> = ({ item }) => (
     <div
@@ -163,37 +211,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       />
 
       <div className="flex-grow">
-        <p className="font-bold text-gray-800 text-sm truncate">
-          {item.name}
-        </p>
-        <p className="text-xs text-gray-500">({item.cafe})</p>
+        <p className="font-bold text-gray-800 text-sm truncate">{item.name}</p>
       </div>
 
       <div className="flex justify-between items-center mt-2">
         <p className="text-sm font-semibold text-gray-800">
           ₹{item.price.toFixed(2)}
         </p>
-
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            addToCart({ ...item }, 1);
-          }}
-          className="bg-orange-100 text-orange-600 font-bold px-4 py-1.5 text-sm rounded-lg active:scale-95 transition"
-        >
-          + Add
-        </button>
+        <QuantityControl item={item} />
       </div>
     </div>
   );
-
-  /* Notifications for user*/
-
-  
-
-  
-
 
   /* ========================== RENDER ========================== */
 
@@ -331,11 +359,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 });
                 navigate('/menu');
               }}
-              className="bg-white p-4 rounded-2xl mb-3 flex items-center justify-between shadow-sm"
+              className="bg-white p-4 rounded-2xl mb-3 flex items-center justify-between shadow-sm cursor-pointer"
             >
               <div className="flex items-center gap-4">
                 <img
                   src={cafe.image_url || '/placeholder-food.png'}
+                  alt={cafe.branch_name}
                   className="w-16 h-16 rounded-xl object-cover"
                 />
                 <div>
@@ -371,26 +400,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 >
                   <img
                     src={item.image}
+                    alt={item.name}
                     className="w-20 h-20 rounded-lg object-cover"
                   />
 
                   <div className="ml-4 flex-grow">
                     <p className="font-bold text-sm truncate">{item.name}</p>
-                    <p className="text-xs text-gray-500">({item.cafe})</p>
                     <p className="text-sm font-semibold mt-2">
                       ₹{item.price.toFixed(2)}
                     </p>
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addToCart(item);
-                    }}
-                    className="bg-orange-100 text-orange-600 font-bold px-4 py-1.5 text-sm rounded-lg"
-                  >
-                    + Add
-                  </button>
+                  <QuantityControl item={item} />
                 </div>
               ))}
             </div>
@@ -398,9 +419,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
       </ScrollableContainer>
 
+      {/* FLOATING CART SUMMARY */}
       {cartItemCount > 0 && (
         <footer className="fixed bottom-16 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[380px] z-40">
-          <div className=" bg-gray-800 text-white rounded-xl shadow-lg flex justify-between items-center px-4 py-3">
+          <div className="bg-gray-800 text-white rounded-xl shadow-lg flex justify-between items-center px-4 py-3">
             <p className="text-sm font-medium">
               {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} | ₹{' '}
               {cart

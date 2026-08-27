@@ -4,10 +4,12 @@ import BottomNav from "../components/BottomNav";
 import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
 import type { Order } from "../types";
 import ScrollableContainer from "../components/ScrollableContainer";
-import { createTicketApi, createFeedbackApi } from "@/api/support";
-import { OrderTimeline } from "@/components/OrderTimeline";
+import { createTicketApi, createFeedbackApi, getMyTicketsApi, getMyFeedbackApi } from "@/api/support";
 import { getOrderApi, cancelOrderApi, getMyOrdersApi } from "@/api/order";
 import { mapBackendOrder } from "@/utils/mapOrder";
+import { FeedbackResponse, TicketResponse } from "@/api/support";
+import { generateInvoice } from "@/utils/generateInvoice";
+
 
 interface OrderDetailItem {
   item_id: number;
@@ -23,7 +25,7 @@ interface OrderDetail {
   cafe_id: number;
   branch_id: number;
   cafe_name?: string | null;
-
+  fssai_license_number?: string | null;
   order_type: "INSTANT" | "SCHEDULED";
   order_status: string;
   payment_status: string;
@@ -34,6 +36,8 @@ interface OrderDetail {
 
   bill: {
     subtotal: number;
+    platform_fee: number;
+    gst: number;
     convenience_fee: number;
     total: number;
   };
@@ -45,14 +49,8 @@ interface OrderDetail {
   };
 
   items: OrderDetailItem[];
-  timeline: OrderTimelineItem[];
 }
-interface OrderTimelineItem {
-  status: string;
-  changed_by: string;
-  changed_by_id?: number | null;
-  created_at: string;
-}
+
 
 interface OrdersScreenProps {
   orders: Order[];
@@ -64,8 +62,18 @@ interface OrdersScreenProps {
 /* ============================
    STATUS PILL
 ============================ */
-const OrderStatusPill: React.FC<{ status: Order["status"] }> = ({ status }) => {
+const OrderStatusPill: React.FC<{ status: Order["status"]; paymentStatus?: Order["paymentStatus"]; }> = ({ status, paymentStatus }) => {
   const base = "text-xs font-semibold px-2.5 py-1 rounded-full";
+  const normalizedPaymentStatus = String(paymentStatus ?? '').toUpperCase();
+
+  if (
+    normalizedPaymentStatus === 'FAILED' ||
+    normalizedPaymentStatus === 'CANCELLED'
+  ) {
+    return (
+      <span className={`${base} bg-red-100 text-red-700`}>Payment Failed</span>
+    );
+  }
 
   switch (status) {
     case "Pending":
@@ -115,9 +123,24 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
   onReorder,
 }) => {
   const [details, setDetails] = useState<OrderDetail | null>(null);
-  const [timeline, setTimeline] = useState<OrderTimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+
+  const handleDownloadInvoice = () => {
+    if (!details) return;
+
+    try {
+      setDownloadingInvoice(true);
+
+      generateInvoice(details);
+    } catch (error) {
+      console.error('Failed to generate invoice:', error);
+      alert('Unable to download invoice. Please try again.');
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
 
   React.useEffect(() => {
     let cancelled = false;
@@ -133,7 +156,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
         if (cancelled) return;
 
         setDetails(orderData);
-        setTimeline(orderData.timeline || []);
+
       } catch (err) {
         console.error(
           "Failed to load order details:",
@@ -222,14 +245,10 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-
       {/* HEADER */}
 
       <header className="p-4 flex items-center border-b bg-white sticky top-0 z-10">
-        <button
-          onClick={onBack}
-          className="w-1/5"
-        >
+        <button onClick={onBack} className="w-1/5">
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
 
@@ -241,15 +260,14 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
       </header>
 
       <ScrollableContainer className="p-4 space-y-4 pb-24">
-
         {/* STATUS */}
 
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
 
           <span className="text-green-700 font-semibold">
-            {status === "COMPLETED"
-              ? "Order was Completed"
+            {status === 'COMPLETED'
+              ? 'Order was Completed'
               : `Order is ${status}`}
           </span>
         </div>
@@ -257,57 +275,43 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
         {/* RESTAURANT */}
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-
           <h3 className="font-bold text-gray-800 text-lg">
-            {details.cafe_name || "Cafe"}
+            {details.cafe_name || 'Cafe'}
           </h3>
-
-          <p className="text-sm text-gray-500">
-            Branch #{details.branch_id}
-          </p>
 
           <p className="text-sm text-gray-400 mt-1">
             Order ID: #{details.order_id}
           </p>
 
           <p className="text-sm text-gray-400">
-            {details.order_type === "SCHEDULED"
-              ? "Scheduled Order"
-              : "Instant Order"}
+            {details.order_type === 'SCHEDULED'
+              ? 'Scheduled Order'
+              : 'Instant Order'}
           </p>
 
           {details.scheduled_time && (
             <p className="text-sm text-orange-600 mt-1">
-              Scheduled for{" "}
-              {new Date(
-                details.scheduled_time
-              ).toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "short",
+              Scheduled for{' '}
+              {new Date(details.scheduled_time).toLocaleString('en-IN', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
               })}
             </p>
           )}
-
         </div>
 
         {/* ORDER ITEMS */}
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-
-          <h4 className="font-semibold text-gray-700 mb-3">
-            Order Items
-          </h4>
+          <h4 className="font-semibold text-gray-700 mb-3">Order Items</h4>
 
           <div className="space-y-3">
-
             {details.items.map((item) => (
               <div
                 key={item.item_id}
                 className="flex justify-between items-start"
               >
-
                 <div className="flex items-start gap-2">
-
                   <div className="w-4 h-4 border-2 border-gray-300 rounded mt-0.5 flex-shrink-0" />
 
                   <div>
@@ -319,37 +323,24 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
                       ₹{item.price_at_time.toFixed(2)} each
                     </p>
                   </div>
-
                 </div>
 
                 <span className="font-medium text-gray-700">
-                  ₹
-                  {(
-                    item.price_at_time *
-                    item.quantity
-                  ).toFixed(2)}
+                  ₹{(item.price_at_time * item.quantity).toFixed(2)}
                 </span>
-
               </div>
             ))}
-
           </div>
         </div>
 
         {/* BILL */}
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-
-          <h4 className="font-semibold text-gray-700 mb-3">
-            Bill Summary
-          </h4>
+          <h4 className="font-semibold text-gray-700 mb-3">Bill Summary</h4>
 
           <div className="space-y-2 text-sm">
-
             <div className="flex justify-between">
-              <span className="text-gray-600">
-                Item total
-              </span>
+              <span className="text-gray-600">Item total</span>
 
               <span className="font-medium text-gray-800">
                 ₹{details.bill.subtotal.toFixed(2)}
@@ -357,162 +348,151 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
             </div>
 
             <div className="flex justify-between">
-              <span className="text-gray-600">
-                (Platform Fee + GST)
-              </span>
+              <span className="text-gray-600">Platform Fee</span>
 
               <span className="font-medium text-gray-800">
-                ₹{details.bill.convenience_fee.toFixed(2)}
+                ₹{details.bill.platform_fee.toFixed(2)}
               </span>
             </div>
 
-            <div className="border-t pt-2 flex justify-between">
+            <div className="flex justify-between">
+              <span className="text-gray-600">GST (Govt. Tax)</span>
 
-              <span className="font-bold text-gray-800">
-                Total Paid
+              <span className="font-medium text-gray-800">
+                ₹{details.bill.gst.toFixed(2)}
               </span>
+            </div>
+
+            {details.bill.platform_fee === 0 && details.bill.gst === 0 && (
+              <div className="mt-3 rounded-lg bg-green-50 border border-green-100 px-3 py-2">
+                <p className="text-xs text-green-700 leading-relaxed">
+                  💚 Platform Fee & GST have already been added to another
+                  scheduled order. No additional fee will be charged for
+                  combined orders.
+                </p>
+              </div>
+            )}
+
+            <div className="border-t pt-2 flex justify-between">
+              <span className="font-bold text-gray-800">Total</span>
 
               <span className="font-bold text-orange-500 text-lg">
                 ₹{details.bill.total.toFixed(2)}
               </span>
-
             </div>
-
           </div>
         </div>
 
         {/* PAYMENT */}
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-
-          <h4 className="font-semibold text-gray-700 mb-3">
-            Payment Details
-          </h4>
+          <h4 className="font-semibold text-gray-700 mb-3">Payment Details</h4>
 
           <div className="space-y-2 text-sm">
-
             <div className="flex justify-between">
+              <span className="text-gray-600">Payment Mode</span>
 
-              <span className="text-gray-600">
-                Payment Status
-              </span>
+              <span className="text-black-600">UPI</span>
+            </div>
+            {/* Payment Status */}
+            <div className="flex justify-between">
+              <span className="text-gray-600">Payment Status</span>
 
               <span
                 className={`font-semibold ${
-                  details.payment_status === "PAID"
-                    ? "text-green-600"
-                    : details.payment_status === "REFUNDED"
-                    ? "text-blue-600"
-                    : "text-gray-700"
+                  details.payment_status === 'PAID'
+                    ? 'text-green-600'
+                    : details.payment_status === 'REFUNDED'
+                    ? 'text-blue-600'
+                    : details.payment_status === 'FAILED'
+                    ? 'text-red-600'
+                    : 'text-gray-700'
                 }`}
               >
                 {details.payment_status}
               </span>
-
             </div>
 
+            {/* Payment Date */}
+            {details.payment.paid_at && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Payment Date</span>
+
+                <span className="font-medium text-gray-800">
+                  {new Date(details.payment.paid_at).toLocaleDateString(
+                    'en-IN',
+                    {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    },
+                  )}
+                </span>
+              </div>
+            )}
+
+            {/* Payment Time */}
+            {details.payment.paid_at && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Payment Time</span>
+
+                <span className="font-medium text-gray-800">
+                  {new Date(details.payment.paid_at).toLocaleTimeString(
+                    'en-IN',
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    },
+                  )}
+                </span>
+              </div>
+            )}
+
+            {/* Transaction ID */}
+            {details.payment.transaction_id && (
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-gray-600">Transaction ID</span>
+
+                <span className="text-xs font-medium text-gray-800 text-right break-all">
+                  {details.payment.transaction_id}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* TIMELINE */}
-
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-
-          <h4 className="font-semibold text-gray-700 mb-4">
-            Order Timeline
-          </h4>
-
-          {timeline.length === 0 ? (
-
-            <p className="text-sm text-gray-400">
-              No timeline information available.
-            </p>
-
-          ) : (
-
-            <div className="space-y-4">
-
-              {timeline.map((event, index) => (
-
-                <div
-                  key={`${event.status}-${event.created_at}-${index}`}
-                  className="flex gap-3"
-                >
-
-                  <div className="flex flex-col items-center">
-
-                    <div className="w-3 h-3 rounded-full bg-orange-500 mt-1" />
-
-                    {index <
-                      timeline.length - 1 && (
-                      <div className="w-px flex-1 bg-gray-200 mt-1" />
-                    )}
-
-                  </div>
-
-                  <div className="pb-3">
-
-                    <p className="font-semibold text-gray-800">
-                      {event.status}
-                    </p>
-
-                    <p className="text-xs text-gray-400">
-                      {new Date(
-                        event.created_at
-                      ).toLocaleString("en-IN", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </p>
-
-                  </div>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          )}
-
-        </div>
+        <button
+          onClick={handleDownloadInvoice}
+          disabled={downloadingInvoice}
+          className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingInvoice ? 'Generating Invoice...' : '↓ Download Invoice'}
+        </button>
 
         {/* FSSAI */}
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-
           <div className="mt-3 pt-3 border-t border-gray-100 space-y-1 text-sm">
-
             <div className="flex justify-between items-center">
-
               <div className="flex items-center gap-2">
-
                 <img
                   src="/assets/icons/fssai-logo.png"
                   alt="FSSAI Logo"
                   className="h-6 w-auto object-contain"
                 />
 
-                <span className="text-gray-500 font-medium">
-                  License No.
-                </span>
-
+                <span className="text-gray-500 font-medium">License No.</span>
               </div>
 
               <span className="font-semibold text-gray-700 tracking-wider">
-                12345678901234
+                {details.fssai_license_number || 'Not available'}
               </span>
-
             </div>
-
           </div>
-
         </div>
-
       </ScrollableContainer>
 
       <BottomNav />
-
     </div>
   );
 };
@@ -949,6 +929,9 @@ interface OrderCardProps {
   onEditOrderItems: (order: Order) => void;
   onReportIssue: (order: Order) => void;
   onRateOrder: (order: Order) => void;
+  onViewTicket: (ticketId: number) => void;
+  ticket?: TicketResponse;
+  feedback?: FeedbackResponse;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -959,9 +942,22 @@ const OrderCard: React.FC<OrderCardProps> = ({
   onEditOrderItems,
   onReportIssue,
   onRateOrder,
+  onViewTicket,
+  ticket,
+  feedback,
 }) => {
-  const isCancellable = order.backendStatus === "CREATED";
-  const isCompleted =  order.backendStatus === "COMPLETED" ;
+  const isCancellable = order.backendStatus === "CREATED" && order.paymentStatus !== "FAILED" ;
+  const isCompleted = order.backendStatus === 'COMPLETED';
+
+  const isRateable =
+    order.backendStatus === 'COMPLETED' ||
+    order.backendStatus === 'CANCELLED' ||
+    order.backendStatus === 'REJECTED';
+
+  const paymentStatus = String(order.paymentStatus ?? '').toUpperCase();
+
+  const isPaymentFailed =
+    paymentStatus === 'FAILED' || paymentStatus === 'CANCELLED';
 
   return (
     <div
@@ -975,7 +971,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
             #{order.id} · {order.date.toLocaleString('en-GB')}
           </p>
         </div>
-        <OrderStatusPill status={order.status} />
+        <OrderStatusPill
+          status={order.status}
+          paymentStatus={order.paymentStatus}
+        />
       </div>
 
       <div className="mt-3 border-t pt-3">
@@ -1036,43 +1035,29 @@ const OrderCard: React.FC<OrderCardProps> = ({
         </ul>
       </div>
 
-      <div
-        className="mt-3 pt-3 border-t flex justify-between items-center hover:bg-orange-50/50 -mx-4 px-4 py-2 transition-colors rounded-b-lg"
-        onClick={(e) => {
-          e.stopPropagation();
-          onPress(order);
-        }}
-      >
-        <span className="font-semibold text-gray-700">Total Paid</span>
-        <span className="font-bold text-orange-600 text-lg">
-          ₹{order.total.toFixed(2)}
-        </span>
-      </div>
+      {isPaymentFailed ? (
+        <div className="mt-3 pt-3 border-t flex justify-between items-center">
+          <span className="font-semibold text-gray-700">Payment</span>
+
+          <span className="font-bold text-red-600">Payment Failed</span>
+        </div>
+      ) : (
+        <div
+          className="mt-3 pt-3 border-t flex justify-between items-center hover:bg-orange-50/50 -mx-4 px-4 py-2 transition-colors rounded-b-lg"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPress(order);
+          }}
+        >
+          <span className="font-semibold text-gray-700">Total Paid</span>
+
+          <span className="font-bold text-orange-600 text-lg">
+            ₹{order.total.toFixed(2)}
+          </span>
+        </div>
+      )}
 
       <div className="border-t mt-3 pt-3 flex gap-2 flex-wrap">
-        {order.status === 'Pending' && order.orderType === 'SCHEDULED' && (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditSchedule(order);
-              }}
-              className="px-3 py-2 bg-orange-100 text-orange-600 rounded-lg text-sm font-semibold hover:bg-orange-200 transition-colors"
-            >
-              Edit Schedule
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditOrderItems(order);
-              }}
-              className="px-3 py-2 bg-green-100 text-green-600 rounded-lg text-sm font-semibold hover:bg-green-200 transition-colors"
-            >
-              Edit Items
-            </button>
-          </>
-        )}
-
         {isCancellable && (
           <button
             onClick={(e) => {
@@ -1087,24 +1072,74 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
         {isCompleted && (
           <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onReportIssue(order);
-              }}
-              className="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-semibold hover:bg-yellow-200 transition-colors"
-            >
-              Report Issue
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRateOrder(order);
-              }}
-              className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-colors"
-            >
-              Rate Order
-            </button>
+            {/* ============================================
+                  SUPPORT TICKET
+            ============================================ */}
+
+            {ticket ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  // Open ticket detail screen
+                  onViewTicket(ticket.ticket_id);
+                }}
+                className="px-3 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold hover:bg-orange-200 transition-colors"
+              >
+                View Ticket
+              </button>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  onReportIssue(order);
+                }}
+                className="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-semibold hover:bg-yellow-200 transition-colors"
+              >
+                Report Issue
+              </button>
+            )}
+          </>
+        )}
+
+        {isRateable && (
+          <>
+            {/* ============================================
+          FEEDBACK / RATING
+    ============================================ */}
+
+            {feedback ? (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-1"
+              >
+                <span className="text-sm font-semibold text-gray-700">
+                  Food:
+                </span>
+
+                <span className="text-sm tracking-tight">
+                  {'★'.repeat(feedback.food_rating)}
+                  {'☆'.repeat(5 - feedback.food_rating)}
+                </span>
+
+                <span className="text-xs text-gray-500 ml-1">
+                  {feedback.food_rating}/5
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRateOrder(order);
+                }}
+                className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-colors"
+              >
+                Rate Order
+              </button>
+            )}
           </>
         )}
       </div>
@@ -1195,7 +1230,56 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
     title: string;
     message: string;
   } | null>(null);
+  const [tickets, setTickets] = useState<TicketResponse[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([]);
   
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadSupportData = async () => {
+      try {
+
+        const [ticketsResponse, feedbackResponse] = await Promise.all([
+          getMyTicketsApi(),
+          getMyFeedbackApi(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setTickets(ticketsResponse);
+        setFeedbacks(feedbackResponse);
+      } catch (error) {
+        console.error('Failed to load support data:', error);
+      } finally {
+        if (!cancelled) {
+        }
+      }
+    };
+
+    loadSupportData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
+  const getTicketForOrder = (orderId: string) => {
+    return tickets.find(
+      (ticket) => String(ticket.order_id) === String(orderId),
+    );
+  };
+
+  const getFeedbackForOrder = (orderId: string) => {
+    return feedbacks.find(
+      (feedback) => String(feedback.order_id) === String(orderId),
+    );
+  };
+
+
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1213,6 +1297,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   };
 
   const TERMINAL_BACKEND_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
+  const FAILED_PAYMENT_STATUSES = ['FAILED', 'CANCELLED'];
 
   const scheduledOrders = orders.filter(
     (o) =>
@@ -1221,19 +1306,28 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
       o.backendStatus === 'CREATED',
   );
 
-  const ongoingOrders = orders.filter(
-    (o) =>
-      isSameDay(o.date) &&
-      !TERMINAL_BACKEND_STATUSES.includes(
-        String(o.backendStatus ?? '').toUpperCase(),
-      ),
-  );
+  const ongoingOrders = orders.filter((o) => {
+    const backendStatus = String(o.backendStatus ?? '').toUpperCase();
 
-  const pastOrders = orders.filter((o) =>
-    TERMINAL_BACKEND_STATUSES.includes(
-      String(o.backendStatus ?? '').toUpperCase(),
-    ),
-  );
+    const paymentStatus = String(o.paymentStatus ?? '').toUpperCase();
+
+    const isTerminalOrder = TERMINAL_BACKEND_STATUSES.includes(backendStatus);
+
+    const isFailedPayment = FAILED_PAYMENT_STATUSES.includes(paymentStatus);
+
+    return isSameDay(o.date) && !isTerminalOrder && !isFailedPayment;
+  });
+
+  const pastOrders = orders.filter((o) => {
+    const backendStatus = String(o.backendStatus ?? '').toUpperCase();
+
+    const paymentStatus = String(o.paymentStatus ?? '').toUpperCase();
+
+    return (
+      TERMINAL_BACKEND_STATUSES.includes(backendStatus) ||
+      FAILED_PAYMENT_STATUSES.includes(paymentStatus)
+    );
+  });
 
   const ordersToDisplay =
     activeTab === "scheduled"
@@ -1281,9 +1375,12 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
       : undefined;
 
     try {
-      await createTicketApi({
+      const createdTicket = await createTicketApi({
         order_id: selectedOrder.id,
-        order_item_id: orderItemId !== undefined && Number.isInteger(orderItemId) ? orderItemId : undefined,
+        order_item_id:
+          orderItemId !== undefined && Number.isInteger(orderItemId)
+            ? orderItemId
+            : undefined,
         issue_type: data.issueType as
           | 'missing_item'
           | 'food_quality'
@@ -1293,6 +1390,11 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
         description: data.description,
         image: data.imageFile,
       });
+
+      setTickets((prev) => [
+        createdTicket,
+        ...prev,
+      ])
 
       setShowTicketForm(false);
       setSelectedOrder(null);
@@ -1308,17 +1410,26 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
     }
   };
 
+  const handleViewTicket = (ticketId: number) => {
+    navigate(`/support/tickets/${ticketId}`);
+  };
+
   const handleFeedbackSubmit = async (data: FeedbackData) => {
     if (!selectedOrder) {
       throw new Error('No order selected');
     }
 
-    await createFeedbackApi({
+    const createdFeedback = await createFeedbackApi({
       order_id: selectedOrder.id,
+
       food_rating: data.foodRating,
+
       app_rating: data.appRating,
+
       comments: data.comments.trim() || undefined,
     });
+
+    setFeedbacks((prev) => [createdFeedback, ...prev]);
 
     setShowFeedbackForm(false);
     setSelectedOrder(null);
@@ -1372,27 +1483,61 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
     <div className="flex flex-col h-full bg-gray-100 relative">
       {/* CANCEL MODAL */}
       {orderToCancel && (
-        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20">
-          <div className="bg-white p-6 rounded-2xl shadow-xl w-4/5 text-center">
-            <h2 className="text-lg font-bold text-gray-800 mb-2">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 transition-opacity"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="bg-white p-5 sm:p-8 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md text-center border border-gray-100 transform transition-all animate-in fade-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0">
+            {/* Drag Handle Indicator for Mobile */}
+            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
+
+            {/* Header */}
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
               Cancel Order?
             </h2>
-            <p className="text-gray-600 mb-6">
+
+            {/* Primary Question */}
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
               Are you sure you want to cancel this order?
             </p>
-            <div className="flex justify-center gap-4">
+
+            {/* Refund Banner */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-3 text-left">
+              <p className="text-xs sm:text-sm font-medium text-emerald-800 leading-snug">
+                A full refund will be processed because the vendor has not
+                accepted the order yet.
+              </p>
+            </div>
+
+            {/* Environmental/Notice Warning */}
+            <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+              <span className="font-semibold text-gray-600">Note:</span> Please
+              avoid unnecessary cancellations to help us minimize food waste.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3">
               <button
                 onClick={() => setOrderToCancel(null)}
-                className="px-6 py-2 border rounded-lg font-semibold"
+                className="w-full sm:flex-1 py-3 sm:py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl font-semibold text-sm transition-colors active:bg-gray-100"
               >
-                No
+                Keep Order
               </button>
+
               <button
                 onClick={confirmCancel}
                 disabled={isCancelling}
-                className="px-6 py-2 bg-orange-500 text-white rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full sm:flex-1 py-3 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                {isCancelling ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Cancelling...
+                  </span>
+                ) : (
+                  'Yes, Cancel'
+                )}
               </button>
             </div>
           </div>
@@ -1432,7 +1577,10 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
 
       {/* HEADER */}
       <header className="p-4 flex items-center border-b bg-white sticky top-0 z-10">
-        <button onClick={() => navigate('/home', {replace: true})} className="w-1/5">
+        <button
+          onClick={() => navigate('/home', { replace: true })}
+          className="w-1/5"
+        >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
         <h1 className="w-3/5 text-center text-xl font-bold text-gray-800">
@@ -1493,6 +1641,9 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
               onEditOrderItems={onEditOrderItems}
               onReportIssue={handleReportIssue}
               onRateOrder={handleGiveFeedback}
+              onViewTicket={handleViewTicket}
+              ticket={getTicketForOrder(order.id)}
+              feedback={getFeedbackForOrder(order.id)}
             />
           ))
         )}

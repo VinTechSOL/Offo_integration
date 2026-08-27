@@ -7,41 +7,52 @@ const PaymentFailedScreen = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const orderId = params.get("order_id");
-  const parsedOrderId = Number(orderId);
-
-  if (!orderId || Number.isNaN(parsedOrderId)) {
-    alert('Invalid order.');
-    navigate('/orders');
-    return;
-  }
   const [loading, setLoading] = useState(false);
 
+  const orderId = params.get("order_id");
+  const parsedOrderId = orderId ? Number(orderId) : NaN;
+
+  const invalidOrder =
+    !orderId ||
+    Number.isNaN(parsedOrderId);
+
   const handleRetry = async () => {
-    if (!orderId) {
-      alert("Order not found.");
+    if (invalidOrder) {
+      alert("Invalid order.");
+      navigate("/orders", { replace: true });
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await retryPaymentApi(Number(orderId));
+      const response = await retryPaymentApi(
+        parsedOrderId,
+      );
 
       if (!response.checkout_url) {
-        throw new Error('Checkout URL not received.');
+        throw new Error(
+          "Checkout URL not received.",
+        );
       }
 
       sessionStorage.setItem(
         "pendingOrderId",
         String(parsedOrderId),
       );
-      
-      window.location.assign(response.checkout_url);
-    } catch (error: any) {
-      console.error(error);
 
-      const message = error?.response?.data?.detail ?? 'Unable to retry payment. Please try again';
+      window.location.assign(
+        response.checkout_url,
+      );
+    } catch (error: any) {
+      console.error(
+        "Payment retry failed:",
+        error,
+      );
+
+      const message =
+        error?.response?.data?.detail ??
+        "Unable to retry payment. Please try again.";
 
       alert(message);
 
@@ -49,11 +60,38 @@ const PaymentFailedScreen = () => {
     }
   };
 
+  if (invalidOrder) {
+    return (
+      <div className="flex flex-col h-screen justify-center items-center px-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          Invalid Order
+        </h1>
+
+        <p className="text-gray-500 text-center mt-3">
+          We couldn't identify the order for this payment.
+        </p>
+
+        <button
+          onClick={() =>
+            navigate("/orders", {
+              replace: true,
+            })
+          }
+          className="mt-8 bg-orange-500 text-white px-6 py-3 rounded-xl"
+        >
+          Go to My Orders
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen justify-center items-center px-6 bg-white">
       {/* Failed Icon */}
       <div className="w-24 h-24 rounded-full bg-red-100 flex items-center justify-center mb-6">
-        <span className="text-5xl text-red-500">✕</span>
+        <span className="text-5xl text-red-500">
+          ✕
+        </span>
       </div>
 
       {/* Heading */}
@@ -68,7 +106,7 @@ const PaymentFailedScreen = () => {
         Please try again.
       </p>
 
-      {/* Retry Button */}
+      {/* Retry */}
       <button
         onClick={handleRetry}
         disabled={loading}
@@ -78,10 +116,12 @@ const PaymentFailedScreen = () => {
             : "bg-orange-500 hover:bg-orange-600"
         }`}
       >
-        {loading ? "Redirecting..." : "Try Again"}
+        {loading
+          ? "Redirecting..."
+          : "Try Again"}
       </button>
 
-      {/* Orders Button */}
+      {/* Orders */}
       <button
         onClick={() => navigate("/orders")}
         disabled={loading}
@@ -90,7 +130,7 @@ const PaymentFailedScreen = () => {
         Go to My Orders
       </button>
 
-      {/* Home Button */}
+      {/* Home */}
       <button
         onClick={() => navigate("/home")}
         disabled={loading}
