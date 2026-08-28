@@ -31,14 +31,19 @@ export interface Order {
   scheduledAt?: Date;
 }
 
+export interface Menucategory {
+  category_id: number;
+  category_name: string;
+}
 
 export interface MenuItem {
   id: string;
-  baseItemId?: string;
+  baseItemId: string;
   name: string;
   imageUrl: string;
   price: number;
   category: string;
+  categoryId: number;
   available: boolean;
   foodType: 'veg' | 'non-veg';
   description?: string;
@@ -48,12 +53,14 @@ export interface MenuItemFormData {
   name: string;
   description?: string;
   category: string;
+  categoryId: number;
   price: number;
   foodType: 'veg' | 'non-veg';
-  imageFile: File;
+  imageFile: File | null;
   
   
 }
+
 
 export interface Customer {
   id: string;

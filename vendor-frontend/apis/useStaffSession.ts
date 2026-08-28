@@ -6,14 +6,32 @@ export function useStaffSession() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     api.get("/staff/auth/me")
-      .then(res => setStaff(res.data))
-      .catch(() => {
-        localStorage.removeItem("access_token");
-        window.location.href = "/";
+      .then((res) => {
+        if (mounted) {
+          setStaff(res.data);
+        }
       })
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (mounted) {
+          setStaff(null);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  return { staff, loading };
+  return {
+    staff,
+    loading,
+  };
 }

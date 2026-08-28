@@ -11,7 +11,10 @@ export interface StaffLoginPayload {
 
 export interface StaffLoginResponse {
   access_token: string;
+  token_type: string;
+  staff_id: number;
   role: string;
+  branch_id: number | null;
 }
 
 export async function staffLogin(
@@ -22,18 +25,59 @@ export async function staffLogin(
     payload
   );
 
-  localStorage.setItem("access_token", res.data.access_token);
+  localStorage.setItem(
+    "access_token",
+    res.data.access_token
+  );
+
   return res.data;
 }
+
+// =========================================================
+// REFRESH ACCESS TOKEN
+// =========================================================
+
+export interface StaffRefreshResponse {
+  access_token: string;
+  token_type: string;
+  staff_id: number;
+  role: string;
+  branch_id: number | null;
+}
+
+export async function refreshStaffAccessToken(): Promise<StaffRefreshResponse> {
+  const res = await api.post<StaffRefreshResponse>(
+    "/staff/auth/refresh"
+  );
+
+  localStorage.setItem(
+    "access_token",
+    res.data.access_token
+  );
+
+  return res.data;
+}
+
+// =========================================================
+// CURRENT STAFF
+// =========================================================
 
 export async function getStaffMe() {
   const res = await api.get("/staff/auth/me");
   return res.data;
 }
 
-export function staffLogout() {
-  localStorage.removeItem("access_token");
-  window.location.href = "/";
+// =========================================================
+// LOGOUT
+// =========================================================
+
+export async function staffLogout() {
+  try {
+    await api.post("/staff/auth/logout");
+  } finally {
+    localStorage.removeItem("access_token");
+    window.location.href = "/";
+  }
 }
 
 // =========================================================

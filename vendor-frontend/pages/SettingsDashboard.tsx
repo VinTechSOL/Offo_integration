@@ -131,15 +131,9 @@ export const SettingsPage: React.FC = () => {
           value={profile.phone_number}
         />
 
-        <SettingsField
-          label="Opens At"
-          value={profile.opens_at || "-"}
-        />
+        <SettingsField label="Opens At" value={profile.opens_at || '-'} />
 
-        <SettingsField
-          label="Closes At"
-          value={profile.closes_at || "-"}
-        />
+        <SettingsField label="Closes At" value={profile.closes_at || '-'} />
       </div>
 
       {/* Active Toggle */}
@@ -157,15 +151,16 @@ export const SettingsPage: React.FC = () => {
           onClick={handleToggle}
           disabled={saving}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            profile.is_active ? "bg-green-500" : "bg-gray-300"
+            profile.is_active ? 'bg-green-500' : 'bg-gray-300'
           }`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              profile.is_active ? "translate-x-6" : "translate-x-1"
+              profile.is_active ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
         </button>
+       
       </div>
     </div>
   );

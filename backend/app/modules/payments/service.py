@@ -5,11 +5,11 @@ import logging
 from sqlalchemy.exc import IntegrityError
 from requests.exceptions import ReadTimeout, ConnectionError
 from phonepe.sdk.pg.common.exceptions import PhonePeException
-
+import inspect
 from app.modules.orders.repository import OrderRepository
 from app.modules.orders.payment_service import OrderPaymentService
 from app.modules.orders.constants import PaymentStatus, OrderStatus
-from app.modules.payments.models import PaymentIntent
+from app.modules.payments.models import PaymentIntent, PaymentIntentOrder
 from app.modules.payments.repository import PaymentRepository
 from app.modules.payments.constants import (
     PaymentGateway,
@@ -218,16 +218,57 @@ class PaymentService:
                     checkout_fee=float(checkout_fee),
                 )
 
+                logger.info(
+                    "LOADED add_orders_to_intent: %s",
+                    inspect.signature(
+                        PaymentRepository.add_orders_to_intent
+                    ),
+                )
+             
+                logger.info(
+                    "PAYMENT REPOSITORY FILE: %s",
+                    inspect.getfile(PaymentRepository),
+                )
+
+
+                order_allocations = []
+
+                for order in orders:
+                    order_amount = Decimal(
+                        str(order.total_amount)
+                    ).quantize(Decimal("0.01"))
+
+                    # For a single-order checkout, the complete
+                    # checkout fee belongs to this order.
+                    #
+                    # For multi-order checkout, this will be replaced
+                    # by the proportional allocation logic.
+                    if len(orders) == 1:
+                        checkout_fee_share = checkout_fee
+                    else:
+                        checkout_fee_share = (
+                            checkout_fee
+                            * order_amount
+                            / orders_subtotal
+                        ).quantize(
+                            Decimal("0.01")
+                        )
+
+                    order_allocations.append(
+                        {
+                            "order_id": order.order_id,
+                            "order_amount": order_amount,
+                            "checkout_fee_share": checkout_fee_share,
+                        }
+                    )
+
                 # ====================================================
                 # 7. LINK EVERY ORDER TO INTENT
                 # ====================================================
                 PaymentRepository.add_orders_to_intent(
                     db=db,
                     intent_id=intent.intent_id,
-                    order_ids=[
-                        order.order_id
-                        for order in orders
-                    ],
+                    order_allocations=order_allocations,
                 )
 
                 db.commit()
@@ -551,6 +592,68 @@ class PaymentService:
             "checkout_url": response["redirect_url"],
         }
 
+
+    # ============================================================
+    # REFUND AMOUNT
+    # ============================================================
+
+    # ============================================================
+    # REFUND AMOUNT
+    # ============================================================
+
+    @staticmethod
+    def _get_refund_amount(
+        db: Session,
+        intent: PaymentIntent,
+        order_id: int,
+    ) -> float:
+        """
+        Get the exact amount originally paid for this order.
+
+        Refund amount is taken from the stored PaymentIntentOrder
+        allocation:
+
+            order_amount
+            + checkout_fee_share
+
+        checkout_fee_share already contains this order's allocated
+        share of:
+
+            platform fee + GST
+
+        No fee is recalculated during refund.
+        """
+
+        payment_order = (
+            db.query(PaymentIntentOrder)
+            .filter(
+                PaymentIntentOrder.intent_id == intent.intent_id,
+                PaymentIntentOrder.order_id == order_id,
+            )
+            .first()
+        )
+
+        if not payment_order:
+            raise HTTPException(
+                status_code=400,
+                detail="Order is not linked to payment intent",
+            )
+
+        refund_amount = (
+            Decimal(str(payment_order.order_amount))
+            + Decimal(str(payment_order.checkout_fee_share))
+        ).quantize(
+            Decimal("0.01")
+        )
+
+        if refund_amount <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid refund amount",
+            )
+
+        return float(refund_amount)
+
     # ============================================================
     # INITIATE REFUND
     # ============================================================
@@ -676,7 +779,11 @@ class PaymentService:
         # ------------------------------------------------------------
         # Refund amount belongs to THIS order
         # ------------------------------------------------------------
-        refund_amount = float(order.total_amount)
+        refund_amount = PaymentService._get_refund_amount(
+            db=db,
+            intent=intent,
+            order_id=order_id,
+        )
 
         if refund_amount <= 0:
             raise HTTPException(
@@ -1579,7 +1686,11 @@ class PaymentService:
         # ------------------------------------------------------------
         # Refund THIS order only
         # ------------------------------------------------------------
-        refund_amount = float(order.total_amount)
+        refund_amount = PaymentService._get_refund_amount(
+            db=db,
+            intent=intent,
+            order_id=order_id,
+        )
 
         if refund_amount <= 0:
             raise HTTPException(

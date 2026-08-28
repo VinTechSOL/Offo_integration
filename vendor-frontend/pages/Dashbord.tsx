@@ -66,6 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         return <OrdersDashboard isScheduledView={true} />;
       case 'menu':
         return <MenuDashboard />;
+        
       case 'reports':
         return <ReportsDashboard />;
       case 'crm':
