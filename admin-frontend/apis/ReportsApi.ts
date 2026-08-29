@@ -1,25 +1,64 @@
 import api from "./client";
 
-export const ReportsApi = {
+export type ReportRange =
+  | "today"
+  | "week"
+  | "month"
+  | "custom";
 
+export const ReportsApi = {
   getReports: async (
     branchIds: string[],
-    range: "today" | "week" | "month"
+    range: ReportRange,
+    startDate?: string,
+    endDate?: string,
   ) => {
+    const params = new URLSearchParams();
 
-    const res = await api.get("/staff/customised-reports", {
-      params: {
-        branch_ids: branchIds,
-        range
-      },
-      paramsSerializer: params =>
-        params.branch_ids
-          .map((id: string) => `branch_ids=${id}`)
-          .join("&") + `&range=${params.range}`
+    // ---------------------------------------------------------
+    // Branch IDs
+    // Produces:
+    // branch_ids=1&branch_ids=2&branch_ids=3
+    // ---------------------------------------------------------
+
+    branchIds.forEach((id) => {
+      params.append("branch_ids", id);
     });
 
+    // ---------------------------------------------------------
+    // Range
+    // ---------------------------------------------------------
+
+    params.append("range", range);
+
+    // ---------------------------------------------------------
+    // Custom date range
+    // Only send these for custom reports
+    // ---------------------------------------------------------
+
+    if (range === "custom") {
+      if (startDate) {
+        params.append("start_date", startDate);
+      }
+
+      if (endDate) {
+        params.append("end_date", endDate);
+      }
+    }
+
+    // ---------------------------------------------------------
+    // Debug
+    // ---------------------------------------------------------
+
+    console.log(
+      "Reports request:",
+      `/staff/customised-reports?${params.toString()}`
+    );
+
+    const res = await api.get(
+      `/staff/customised-reports?${params.toString()}`
+    );
+
     return res.data;
-
-  }
-
+  },
 };

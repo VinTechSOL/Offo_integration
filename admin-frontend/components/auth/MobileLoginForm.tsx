@@ -38,7 +38,7 @@ const MobileLoginForm: React.FC = () => {
       }
 
       // Store token via AuthContext
-      login(result.access_token);
+      await login(result.access_token);
       navigate("/overview");
 
     } catch (err: any) {

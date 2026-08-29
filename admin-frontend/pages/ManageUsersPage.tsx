@@ -24,7 +24,6 @@ interface UserWithStats {
 ====================================================== */
 
 export const ManageUsersPage: React.FC = () => {
-
   const { selectedBranchIds } = useBranch();
 
   const [users, setUsers] = useState<UserWithStats[]>([]);
@@ -41,45 +40,33 @@ export const ManageUsersPage: React.FC = () => {
   /* ================= Fetch Users ================= */
 
   useEffect(() => {
-
     const fetchUsers = async () => {
-
-      if (!selectedBranchIds.length) {
+      if (!selectedBranchIds?.length) {
         setUsers([]);
         return;
       }
 
       try {
-
         setLoading(true);
 
         const data =
           await AdminUsersApi.getUsersByBranches(selectedBranchIds);
 
         setUsers(data);
-
       } catch (err) {
-
         console.error("Failed to load users", err);
-
       } finally {
-
         setLoading(false);
-
       }
-
     };
 
     fetchUsers();
-
   }, [selectedBranchIds]);
 
   /* ================= Filtering ================= */
 
   const filteredUsers = useMemo(() => {
-
     return users.filter(user => {
-
       const matchesSearch =
         `${user.firstName} ${user.lastName}`
           .toLowerCase()
@@ -92,9 +79,7 @@ export const ManageUsersPage: React.FC = () => {
           : user.status === statusFilter;
 
       return matchesSearch && matchesStatus;
-
     });
-
   }, [users, searchQuery, statusFilter]);
 
   /* ================= Stats ================= */
@@ -110,6 +95,8 @@ export const ManageUsersPage: React.FC = () => {
   const totalRevenue =
     users.reduce((a, b) => a + b.totalSpent, 0);
 
+  const hasBranchSelection = selectedBranchIds && selectedBranchIds.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 p-8 space-y-10">
 
@@ -124,6 +111,25 @@ export const ManageUsersPage: React.FC = () => {
           Customer activity overview and purchase insights
         </p>
       </div>
+
+      {/* ================= No Branch Selection Notice ================= */}
+
+      {!hasBranchSelection && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-800 font-medium">
+                <span className="font-bold">Note:</span> Please select at least one branch to view users.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= Stats ================= */}
 
@@ -147,12 +153,14 @@ export const ManageUsersPage: React.FC = () => {
           type="text"
           placeholder="Search by name or mobile number..."
           value={searchQuery}
+          disabled={!hasBranchSelection}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full max-w-xl border border-gray-300 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+          className="w-full max-w-xl border border-gray-300 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
 
         <select
           value={statusFilter}
+          disabled={!hasBranchSelection}
           onChange={e =>
             setStatusFilter(
               e.target.value as
@@ -162,7 +170,7 @@ export const ManageUsersPage: React.FC = () => {
                 | "No Orders"
             )
           }
-          className="ml-6 border border-gray-300 rounded-xl px-4 py-3 text-sm shadow-sm"
+          className="ml-6 border border-gray-300 rounded-xl px-4 py-3 text-sm shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
 
           <option value="all">All Users</option>
@@ -203,6 +211,12 @@ export const ManageUsersPage: React.FC = () => {
       {/* ================= Users ================= */}
 
       <div className="space-y-4">
+
+        {!loading && hasBranchSelection && filteredUsers.length === 0 && (
+          <div className="text-center py-10 text-gray-500 bg-white border border-gray-200 rounded-xl">
+            No users found matching your criteria.
+          </div>
+        )}
 
         {filteredUsers.map(user => (
 

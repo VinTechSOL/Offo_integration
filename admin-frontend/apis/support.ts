@@ -6,16 +6,25 @@ export type TicketStatus =
   | "resolved"
   | "closed";
 
+/* =====================================================
+   USER TICKET MESSAGE
+===================================================== */
 
-  
 export interface TicketMessage {
   message_id: number;
   ticket_id: number;
+
   sender_type: "USER" | "ADMIN";
   sender_id: number;
+
   message: string;
+
   created_at: string;
 }
+
+/* =====================================================
+   ADMIN USER TICKET
+===================================================== */
 
 export interface AdminTicket {
   ticket_id: number;
@@ -29,6 +38,7 @@ export interface AdminTicket {
 
   cafe_id: number;
   cafe_name: string;
+
   branch_id: number;
 
   issue_type: string;
@@ -47,7 +57,9 @@ export interface AdminTicket {
   messages: TicketMessage[];
 }
 
-
+/* =====================================================
+   ADMIN FEEDBACK
+===================================================== */
 
 export interface AdminFeedback {
   feedback_id: number;
@@ -61,6 +73,7 @@ export interface AdminFeedback {
 
   cafe_id: number;
   cafe_name: string;
+
   branch_id: number;
 
   food_rating: number;
@@ -71,10 +84,62 @@ export interface AdminFeedback {
   created_at: string;
 }
 
+/* =====================================================
+   ADMIN VENDOR TICKET MESSAGE
+===================================================== */
 
-// =====================================================
-// TICKETS
-// =====================================================
+export interface AdminVendorTicketMessage {
+  message_id: number;
+  vendor_ticket_id: number;
+
+  sender_type: "VENDOR" | "ADMIN";
+  sender_id: number;
+
+  message: string;
+
+  created_at: string;
+}
+
+/* =====================================================
+   ADMIN VENDOR TICKET
+===================================================== */
+
+export interface AdminVendorTicket {
+  vendor_ticket_id: number;
+  display_ticket_id: string;
+
+  vendor_staff_id: number;
+
+  vendor_name: string;
+  vendor_username: string;
+
+  cafe_id: number | null;
+  cafe_name: string | null;
+
+  branch_id: number | null;
+  branch_name: string | null;
+
+  category: string;
+  severity: string;
+
+  affected_order_ids: string | null;
+
+  subject: string;
+  description: string;
+
+  image_url: string | null;
+
+  status: TicketStatus;
+
+  created_at: string;
+  updated_at: string;
+
+  messages: AdminVendorTicketMessage[];
+}
+
+/* =====================================================
+   USER TICKETS
+===================================================== */
 
 export const getAdminTicketsApi = async () => {
   const res = await api.get(
@@ -83,7 +148,6 @@ export const getAdminTicketsApi = async () => {
 
   return res.data as AdminTicket[];
 };
-
 
 export const getAdminTicketApi = async (
   ticketId: number
@@ -94,7 +158,6 @@ export const getAdminTicketApi = async (
 
   return res.data as AdminTicket;
 };
-
 
 export const updateTicketStatusApi = async (
   ticketId: number,
@@ -110,7 +173,6 @@ export const updateTicketStatusApi = async (
   return res.data;
 };
 
-
 export const sendAdminTicketMessageApi = async (
   ticketId: number,
   message: string
@@ -125,9 +187,9 @@ export const sendAdminTicketMessageApi = async (
   return res.data as TicketMessage;
 };
 
-// =====================================================
-// FEEDBACK
-// =====================================================
+/* =====================================================
+   FEEDBACK
+===================================================== */
 
 export const getAdminFeedbackApi = async () => {
   const res = await api.get(
@@ -136,7 +198,6 @@ export const getAdminFeedbackApi = async () => {
 
   return res.data as AdminFeedback[];
 };
-
 
 export const getAdminFeedbackDetailApi = async (
   feedbackId: number
@@ -147,3 +208,69 @@ export const getAdminFeedbackDetailApi = async (
 
   return res.data as AdminFeedback;
 };
+
+/* =====================================================
+   ADMIN - VENDOR TICKETS
+===================================================== */
+
+export const getAdminVendorTicketsApi =
+  async () => {
+    const res = await api.get(
+      "/support/admin/vendor-tickets"
+    );
+
+    return res.data as AdminVendorTicket[];
+  };
+
+/* =====================================================
+   ADMIN - SINGLE VENDOR TICKET
+===================================================== */
+
+export const getAdminVendorTicketApi =
+  async (
+    vendorTicketId: number
+  ) => {
+    const res = await api.get(
+      `/support/admin/vendor-tickets/${vendorTicketId}`
+    );
+
+    return res.data as AdminVendorTicket;
+  };
+
+/* =====================================================
+   ADMIN - VENDOR TICKET STATUS
+===================================================== */
+
+export const updateVendorTicketStatusApi =
+  async (
+    vendorTicketId: number,
+    status: TicketStatus
+  ) => {
+    const res = await api.patch(
+      `/support/admin/vendor-tickets/${vendorTicketId}/status`,
+      {
+        status,
+      }
+    );
+
+    return res.data as AdminVendorTicket;
+  };
+
+/* =====================================================
+   ADMIN - REPLY TO VENDOR
+===================================================== */
+
+export const sendAdminVendorTicketMessageApi =
+  async (
+    vendorTicketId: number,
+    message: string
+  ) => {
+    const res = await api.post(
+      `/support/admin/vendor-tickets/${vendorTicketId}/messages`,
+      {
+        message,
+      }
+    );
+
+    return res.data as AdminVendorTicketMessage;
+  };

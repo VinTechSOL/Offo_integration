@@ -7,7 +7,7 @@ import { useBranch } from '../context/BranchContext';
 import { useCafe } from '../context/CafeContext';
 import { useNavigate } from 'react-router-dom';
 import { BranchForm } from '@/components/branch/BranchForm';
-import { BranchFormData, initialBranchFormData } from '@/components/branch/BranchFormtypes';
+import { BranchFormData, initialBranchFormData, AdditionalBranchDocument } from '@/components/branch/BranchFormtypes';
 import { CafeApi } from '@/apis/CafeApi';
 import { StaffApi } from '@/apis/StaffApi';
 
@@ -301,103 +301,202 @@ export const BranchesPage: React.FC = () => {
 
   /* ================= Branch Edit ================= */
 
-  const openEditModal = async (branch: Branch) => {
-    try {
-      const data = await CafeApi.getBranchById(Number(branch.id));
+ const openEditModal = async (branch: Branch) => {
+   try {
+     const data = await CafeApi.getBranchById(Number(branch.id));
 
-      setEditingBranch({
-        ...initialBranchFormData,
+     /*
+    |--------------------------------------------------------------------------
+    | Convert backend branch → BranchFormData
+    |--------------------------------------------------------------------------
+    */
 
-        branchName: data.branch_name,
+     const existingDocuments: AdditionalBranchDocument[] = (
+       data.documents ?? []
+     ).map((document) => ({
+       id: `existing-${document.document_id}`,
+       documentId: document.document_id,
+       documentName: document.document_name,
+       file: null,
+       existingUrl: document.document_url,
+     }));
 
-        cityId: String(data.city_id),
-        campusId: String(data.campus_id),
-        buildingId: data.building_id ? String(data.building_id) : '',
+     setEditingBranch({
+       ...initialBranchFormData,
 
-        opensAt: data.opens_at,
-        closesAt: data.closes_at,
+       // =====================================================
+       // Basic
+       // =====================================================
 
-        latitude: data.latitude?.toString() ?? '',
-        longitude: data.longitude?.toString() ?? '',
+       branchName: data.branch_name,
 
-        registeredAddress: data.registered_address ?? '',
-        businessAddress: data.business_address ?? '',
-        businessType: data.business_type ?? '',
+       cityId: String(data.city_id),
 
-        fssaiLicenseNumber: data.fssai_license_number ?? '',
+       campusId: String(data.campus_id),
 
-        gstRegistrationNumber: data.gst_registration_number ?? '',
+       buildingId: data.building_id !== null ? String(data.building_id) : '',
 
-        accountHolderName: data.account_holder_name ?? '',
+       opensAt: data.opens_at ? data.opens_at.slice(0, 5) : '',
 
-        bankAccountNumber: data.bank_account_number ?? '',
+       closesAt: data.closes_at ? data.closes_at.slice(0, 5) : '',
 
-        ifscCode: data.ifsc_code ?? '',
+       imageFile: null,
 
-        registeredOwnerName: data.registered_owner_name ?? '',
+       imageUrl: data.image_url ?? undefined,
 
-        ownerPhoneNumber: data.owner_phone_number ?? '',
+       // =====================================================
+       // Coordinates
+       // =====================================================
 
-        ownerEmail: data.owner_email ?? '',
+       latitude: data.latitude !== null ? String(data.latitude) : '',
 
-        isActive: data.is_active,
+       longitude: data.longitude !== null ? String(data.longitude) : '',
 
-        documents: [],
-      });
-      setEditingBranchId(Number(branch.id));
-      setIsEditModalOpen(true);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to load branch.');
-    }
-  };
+       // =====================================================
+       // Business
+       // =====================================================
+
+       registeredAddress: data.registered_address ?? '',
+
+       businessAddress: data.business_address ?? '',
+
+       businessType: data.business_type ?? '',
+
+       // =====================================================
+       // Compliance
+       // =====================================================
+
+       fssaiLicenseNumber: data.fssai_license_number ?? '',
+
+       fssaiDocument: null,
+
+       fssaiDocumentUrl: data.fssai_license_document_url ?? undefined,
+
+       gstRegistrationNumber: data.gst_registration_number ?? '',
+
+       gstDocument: null,
+
+       gstDocumentUrl: data.gst_registration_document_url ?? undefined,
+
+       // =====================================================
+       // Bank
+       // =====================================================
+
+       bankAccountNumber: data.bank_account_number ?? '',
+
+       ifscCode: data.ifsc_code ?? '',
+
+       accountHolderName: data.account_holder_name ?? '',
+
+       bankPassbook: null,
+
+       bankPassbookUrl: data.bank_passbook_url ?? undefined,
+
+       // =====================================================
+       // Owner
+       // =====================================================
+
+       registeredOwnerName: data.registered_owner_name ?? '',
+
+       ownerPhoneNumber: data.owner_phone_number ?? '',
+
+       ownerEmail: data.owner_email ?? '',
+
+       ownerProofDocument: null,
+
+       ownerProofDocumentUrl: data.owner_proof_document_url ?? undefined,
+
+       // =====================================================
+       // Status
+       // =====================================================
+
+       isActive: data.is_active,
+
+       // =====================================================
+       // Additional Documents
+       // =====================================================
+
+       documents: existingDocuments,
+     });
+
+     /*
+    |--------------------------------------------------------------------------
+    | Set location context
+    |
+    | BranchForm also does this, but setting it here helps ensure
+    | dependent Campus/Building options are ready when the form opens.
+    |--------------------------------------------------------------------------
+    */
+
+     // Do NOT manually modify LocationContext here.
+     // BranchForm handles city/campus initialization.
+
+     setEditingBranchId(Number(branch.id));
+
+     setIsEditModalOpen(true);
+   } catch (err) {
+     console.error('Failed to load branch details:', err);
+
+     alert('Failed to load branch details.');
+   }
+ };
 
   const handleBranchSave = async (form: BranchFormData) => {
-    if (!editingBranchId) return;
+  if (!editingBranchId) return;
 
-    try {
-      const updated = await CafeApi.updateBranch(editingBranchId, form);
+  try {
+    await CafeApi.updateBranch(editingBranchId, form);
 
-      setBranches((prev) =>
-        prev.map((branch) =>
-          branch.id === String(editingBranchId)
-            ? {
-                ...branch,
+    // Fetch complete branch details after update
+    const updated = await CafeApi.getBranchById(editingBranchId);
 
-                name: updated.branch_name,
+    setBranches((prev) =>
+      prev.map((branch) =>
+        branch.id === String(editingBranchId)
+          ? {
+              ...branch,
 
-                cityId: String(updated.city_id),
-                cityName: updated.city_name,
+              id: String(updated.branch_id),
+              cafeId: String(updated.cafe_id),
 
-                campusId: String(updated.campus_id),
-                campusName: updated.campus_name,
+              name: updated.branch_name,
 
-                buildingId: updated.building_id
+              cityId: String(updated.city_id),
+              cityName: updated.city_name ?? "",
+
+              campusId: String(updated.campus_id),
+              campusName: updated.campus_name ?? "",
+
+              buildingId:
+                updated.building_id !== null
                   ? String(updated.building_id)
                   : undefined,
 
-                buildingName: updated.building_name,
+              buildingName: updated.building_name ?? "",
 
-                opensAt: updated.opens_at,
-                closesAt: updated.closes_at,
+              opensAt: updated.opens_at,
+              closesAt: updated.closes_at,
 
-                imageUrl: updated.image_url,
+              imageUrl: updated.image_url ?? undefined,
 
-                status: updated.is_active ? 'Active' : 'Disabled',
-              }
-            : branch,
-        ),
-      );
+              status: updated.is_active
+                ? "Active"
+                : "Disabled",
+            }
+          : branch,
+      ),
+    );
 
-      setEditingBranch(null);
-      setEditingBranchId(null);
-      setIsEditModalOpen(false);
-    } catch (err) {
-      console.error(err);
+    setEditingBranch(null);
+    setEditingBranchId(null);
+    setIsEditModalOpen(false);
 
-      alert('Failed to update branch.');
-    }
-  };
+  } catch (err) {
+    console.error("Failed to update branch:", err);
+
+    alert("Failed to update branch.");
+  }
+};
 
 
   const handleBranchStatusToggle = async (branch: Branch) => {

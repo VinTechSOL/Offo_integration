@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 
 interface MultiSelectDropdownProps {
   label: string;
@@ -9,120 +8,294 @@ interface MultiSelectDropdownProps {
   placeholder?: string;
 }
 
-const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({ 
-  label, 
-  options, 
-  selectedOptions, 
+const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
+  label,
+  options,
+  selectedOptions,
   onChange,
-  placeholder = "Select..."
+  placeholder = "Select",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  /* =========================================================
+     SELECTION STATE
+  ========================================================= */
+
+  const allSelected =
+    options.length > 0 &&
+    options.every((option) =>
+      selectedOptions.includes(option)
+    );
+
+  const someSelected =
+    selectedOptions.length > 0 &&
+    !allSelected;
+
+  /* =========================================================
+     CLOSE ON OUTSIDE CLICK
+  ========================================================= */
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(
+          event.target as Node
+        )
+      ) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener(
+      "mousedown",
+      handleOutsideClick
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick
+      );
+    };
   }, []);
 
-  const toggleOption = (option: string) => {
-    if (selectedOptions.includes(option)) {
-      onChange(selectedOptions.filter(o => o !== option));
-    } else {
-      onChange([...selectedOptions, option]);
-    }
-  };
+  /* =========================================================
+     SELECT / DESELECT ALL
+  ========================================================= */
 
-  const selectAll = () => {
-    if (selectedOptions.length === options.length) {
+  const handleSelectAll = () => {
+    if (allSelected) {
       onChange([]);
     } else {
       onChange([...options]);
     }
   };
 
-  // const displayValue = selectedOptions.length === 0 
-  //   ? placeholder 
-  //   : selectedOptions.length === options.length 
-  //     ? `All ${label}s` 
-  //     : `${selectedOptions.length} ${label}${selectedOptions.length > 1 ? 's' : ''}`;
+  /* =========================================================
+     INDIVIDUAL OPTION
+  ========================================================= */
 
-const selectallLabel = selectedOptions.length === options.length ? `Deselect All` : `Select All`;
-const selectallCount = options.length;
+  const handleOptionToggle = (
+    option: string
+  ) => {
+    if (selectedOptions.includes(option)) {
+      onChange(
+        selectedOptions.filter(
+          (item) => item !== option
+        )
+      );
+    } else {
+      onChange([
+        ...selectedOptions,
+        option,
+      ]);
+    }
+  };
 
+  /* =========================================================
+     BUTTON DISPLAY TEXT
+  ========================================================= */
 
-  
-const allOptionsSelected = Array.isArray(options) && Array.isArray(selectedOptions) && options.length > 0 && selectedOptions.length === options.length;   
+  const getDisplayText = () => {
+    /* Nothing selected */
 
-const safeOptions = Array.isArray(options) ? options : [];
-const safeSelected = Array.isArray(selectedOptions) ? selectedOptions : [];
+    if (selectedOptions.length === 0) {
+      return placeholder;
+    }
 
+    /* Everything selected */
 
-const displayValue = (() => {
+    if (allSelected) {
+      return `All ${label}s`;
+    }
 
-  if (safeSelected.length === 0) {
-    return `Select ${label}`;
-  }
+    /* Exactly one selected */
 
-  if (safeSelected.length === safeOptions.length) {
-    return `All ${label}s`;
-  }
+    if (selectedOptions.length === 1) {
+      return selectedOptions[0];
+    }
 
-  if (safeSelected.length === 1) {
-    return safeSelected[0];
-  }
+    /* Multiple selected */
 
-  if (safeSelected.length === 2) {
-    return `${safeSelected[0]}, ${safeSelected[1]}`;
-  }
+    return `${selectedOptions.length} selected`;
+  };
 
-  return `${safeSelected[0]}, ${safeSelected[1]} +${safeSelected.length - 2}`;
+  /* =========================================================
+     SELECT ALL BUTTON TEXT
+  ========================================================= */
 
-})();
+  const selectAllText = allSelected
+    ? `Deselect All`
+    : `Select All`;
 
-    
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div
+      className="relative"
+      ref={dropdownRef}
+    >
+      {/* =====================================================
+          DROPDOWN BUTTON
+      ===================================================== */}
+
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offoOrange min-w-[240px]"
+        type="button"
+        onClick={() =>
+          setIsOpen((prev) => !prev)
+        }
+        className="w-full min-w-[140px] bg-white text-gray-700 px-4 py-2.5 rounded-lg border border-gray-300 text-sm flex items-center justify-between gap-3"
       >
-        <span className="truncate mr-2">{displayValue}</span>
-        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        <span className="truncate">
+          {getDisplayText()}
+        </span>
+
+        <svg
+          className={`w-4 h-4 shrink-0 transition-transform ${
+            isOpen
+              ? "rotate-180"
+              : ""
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
 
+      {/* =====================================================
+          DROPDOWN MENU
+      ===================================================== */}
+
       {isOpen && (
-        <div className="absolute right-0 z-50 w-64 mt-2 origin-top-right bg-white border border-gray-200 rounded-xl shadow-2xl animate-modal-in">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute left-0 top-full mt-2 w-full min-w-[220px] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+
+          {/* =================================================
+              SELECT / DESELECT ALL
+          ================================================= */}
+
+          {options.length > 0 && (
             <button
-              onClick={selectAll}
-              className="w-full px-3 py-1.5 text-xs font-bold text-left text-offoOrange hover:bg-orange-50 rounded-lg transition-colors flex items-center justify-between"
+              type="button"
+              onClick={handleSelectAll}
+              className="w-full px-4 py-3 flex items-center gap-3 border-b border-gray-200 hover:bg-gray-50 text-left"
             >
-              {selectedOptions.length === options.length ? 'Deselect All' : 'Select All'}
-              <span className="text-[10px] bg-orange-100 px-1.5 py-0.5 rounded">{options.length}</span>
-            </button>
-          </div>
-          <div className="max-h-60 overflow-y-auto p-1">
-            {options.map((option) => (
-              <label
-                key={option}
-                className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer group transition-colors"
+              {/* Checkbox */}
+
+              <span
+                className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                  allSelected
+                    ? "bg-orange-500 border-orange-500"
+                    : someSelected
+                    ? "bg-orange-200 border-orange-500"
+                    : "border-gray-300"
+                }`}
               >
-                <input
-                  type="checkbox"
-                  checked={selectedOptions.includes(option)}
-                  onChange={() => toggleOption(option)}
-                  className="w-4 h-4 text-offoOrange border-gray-300 rounded focus:ring-offoOrange cursor-pointer"
-                />
-                <span className="ml-3 font-medium group-hover:text-offoDark transition-colors">{option}</span>
-              </label>
-            ))}
+                {/* Fully selected */}
+
+                {allSelected && (
+                  <svg
+                    className="w-3 h-3 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                )}
+
+                {/* Partially selected */}
+
+                {someSelected &&
+                  !allSelected && (
+                    <span className="w-2 h-0.5 bg-orange-500 rounded" />
+                  )}
+              </span>
+
+              {/* Select / Deselect text */}
+
+              <span className="text-sm font-semibold text-gray-800">
+                {selectAllText}
+              </span>
+            </button>
+          )}
+
+          {/* =================================================
+              OPTIONS
+          ================================================= */}
+
+          <div className="max-h-64 overflow-y-auto">
+
+            {options.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-400">
+                No options available
+              </div>
+            ) : (
+              options.map((option) => {
+                const checked =
+                  selectedOptions.includes(
+                    option
+                  );
+
+                return (
+                  <button
+                    type="button"
+                    key={option}
+                    onClick={() =>
+                      handleOptionToggle(
+                        option
+                      )
+                    }
+                    className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 text-left"
+                  >
+                    {/* Checkbox */}
+
+                    <span
+                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        checked
+                          ? "bg-orange-500 border-orange-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {checked && (
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="3"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </span>
+
+                    {/* Option name */}
+
+                    <span className="text-sm text-gray-700 truncate">
+                      {option}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+
           </div>
         </div>
       )}
