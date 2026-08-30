@@ -204,19 +204,38 @@ export const BranchesPage: React.FC = () => {
     try {
 
       if (vendorStaffId) {
+        const updatedVendor = await StaffApi.updateVendor(vendorStaffId, {
+          first_name: credentialForm.firstName,
+          last_name: credentialForm.lastName,
+          username: credentialForm.username,
+          is_active: credentialForm.isActive,
+        });
 
-        await StaffApi.updateVendor(
-          vendorStaffId,
-          {  
-            first_name: credentialForm.firstName,
-            last_name: credentialForm.lastName,
-            username: credentialForm.username,
-            is_active: credentialForm.isActive,
-          }
+        // Update the form with the values actually saved by backend
+        setCredentialForm({
+          firstName: updatedVendor.first_name,
+          lastName: updatedVendor.last_name,
+          username: updatedVendor.username,
+          isActive: updatedVendor.is_active,
+          createdAt: updatedVendor.created_at,
+          lastReset: credentialForm.lastReset,
+        });
+
+        // Keep branch linked to vendor
+        setBranches((prev) =>
+          prev.map((b) =>
+            b.id === selectedBranch?.id
+              ? {
+                  ...b,
+                  hasVendor: true,
+                }
+              : b,
+          ),
         );
 
+        // Return to view mode
+        setIsEditingCredential(false);
       } else {
-
         const result = await StaffApi.createVendor({
           first_name: credentialForm.firstName,
           last_name: credentialForm.lastName,
@@ -239,7 +258,6 @@ export const BranchesPage: React.FC = () => {
 
         setCredentialModalOpen(false);
         setShowVendorCreatedModal(true);
-
       }
 
 

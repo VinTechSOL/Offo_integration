@@ -30,7 +30,7 @@ export const AuthScreen: React.FC = () => {
 
         <div className="relative z-20 flex flex-col justify-center px-16 text-white h-full">
           <h1 className="text-6xl font-extrabold mb-6 tracking-tight">OFFO.</h1>
-          <h2 className="text-3xl font-bold mb-4">Admin Panel</h2>
+          <h2 className="text-3xl font-bold mb-4">Super Admin Panel</h2>
           <p className="text-lg opacity-90 max-w-md leading-relaxed">
             Manage your restaurants, branches, and analytics all in one place.
           </p>
