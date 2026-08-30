@@ -34,8 +34,7 @@ export const CrmDashboard: React.FC = () => {
     return customers
       .filter(
         (customer) =>
-          customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer.phone.includes(searchTerm)
+          customer.name.toLowerCase().includes(searchTerm.toLowerCase()) 
       )
       .sort((a, b) => b.totalOrders - a.totalOrders);
   }, [customers, searchTerm]);
@@ -60,7 +59,7 @@ export const CrmDashboard: React.FC = () => {
           <div className="relative w-full sm:max-w-xs">
             <input
               type="text"
-              placeholder="Search customers by name or phone"
+              placeholder="Search customers by name  "
               className="bg-gray-100 border-transparent rounded-md p-2 pl-10 pr-4 w-full focus:ring-2 focus:ring-offo-orange focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

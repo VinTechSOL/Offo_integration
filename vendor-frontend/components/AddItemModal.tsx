@@ -44,16 +44,12 @@ const VegIndicator: React.FC<{
   return (
     <span
       className={`inline-flex items-center justify-center w-4 h-4 border-2 ${
-        isVeg
-          ? "border-green-600"
-          : "border-red-600"
+        isVeg ? "border-green-600" : "border-red-600"
       }`}
     >
       <span
         className={`w-2 h-2 rounded-full ${
-          isVeg
-            ? "bg-green-600"
-            : "bg-red-600"
+          isVeg ? "bg-green-600" : "bg-red-600"
         }`}
       />
     </span>
@@ -132,6 +128,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         itemToEdit.imageUrl || null
       );
 
+      // Important:
+      // No new image selected initially while editing.
       setImageFile(null);
 
       setImageError("");
@@ -210,11 +208,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (itemToEdit) {
       /*
        * Editing:
-       * Removing the newly selected image should
-       * restore the original image preview.
        *
-       * Backend will NOT receive an image because
-       * imageFile remains null.
+       * If user selected a replacement image and
+       * then removes it, restore the original preview.
+       *
+       * Because imageFile is null, backend will
+       * not receive an image and therefore the
+       * existing image remains unchanged.
        */
       setImagePreview(
         itemToEdit.imageUrl || null
@@ -254,6 +254,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     if (!selectedCategory) {
       setCategory("");
       setCategoryId(null);
+
       return;
     }
 
@@ -311,8 +312,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       return;
     }
 
-    // Existing category is required
-    // when not creating a new category.
+    // Existing category is required when editing.
     if (
       isEditing &&
       !isAddingNewCategory &&
@@ -400,10 +400,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           BACKDROP
       ====================================================== */}
 
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={handleClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={handleClose} />
 
       {/* =====================================================
           SIDEBAR
@@ -414,13 +411,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           absolute
           right-0
           top-0
-          h-full
+          h-dvh
           w-full
           sm:w-[480px]
           bg-white
           shadow-2xl
           flex
           flex-col
+          overflow-hidden
           animate-slideInRight
         "
       >
@@ -449,15 +447,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 text-gray-800
               "
             >
-              {isEditing
-                ? "Edit Item"
-                : "Add New Item"}
+              {isEditing ? 'Edit Item' : 'Add New Item'}
             </h2>
 
             <p className="text-xs text-gray-500 mt-1">
               {isEditing
-                ? "Update only the information you want to change."
-                : "Add a new item to your menu."}
+                ? 'Update only the information you want to change.'
+                : 'Add a new item to your menu.'}
             </p>
           </div>
 
@@ -481,22 +477,20 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         </div>
 
         {/* ===================================================
-            SCROLLABLE BODY
+            EVERYTHING BELOW HEADER IS SCROLLABLE
         ==================================================== */}
 
         <div
           className="
             flex-1
+            min-h-0
             overflow-y-auto
+            overscroll-contain
             px-6
             py-5
           "
         >
-          <form
-            id="menu-item-form"
-            onSubmit={handleSave}
-            className="space-y-5"
-          >
+          <form id="menu-item-form" onSubmit={handleSave} className="space-y-5">
             {/* =================================================
                 ITEM NAME
             ================================================== */}
@@ -512,19 +506,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   mb-1
                 "
               >
-                Item Name{" "}
-                <span className="text-red-500">
-                  *
-                </span>
+                Item Name <span className="text-red-500">*</span>
               </label>
 
               <input
                 type="text"
                 id="name"
                 value={name}
-                onChange={(e) =>
-                  setName(e.target.value)
-                }
+                onChange={(e) => setName(e.target.value)}
                 className="
                   w-full
                   bg-gray-50
@@ -569,11 +558,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               <textarea
                 id="description"
                 value={description}
-                onChange={(e) =>
-                  setDescription(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 className="
                   w-full
@@ -613,24 +598,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   mb-1
                 "
               >
-                Category{" "}
-                <span className="text-red-500">
-                  *
-                </span>
+                Category <span className="text-red-500">*</span>
               </label>
 
               <select
                 id="category"
                 value={
                   isAddingNewCategory
-                    ? "ADD_NEW_CATEGORY"
+                    ? 'ADD_NEW_CATEGORY'
                     : categoryId !== null
                     ? String(categoryId)
-                    : ""
+                    : ''
                 }
-                onChange={
-                  handleCategoryChange
-                }
+                onChange={handleCategoryChange}
                 className="
                   w-full
                   bg-gray-50
@@ -650,23 +630,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 required
                 disabled={saving}
               >
-                <option value="">
-                  Select Category
-                </option>
+                <option value="">Select Category</option>
 
-                <option value="ADD_NEW_CATEGORY">
-                  + Add New Category
-                </option>
+                <option value="ADD_NEW_CATEGORY">+ Add New Category</option>
 
                 {categories.map((cat) => (
-                  <option
-                    key={
-                      cat.category_id
-                    }
-                    value={String(
-                      cat.category_id
-                    )}
-                  >
+                  <option key={cat.category_id} value={String(cat.category_id)}>
                     {cat.category_name}
                   </option>
                 ))}
@@ -689,21 +658,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     mb-1
                   "
                 >
-                  New Category Name{" "}
-                  <span className="text-red-500">
-                    *
-                  </span>
+                  New Category Name <span className="text-red-500">*</span>
                 </label>
 
                 <input
                   type="text"
                   id="new-category"
                   value={newCategory}
-                  onChange={(e) =>
-                    setNewCategory(
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => setNewCategory(e.target.value)}
                   className="
                     w-full
                     bg-gray-50
@@ -742,18 +704,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   mb-1.5
                 "
               >
-                Food Type{" "}
-                <span className="text-red-500">
-                  *
-                </span>
+                Food Type <span className="text-red-500">*</span>
               </label>
 
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() =>
-                    setFoodType("veg")
-                  }
+                  onClick={() => setFoodType('veg')}
                   disabled={saving}
                   className={`
                     flex-1
@@ -764,9 +721,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     font-medium
                     transition-all
                     ${
-                      foodType === "veg"
-                        ? "bg-green-500 text-white shadow-sm"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      foodType === 'veg'
+                        ? 'bg-green-500 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }
                     disabled:opacity-50
                   `}
@@ -776,9 +733,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setFoodType("non-veg")
-                  }
+                  onClick={() => setFoodType('non-veg')}
                   disabled={saving}
                   className={`
                     flex-1
@@ -787,10 +742,11 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     rounded-lg
                     text-sm
                     font-medium
+                    transition-all
                     ${
-                      foodType === "non-veg"
-                        ? "bg-red-500 text-white shadow-sm"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      foodType === 'non-veg'
+                        ? 'bg-red-500 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }
                     disabled:opacity-50
                   `}
@@ -815,10 +771,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   mb-1
                 "
               >
-                Price{" "}
-                <span className="text-red-500">
-                  *
-                </span>
+                Price <span className="text-red-500">*</span>
               </label>
 
               <div className="relative">
@@ -842,11 +795,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   type="number"
                   id="price"
                   value={price}
-                  onChange={(e) =>
-                    setPrice(
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => setPrice(e.target.value)}
                   className="
                     w-full
                     bg-gray-50
@@ -888,12 +837,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   mb-1.5
                 "
               >
-                Item Image{" "}
-                {!isEditing && (
-                  <span className="text-red-500">
-                    *
-                  </span>
-                )}
+                Item Image{' '}
+                {!isEditing && <span className="text-red-500">*</span>}
               </label>
 
               <div className="flex items-center gap-4">
@@ -914,9 +859,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
                     <button
                       type="button"
-                      onClick={
-                        handleRemoveImage
-                      }
+                      onClick={handleRemoveImage}
                       disabled={saving}
                       className="
                         absolute
@@ -975,16 +918,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       rounded-lg
                       transition-colors
                       text-sm
-                      ${
-                        saving
-                          ? "opacity-50 pointer-events-none"
-                          : ""
-                      }
+                      ${saving ? 'opacity-50 pointer-events-none' : ''}
                     `}
                   >
-                    {isEditing
-                      ? "Change Image"
-                      : "Choose Image"}
+                    {isEditing ? 'Change Image' : 'Choose Image'}
                   </label>
 
                   <input
@@ -992,9 +929,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     type="file"
                     accept="image/png,image/jpeg,image/webp,image/jpg"
                     className="hidden"
-                    onChange={
-                      handleImageChange
-                    }
+                    onChange={handleImageChange}
                     disabled={saving}
                   />
 
@@ -1003,9 +938,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   </p>
 
                   {imageError && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {imageError}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{imageError}</p>
                   )}
                 </div>
               </div>
@@ -1015,12 +948,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 LIVE PREVIEW
             ================================================== */}
 
-            <div className="pt-2">
+            <div className="pt-1">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800">
-                    Preview
-                  </h3>
+                  <h3 className="text-sm font-bold text-gray-800">Preview</h3>
 
                   <p className="text-xs text-gray-400">
                     This is how the item will appear in your menu.
@@ -1031,7 +962,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
                 {/* Preview Image */}
 
-                <div className="w-full h-44 bg-gray-100">
+                <div className="w-full h-36 sm:h-40 bg-gray-100">
                   {imagePreview ? (
                     <img
                       src={imagePreview}
@@ -1047,9 +978,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       <div className="text-center text-gray-400">
                         <PhotoIcon className="w-10 h-10 mx-auto mb-2" />
 
-                        <p className="text-xs">
-                          Item image preview
-                        </p>
+                        <p className="text-xs">Item image preview</p>
                       </div>
                     </div>
                   )}
@@ -1057,52 +986,41 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
                 {/* Preview Details */}
 
-                <div className="p-4">
+                <div className="p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <VegIndicator
-                          foodType={
-                            foodType
-                          }
-                        />
+                        <VegIndicator foodType={foodType} />
 
                         <h4 className="font-bold text-gray-900 truncate">
-                          {name.trim() ||
-                            "Item Name"}
+                          {name.trim() || 'Item Name'}
                         </h4>
                       </div>
 
                       <p className="text-xs text-gray-500 mt-1 ml-6">
                         {isAddingNewCategory
-                          ? newCategory.trim() ||
-                            "Category"
-                          : category ||
-                            "Category"}
+                          ? newCategory.trim() || 'Category'
+                          : category || 'Category'}
                       </p>
                     </div>
 
                     <div className="flex-shrink-0">
                       <span className="text-base font-bold text-gray-900">
                         ₹
-                        {parsedPrice &&
-                        parsedPrice > 0
-                          ? parsedPrice.toFixed(
-                              2
-                            )
-                          : "0.00"}
+                        {parsedPrice && parsedPrice > 0
+                          ? parsedPrice.toFixed(2)
+                          : '0.00'}
                       </span>
                     </div>
                   </div>
 
                   <p className="text-sm text-gray-500 mt-3 line-clamp-2">
-                    {description.trim() ||
-                      "Item description will appear here."}
+                    {description.trim() || 'Item description will appear here.'}
                   </p>
 
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-green-600">
-                      Available
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-500">
+                      Menu item preview
                     </span>
 
                     <span
@@ -1110,103 +1028,110 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                         text-xs
                         font-medium
                         ${
-                          foodType ===
-                          "veg"
-                            ? "text-green-600"
-                            : "text-red-600"
+                          foodType === 'veg' ? 'text-green-600' : 'text-red-600'
                         }
                       `}
                     >
-                      {foodType ===
-                      "veg"
-                        ? "Vegetarian"
-                        : "Non-Vegetarian"}
+                      {foodType === 'veg' ? 'Vegetarian' : 'Non-Vegetarian'}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* =================================================
+                ACTION BUTTONS
+                IMPORTANT:
+                These are INSIDE the scrollable area and
+                directly AFTER the preview.
+            ================================================== */}
+
+            <div
+              className="
+                border-t
+                border-gray-200
+                pt-4
+                mt-6
+                pb-2
+                flex
+                justify-end
+                gap-3
+                bg-white
+              "
+            >
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={saving}
+                className="
+                  px-5
+                  py-2.5
+                  bg-gray-100
+                  hover:bg-gray-200
+                  text-gray-700
+                  font-medium
+                  rounded-lg
+                  transition-colors
+                  text-sm
+                  disabled:opacity-50
+                "
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSaveDisabled}
+                className="
+                  px-6
+                  py-2.5
+                  bg-orange-500
+                  hover:bg-orange-600
+                  text-white
+                  font-semibold
+                  rounded-lg
+                  transition-colors
+                  text-sm
+                  disabled:opacity-50
+                  disabled:cursor-not-allowed
+                  min-w-[135px]
+                "
+              >
+                {saving ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span
+                      className="
+                        w-4
+                        h-4
+                        border-2
+                        border-white
+                        border-t-transparent
+                        rounded-full
+                        animate-spin
+                      "
+                    />
+                    Saving...
+                  </span>
+                ) : isEditing ? (
+                  'Save Changes'
+                ) : (
+                  'Add Item'
+                )}
+              </button>
+            </div>
+            <div className="rounded-lg bg-orange-50 border border-orange-100 px-3.5 py-3">
+              <p className="text-xs leading-5 text-gray-600">
+                <span className="font-semibold text-gray-700">
+                Disclaimer: Vendor Responsibility
+                </span>{' '}
+                The price, quality, quantity, ingredients, and preparation of
+                this item will be shown/represented to customers based on the
+                information you provide. Please ensure that the information,
+                quality, and quantity of the food served are accurate. You are
+                responsible for fulfilling the item as described.
+              </p>
+            </div>
           </form>
-        </div>
-
-        {/* ===================================================
-            STICKY FOOTER
-        ==================================================== */}
-
-        <div
-          className="
-            border-t
-            border-gray-200
-            px-6
-            py-4
-            flex
-            justify-end
-            gap-3
-            bg-white
-            flex-shrink-0
-          "
-        >
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={saving}
-            className="
-              px-5
-              py-2.5
-              bg-gray-100
-              hover:bg-gray-200
-              text-gray-700
-              font-medium
-              rounded-lg
-              transition-colors
-              text-sm
-              disabled:opacity-50
-            "
-          >
-            Cancel
-          </button>
-
-          <button
-            type="submit"
-            form="menu-item-form"
-            disabled={isSaveDisabled}
-            className="
-              px-6
-              py-2.5
-              bg-orange-500
-              hover:bg-orange-600
-              text-white
-              font-semibold
-              rounded-lg
-              transition-colors
-              text-sm
-              disabled:opacity-50
-              disabled:cursor-not-allowed
-              min-w-[135px]
-            "
-          >
-            {saving ? (
-              <span className="flex items-center justify-center gap-2">
-                <span
-                  className="
-                    w-4
-                    h-4
-                    border-2
-                    border-white
-                    border-t-transparent
-                    rounded-full
-                    animate-spin
-                  "
-                />
-
-                Saving...
-              </span>
-            ) : isEditing ? (
-              "Save Changes"
-            ) : (
-              "Add Item"
-            )}
-          </button>
         </div>
       </div>
     </div>

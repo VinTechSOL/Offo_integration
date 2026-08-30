@@ -47,28 +47,35 @@ const PaymentStatusScreen = () => {
     };
 
     const checkPayment = async () => {
-      if (stopped) {
-        return;
-      }
+      if (stopped) return;
 
       try {
         const response = await getPaymentStatusApi(parsedOrderId);
 
-        if (stopped) {
-          return;
-        }
+        if (stopped) return;
 
         switch (response.intent_status) {
           case "SUCCEEDED":
             stopPolling();
 
-            navigate("/success", {
-              replace: true,
-              state: {
-                orderId: String(parsedOrderId),
-                paymentCompleted: true,
+            /*
+             * IMPORTANT:
+             *
+             * Replace /payment/status with /success.
+             * Therefore /payment/status does not remain as a
+             * separate application history entry.
+             */
+            navigate(
+              `/success?from=payment&order_id=${parsedOrderId}`,
+              {
+                replace: true,
+                state: {
+                  from: "payment",
+                  orderId: String(parsedOrderId),
+                  paymentCompleted: true,
+                },
               },
-            });
+            );
 
             return;
 
@@ -102,8 +109,6 @@ const PaymentStatusScreen = () => {
             );
         }
       } catch (error) {
-        // A temporary status request failure should NOT
-        // immediately mark the payment as failed.
         console.error(
           "Payment status check failed:",
           error,
@@ -111,7 +116,6 @@ const PaymentStatusScreen = () => {
       }
     };
 
-    // Give PhonePe a moment to finish redirecting.
     initialDelay = setTimeout(() => {
       checkPayment();
 
@@ -120,7 +124,6 @@ const PaymentStatusScreen = () => {
       }, 3000);
     }, 2000);
 
-    // Stop polling after 2 minutes.
     timeout = setTimeout(() => {
       stopped = true;
 
@@ -172,7 +175,7 @@ const PaymentStatusScreen = () => {
           </button>
 
           <button
-            onClick={() => navigate("/orders")}
+            onClick={() => navigate("/orders", { replace: true })}
             className="mt-3 text-sm text-gray-500 underline"
           >
             Go to My Orders

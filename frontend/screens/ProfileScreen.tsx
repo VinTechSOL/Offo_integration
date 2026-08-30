@@ -132,18 +132,25 @@ const ProfileScreen: React.FC = () => {
     {
       label: "Order History",
       icon: ReceiptIcon,
-      action: () => navigate("/orders"),
+      action: () => navigate("/orders", {
+        state: { from:"/profile"}
+      }),
     },
 
     {
       label: "View Tickets",
       icon: TicketIcon,
-      action: () => navigate("/support/tickets"),
+      action: () => navigate("/support/tickets", {
+        state: { from:"/profile"}
+      }),
     },
   ];
 
   const moreOptions = [
-    { label: "Help & Support", icon: HelpIcon, action: () => navigate("/help") },
+    { label: "Help & Support", icon: HelpIcon, action: () => navigate("/help" , {
+        state: { from:"/profile"}
+      }) },
+      
     { label: "About Us", icon: InfoIcon, action: () => navigate("/about") },
   ];
 

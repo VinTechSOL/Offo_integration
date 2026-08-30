@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 
@@ -295,6 +295,8 @@ const faqItems = [
 
 const HelpScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -316,7 +318,15 @@ const HelpScreen: React.FC = () => {
     <div className="flex flex-col h-full bg-[#FFF9F2]">
       <header className="p-4 flex items-center border-b sticky top-0 bg-[#FFF9F2] z-10">
         <div className="w-1/5">
-          <button onClick={() => navigate('/home')}>
+          <button
+            onClick={() => {
+              if (location.state?.from === '/profile') {
+                navigate('/profile', { replace: true });
+              } else {
+                navigate('/home', { replace: true });
+              }
+            }}
+          >
             <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>
@@ -339,7 +349,10 @@ const HelpScreen: React.FC = () => {
 
         <div className="space-y-3">
           {filteredFaqs.map((item, index) => (
-            <div key={index} className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+            <div
+              key={index}
+              className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm"
+            >
               <button
                 onClick={() => toggleFaq(index)}
                 className="w-full flex justify-between items-center text-left p-4 font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
@@ -351,14 +364,20 @@ const HelpScreen: React.FC = () => {
                   viewBox="0 0 24 24"
                   strokeWidth={2}
                   stroke="currentColor"
-                  className={`w-5 h-5 transition-transform flex-shrink-0 ml-2 ${openIndex === index ? 'transform rotate-180' : ''}`}
+                  className={`w-5 h-5 transition-transform flex-shrink-0 ml-2 ${
+                    openIndex === index ? 'transform rotate-180' : ''
+                  }`}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
                 </svg>
               </button>
               {openIndex === index && (
                 <div className="p-4 pt-0 text-gray-600 border-t border-gray-100">
-                  {typeof item.a === "string" ? (
+                  {typeof item.a === 'string' ? (
                     <p className="text-sm">{item.a}</p>
                   ) : (
                     item.a
@@ -377,24 +396,26 @@ const HelpScreen: React.FC = () => {
 
         {/* Contact Support Section - Updated */}
         <div className="mt-8 bg-white p-6 rounded-lg border border-gray-200 text-center shadow-sm">
-          <h3 className="font-bold text-lg text-gray-800 mb-2">Still need help?</h3>
+          <h3 className="font-bold text-lg text-gray-800 mb-2">
+            Still need help?
+          </h3>
           <p className="text-gray-600 mb-4">Contact our support team:</p>
-          
+
           <div className="space-y-3">
-            <a 
-              href="mailto:support@offo.co.in" 
+            <a
+              href="mailto:support@offo.co.in"
               className="block font-semibold text-orange-600 hover:text-orange-700 transition-colors"
             >
               support@offo.co.in
             </a>
-            
-            <a 
-              href="tel:+919492121427" 
+
+            <a
+              href="tel:+919492121427"
               className="block text-gray-600 hover:text-orange-600 transition-colors"
             >
               +91 94921 21427
             </a>
-            
+
             <p className="text-sm text-gray-500 pt-2 border-t border-gray-100">
               VinTech Solutions
             </p>

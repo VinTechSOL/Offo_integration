@@ -347,29 +347,77 @@ const App: React.FC = () => {
     let isMounted = true;
     let interval: number | undefined;
 
+    // ============================================================
+    // MERGE ORDERS BY ID
+    // ============================================================
+
+    const mergeOrdersById = (
+      currentOrders: Order[],
+      incomingOrders: Order[],
+    ): Order[] => {
+      const orderMap = new Map<string, Order>();
+
+      currentOrders.forEach((order: Order) => {
+        orderMap.set(String(order.id), order);
+      });
+
+      incomingOrders.forEach((order: Order) => {
+        orderMap.set(String(order.id), order);
+      });
+
+      return Array.from(orderMap.values());
+    };
+
+    // ============================================================
+    // LOAD COMPLETE ORDER HISTORY
+    // ============================================================
+
     const loadHistoryOnce = async () => {
       try {
         const history = await getMyOrdersApi();
+
         if (!isMounted) return;
-        setOrders(history.map(mapBackendOrder));
+
+        const mappedHistory: Order[] = history.map(
+          (order: any): Order => mapBackendOrder(order),
+        );
+
+        // Remove duplicate order IDs from backend response
+        const uniqueHistory = Array.from(
+          new Map(
+            mappedHistory.map((order) => [String(order.id), order]),
+          ).values(),
+        );
+
+        setOrders(uniqueHistory);
       } catch (err) {
         console.error('Failed to load order history', err);
       }
     };
 
+    // ============================================================
+    // LOAD ACTIVE ORDERS
+    // ============================================================
+
     const pollActiveOnly = async () => {
       try {
         const active = await getMyActiveOrdersApi();
+
         if (!isMounted) return;
-        const mappedActive = active.map(mapBackendOrder);
-        setOrders((prev) => [
-          ...mappedActive,
-          ...prev.filter((o) => !mappedActive.find((a) => a.id === o.id)),
-        ]);
+
+        const mappedActive: Order[] = active.map(
+          (order: any): Order => mapBackendOrder(order),
+        );
+
+        setOrders((prev) => mergeOrdersById(prev, mappedActive));
       } catch (err) {
         console.error('Active polling failed', err);
       }
     };
+
+    // ============================================================
+    // POLLING
+    // ============================================================
 
     const startPolling = () => {
       if (!interval) {
@@ -384,6 +432,10 @@ const App: React.FC = () => {
       }
     };
 
+    // ============================================================
+    // TAB / APP VISIBILITY
+    // ============================================================
+
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         pollActiveOnly();
@@ -393,15 +445,37 @@ const App: React.FC = () => {
       }
     };
 
-    loadHistoryOnce();
-    pollActiveOnly();
-    startPolling();
+    // ============================================================
+    // INITIAL LOAD
+    // ============================================================
+
+    const initializeOrders = async () => {
+      await loadHistoryOnce();
+
+      if (!isMounted) return;
+
+      // Get latest status for active orders
+      await pollActiveOnly();
+
+      if (!isMounted) return;
+
+      // Start live status polling
+      startPolling();
+    };
+
+    initializeOrders();
 
     document.addEventListener('visibilitychange', handleVisibility);
 
+    // ============================================================
+    // CLEANUP
+    // ============================================================
+
     return () => {
       isMounted = false;
+
       stopPolling();
+
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [locationRouter.pathname]);

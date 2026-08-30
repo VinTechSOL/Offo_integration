@@ -5,22 +5,24 @@ import { MenuDashboard } from '../components/MenuDashboard';
 import { ReportsDashboard } from '../pages/ReportDashboard';
 import { SettingsPage } from '../pages/SettingsDashboard';
 import { ConfirmationModal } from '../components/Confirmationsmodal';
-import { CrmDashboard } from '../pages/CrmDashboard'; // Import the new CRM Dashboard
+import { CrmDashboard } from '../pages/CrmDashboard';
+import { TicketsAndFeedback } from '../pages/TicketsAndFeedback'; // Import Tickets & Feedback component
 
-type View = 'orders' | 'today' |'scheduled' | 'menu' | 'reports' | 'settings' | 'crm';
+type View = 'orders' | 'today' | 'scheduled' | 'menu' | 'reports' | 'crm' | 'support' | 'settings';
 
-const TopNav: React.FC<{ currentView: View, setCurrentView: (view: View) => void }> = ({ currentView, setCurrentView }) => {
+const TopNav: React.FC<{ currentView: View; setCurrentView: (view: View) => void }> = ({ currentView, setCurrentView }) => {
   const baseClasses = "py-2 px-6 rounded-md font-semibold transition-colors duration-200";
   const activeClasses = "bg-offo-orange text-white shadow-md";
   const inactiveClasses = "bg-white text-text-primary hover:bg-gray-100 shadow-sm";
 
-  const navItems: { key: View, label: string }[] = [
+  const navItems: { key: View; label: string }[] = [
     { key: 'orders', label: 'Live Orders' },
-    { key: 'today', label: 'Today Orders'},
+    { key: 'today', label: 'Today Orders' },
     { key: 'scheduled', label: 'Scheduled Orders' },
     { key: 'menu', label: 'Manage Menu' },
     { key: 'reports', label: 'Reports' },
-    { key: 'crm', label: 'CRM' }, // Added CRM to the navigation
+    { key: 'crm', label: 'CRM' },
+    { key: 'support', label: 'Tickets & Feedback' }, // Added Tickets & Feedback navigation item
     { key: 'settings', label: 'Settings' },
   ];
 
@@ -40,7 +42,7 @@ const TopNav: React.FC<{ currentView: View, setCurrentView: (view: View) => void
 };
 
 interface DashboardProps {
-    onLogout: () => void;
+  onLogout: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
@@ -66,11 +68,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         return <OrdersDashboard isScheduledView={true} />;
       case 'menu':
         return <MenuDashboard />;
-        
       case 'reports':
         return <ReportsDashboard />;
       case 'crm':
-        return <CrmDashboard />; // Render the CRM Dashboard
+        return <CrmDashboard />;
+      case 'support':
+        return <TicketsAndFeedback />; // Render the Tickets and Feedback Dashboard
       case 'settings':
         return <SettingsPage />;
       default:
@@ -93,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           title="Confirm Logout"
           message="Are you sure you want to log out of your account?"
           confirmText="Logout"
-          confirmColor="red" // Set confirmColor to red as requested
+          confirmColor="red"
         />
       )}
     </div>

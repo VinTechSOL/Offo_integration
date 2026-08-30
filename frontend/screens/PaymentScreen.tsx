@@ -83,7 +83,7 @@ const PaymentScreen: React.FC<PaymentScreenProps> = ({
       // with existing payment-status logic.
       sessionStorage.setItem('pendingOrderId', String(orderIds[0]));
 
-      window.location.assign(payment.checkout_url);
+      window.location.replace(payment.checkout_url);
     } catch (err: any) {
       console.error(err);
 

@@ -27,6 +27,7 @@ interface MenuCategoryApi {
 
 interface BranchMenuApi {
   branch_id: number;
+  fssai_license_number?: string | null;
   categories: MenuCategoryApi[];
 }
 
@@ -311,8 +312,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({
             </p>
 
             <div className="pt-2">
-              <p className="font-semibold text-gray-700">FSSAI License No.</p>
-              <p className="mt-1">Not available</p>
+              <p className="font-semibold text-gray-700">FSSAI License Number : {menu?.fssai_license_number || "Not available"}</p>
             </div>
           </div>
         </div>

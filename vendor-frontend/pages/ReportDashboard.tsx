@@ -4,7 +4,7 @@ import { ReportsApi } from "@/apis/report";
 
 import { StatCard } from "../components/StatCard";
 
-import { PhoneIcon } from "../components/icons";
+
 
 
 type ReportView =
@@ -334,14 +334,6 @@ export const ReportsDashboard: React.FC = () => {
                     {customer.name}
                   </p>
 
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-
-                    <PhoneIcon className="w-4 h-4 mr-2" />
-
-                    <a href={`tel:${customer.phone}`}>
-                      {customer.phone}
-                    </a>
-                  </div>
                 </div>
 
                 <div className="text-right">

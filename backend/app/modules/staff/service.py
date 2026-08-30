@@ -4,6 +4,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta, timezone, date, time
+from decimal import Decimal
+from sqlalchemy.orm import Session
+from app.modules.orders.models import Order
+from app.modules.payments.models import PaymentAttempt
 from sqlalchemy import func
 from app.core.config import settings
 from app.modules.staff.repository import StaffRepository
@@ -298,6 +303,74 @@ class StaffAuthService:
             "role": staff.role.role_name,
             "staff_id": staff.staff_id,
             "branch_id": staff.branch_id,
+        }
+
+
+    # =========================================================
+    # CHANGE OWN PASSWORD
+    # =========================================================
+
+    @staticmethod
+    def change_password(
+        db: Session,
+        staff: Staff,
+        new_password: str,
+    ):
+        # -----------------------------------------------------
+        # Validate password length
+        # -----------------------------------------------------
+
+        if len(new_password.encode("utf-8")) > 72:
+            raise HTTPException(
+                status_code=400,
+                detail="Password must not exceed 72 bytes.",
+            )
+
+        if len(new_password) < 6:
+            raise HTTPException(
+                status_code=400,
+                detail="Password must be at least 6 characters long.",
+            )
+
+        # -----------------------------------------------------
+        # Ensure account is active
+        # -----------------------------------------------------
+
+        if not staff.is_active:
+            raise HTTPException(
+                status_code=403,
+                detail="Staff account is inactive.",
+            )
+
+        # -----------------------------------------------------
+        # Update password
+        # -----------------------------------------------------
+
+        staff.password_hash = pwd_context.hash(new_password)
+
+        # -----------------------------------------------------
+        # Revoke all existing refresh sessions
+        # -----------------------------------------------------
+
+        StaffRepository.revoke_all_refresh_tokens(
+            db=db,
+            staff_id=staff.staff_id,
+        )
+
+        try:
+            db.commit()
+            db.refresh(staff)
+
+        except SQLAlchemyError:
+            db.rollback()
+
+            raise HTTPException(
+                status_code=500,
+                detail="Unable to update password.",
+            )
+
+        return {
+            "message": "Password updated successfully."
         }
 
 
@@ -873,121 +946,686 @@ class StaffAuthService:
 class AdminReportService:
 
     @staticmethod
-    def get_reports(db: Session, branch_ids: list[int], range: str):
+    def get_reports(
+        db: Session,
+        branch_ids: list[int],
+        range: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ):
 
-        now = datetime.utcnow()
+        # =====================================================
+        # VALIDATE BRANCHES
+        # =====================================================
+
+        if not branch_ids:
+            return {
+                "total_orders": 0,
+                "total_revenue": 0,
+                "avg_order_value": 0,
+                "completed": 0,
+                "cancelled": 0,
+                "scheduled": 0,
+                "cancellation_refund_summary": {
+                    "cancelled_orders": 0,
+                    "cancelled_amount": 0,
+                    "refunded_orders": 0,
+                    "refunded_amount": 0,
+                    "pending_refunds": 0,
+                    "pending_refund_amount": 0,
+                },
+            }
+
+        # =====================================================
+        # CURRENT TIME
+        # =====================================================
+
+        now = datetime.now(timezone.utc)
+
+        # =====================================================
+        # DATE RANGE
+        # =====================================================
 
         if range == "today":
-            start_date = now.replace(hour=0, minute=0, second=0)
+
+            start_datetime = now.replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+
+            end_datetime = now
+
         elif range == "week":
-            start_date = now - timedelta(days=7)
+
+            start_datetime = now - timedelta(days=7)
+            end_datetime = now
+
+        elif range == "month":
+
+            start_datetime = now - timedelta(days=30)
+            end_datetime = now
+
+        elif range == "custom":
+
+            if not start_date or not end_date:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Start date and end date are required "
+                        "for custom range."
+                    ),
+                )
+
+            if start_date > end_date:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Start date cannot be after end date.",
+                )
+
+            # Start of selected start date
+            start_datetime = datetime.combine(
+                start_date,
+                time.min,
+                tzinfo=timezone.utc,
+            )
+
+            # Exclusive next-day boundary
+            #
+            # Example:
+            # start = 2026-08-01 00:00
+            # end   = 2026-08-11 00:00
+            #
+            # This includes the COMPLETE day of Aug 10.
+            end_datetime = datetime.combine(
+                end_date + timedelta(days=1),
+                time.min,
+                tzinfo=timezone.utc,
+            )
+
         else:
-            start_date = now - timedelta(days=30)
+
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid report range.",
+            )
+
+        # =====================================================
+        # DEBUG
+        # =====================================================
+
+        print("\n========== ADMIN REPORT ==========")
+        print("Branch IDs:", branch_ids)
+        print("Range:", range)
+        print("Start:", start_datetime)
+        print("End:", end_datetime)
+        print("==================================\n")
+
+        # =====================================================
+        # ORDERS
+        # =====================================================
 
         orders = (
             db.query(Order)
             .filter(
                 Order.branch_id.in_(branch_ids),
-                Order.created_at >= start_date
+                Order.created_at >= start_datetime,
+                Order.created_at < end_datetime,
             )
             .all()
         )
 
+        # =====================================================
+        # REVENUE TREND
+        # =====================================================
+
+        if range == "today":
+
+            # Hourly revenue for today
+            revenue_rows = (
+                db.query(
+                    func.date_trunc(
+                        "hour",
+                        Order.created_at
+                    ).label("period"),
+                    func.sum(Order.total_amount).label("revenue"),
+                )
+                .filter(
+                    Order.branch_id.in_(branch_ids),
+                    Order.created_at >= start_datetime,
+                    Order.created_at < end_datetime,
+                )
+                .group_by(
+                    func.date_trunc(
+                        "hour",
+                        Order.created_at
+                    )
+                )
+                .order_by(
+                    func.date_trunc(
+                        "hour",
+                        Order.created_at
+                    )
+                )
+                .all()
+            )
+
+            revenue_trend = [
+                {
+                    "label": row.period.strftime("%H:%M"),
+                    "date": row.period.isoformat(),
+                    "revenue": float(row.revenue or 0),
+                }
+                for row in revenue_rows
+            ]
+
+        else:
+
+            # Daily revenue for week/month/custom
+            revenue_rows = (
+                db.query(
+                    func.date(Order.created_at).label("period"),
+                    func.sum(Order.total_amount).label("revenue"),
+                )
+                .filter(
+                    Order.branch_id.in_(branch_ids),
+                    Order.created_at >= start_datetime,
+                    Order.created_at < end_datetime,
+                )
+                .group_by(
+                    func.date(Order.created_at)
+                )
+                .order_by(
+                    func.date(Order.created_at)
+                )
+                .all()
+            )
+
+            revenue_trend = [
+                {
+                    "label": row.period.strftime("%d %b"),
+                    "date": row.period.isoformat(),
+                    "revenue": float(row.revenue or 0),
+                }
+                for row in revenue_rows
+            ]
+
+        # =====================================================
+        # BASIC ORDER METRICS
+        # =====================================================
+
         total_orders = len(orders)
 
-        total_revenue = sum(float(o.total_amount) for o in orders)
+        total_revenue = sum(
+            (
+                Decimal(str(order.total_amount))
+                for order in orders
+                if order.total_amount is not None
+            ),
+            Decimal("0"),
+        )
 
         avg_order_value = (
-            total_revenue / total_orders if total_orders else 0
+            total_revenue / total_orders
+            if total_orders
+            else Decimal("0")
         )
 
-        completed = len(
-            [o for o in orders if o.order_status == OrderStatus.COMPLETED]
+        # =====================================================
+        # COMPLETED
+        # =====================================================
+
+        completed = sum(
+            1
+            for order in orders
+            if order.order_status == OrderStatus.COMPLETED
         )
 
-        cancelled = len(
-            [o for o in orders if o.order_status == OrderStatus.CANCELLED]
+        # =====================================================
+        # CANCELLED
+        # =====================================================
+
+        cancelled_orders = [
+            order
+            for order in orders
+            if order.order_status == OrderStatus.CANCELLED
+        ]
+
+        cancelled = len(cancelled_orders)
+
+        cancelled_amount = sum(
+            (
+                Decimal(str(order.total_amount))
+                for order in cancelled_orders
+                if order.total_amount is not None
+            ),
+            Decimal("0"),
         )
 
-        scheduled = len(
-            [o for o in orders if o.order_type == "SCHEDULED"]
+        # =====================================================
+        # SCHEDULED
+        # =====================================================
+
+        scheduled = sum(
+            1
+            for order in orders
+            if order.order_type == "SCHEDULED"
         )
+
+        # =====================================================
+        # INSTANT & SCHEDULED SALES SUMMARY
+        # =====================================================
+
+        instant_orders = [
+            o
+            for o in orders
+            if o.order_type.upper() == "INSTANT"
+        ]
+
+        scheduled_orders = [
+            o
+            for o in orders
+            if o.order_type.upper() == "SCHEDULED"
+        ]
+
+        instant_sales = sum(
+            (Decimal(str(o.total_amount)) for o in instant_orders),
+            Decimal("0"),
+        )
+
+        scheduled_sales = sum(
+            (Decimal(str(o.total_amount)) for o in scheduled_orders),
+            Decimal("0"),
+        )
+
+        total_sales = instant_sales + scheduled_sales
+
+        # =====================================================
+        # REFUNDS
+        # =====================================================
+
+        order_ids = [
+            order.order_id
+            for order in orders
+        ]
+
+        refund_attempts = []
+
+        if order_ids:
+
+            refund_attempts = (
+                db.query(PaymentAttempt)
+                .filter(
+                    PaymentAttempt.refund_order_id.in_(order_ids),
+
+                    # IMPORTANT:
+                    # Use datetime range, NOT start_date/end_date.
+                    PaymentAttempt.created_at >= start_datetime,
+                    PaymentAttempt.created_at < end_datetime,
+                )
+                .all()
+            )
+
+        # =====================================================
+        # SUCCESSFUL REFUNDS
+        # =====================================================
+
+        successful_refunds = [
+            attempt
+            for attempt in refund_attempts
+            if attempt.status
+            and attempt.status.upper()
+            in {
+                "SUCCESS",
+                "COMPLETED",
+                "REFUNDED",
+            }
+        ]
+
+        # =====================================================
+        # PENDING REFUNDS
+        # =====================================================
+
+        pending_refunds = [
+            attempt
+            for attempt in refund_attempts
+            if attempt.status
+            and attempt.status.upper()
+            in {
+                "PENDING",
+                "INITIATED",
+                "PROCESSING",
+            }
+        ]
+
+        # =====================================================
+        # REFUNDED AMOUNT
+        # =====================================================
+
+        refunded_amount = sum(
+            (
+                Decimal(str(attempt.amount))
+                for attempt in successful_refunds
+                if attempt.amount is not None
+            ),
+            Decimal("0"),
+        )
+
+        # =====================================================
+        # PENDING REFUND AMOUNT
+        # =====================================================
+
+        pending_refund_amount = sum(
+            (
+                Decimal(str(attempt.amount))
+                for attempt in pending_refunds
+                if attempt.amount is not None
+            ),
+            Decimal("0"),
+        )
+
+        # =====================================================
+        # REFUNDED ORDERS
+        # =====================================================
+
+        refunded_order_ids = {
+            attempt.refund_order_id
+            for attempt in successful_refunds
+            if attempt.refund_order_id is not None
+        }
+
+        # =====================================================
+        # PENDING REFUND ORDERS
+        # =====================================================
+
+        pending_refund_order_ids = {
+            attempt.refund_order_id
+            for attempt in pending_refunds
+            if attempt.refund_order_id is not None
+        }
+
+        # =====================================================
+        # DEBUG
+        # =====================================================
+
+        print("\n========== REPORT RESULT ==========")
+        print("Orders:", total_orders)
+        print("Revenue:", total_revenue)
+        print("Completed:", completed)
+        print("Cancelled:", cancelled)
+        print("Scheduled:", scheduled)
+        print("Refund attempts:", len(refund_attempts))
+        print("Successful refunds:", len(successful_refunds))
+        print("Pending refunds:", len(pending_refunds))
+        print("===================================\n")
+
+        # =====================================================
+        # RESPONSE
+        # =====================================================
 
         return {
             "total_orders": total_orders,
-            "total_revenue": total_revenue,
-            "avg_order_value": round(avg_order_value, 2),
+
+            "total_sales": float(total_sales),
+
+            "instant_summary": {
+                "orders": len(instant_orders),
+                "sales": float(instant_sales),
+            },
+
+            "scheduled_summary": {
+                "orders": len(scheduled_orders),
+                "sales": float(scheduled_sales),
+            },
+
+            "revenue_trend": revenue_trend,
+
+            "total_revenue": float(total_revenue),
+            "avg_order_value": round(float(avg_order_value), 2),
+
             "completed": completed,
             "cancelled": cancelled,
             "scheduled": scheduled,
+
+            "cancellation_refund_summary": {
+                "cancelled_orders": cancelled,
+                "cancelled_amount": float(cancelled_amount),
+
+                "refunded_orders": len(refunded_order_ids),
+                "refunded_amount": float(refunded_amount),
+
+                "pending_refunds": len(pending_refund_order_ids),
+                "pending_refund_amount": float(
+                    pending_refund_amount
+                ),
+            },
         }
-    
 
 
 # =========================================================
-    # CUSTOMISED ADMIN Overview
+# CUSTOMISED ADMIN OVERVIEW
 # =========================================================
 
 class DashboardService:
 
     @staticmethod
-    def get_overview(db: Session, branch_ids: list[int]):
+    def get_overview(
+        db: Session,
+        branch_ids: list[int],
+    ):
 
-        today = datetime.utcnow().date()
+        # =====================================================
+        # VALIDATE BRANCHES
+        # =====================================================
 
-        orders = (
+        if not branch_ids:
+            return {
+                "today_orders": 0,
+                "total_revenue": 0.0,
+                "avg_order_value": 0.0,
+                "revenue_trend": [],
+                "top_items": [],
+            }
+
+        # =====================================================
+        # CURRENT TIME
+        # =====================================================
+
+        now = datetime.now(timezone.utc)
+
+        # =====================================================
+        # TODAY RANGE
+        # =====================================================
+
+        start_of_today = now.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+        # =====================================================
+        # TODAY ORDERS
+        # =====================================================
+
+        today_orders = (
             db.query(Order)
             .filter(
                 Order.branch_id.in_(branch_ids),
-                func.date(Order.created_at) == today
+                Order.created_at >= start_of_today,
+                Order.created_at < now,
             )
             .all()
         )
 
-        total_orders = len(orders)
+        # =====================================================
+        # TODAY METRICS
+        # =====================================================
 
-        total_revenue = sum(float(o.total_amount) for o in orders)
+        total_orders = len(today_orders)
 
-        avg_order_value = (
-            total_revenue / total_orders if total_orders else 0
+        total_revenue = sum(
+            (
+                Decimal(str(order.total_amount))
+                for order in today_orders
+                if order.total_amount is not None
+            ),
+            Decimal("0"),
         )
 
-        # Weekly orders (simple mock aggregation for now)
+        avg_order_value = (
+            total_revenue / total_orders
+            if total_orders
+            else Decimal("0")
+        )
 
-        weekly_orders = [12, 18, 14, 22, 16, 25, 20]
+        # =====================================================
+        # LAST 7 DAYS RANGE
+        # =====================================================
 
-        # Top items
+        start_of_7_days = (
+            start_of_today - timedelta(days=6)
+        )
+
+        # =====================================================
+        # DAILY REVENUE
+        # =====================================================
+
+        revenue_rows = (
+            db.query(
+                func.date(Order.created_at).label("period"),
+                func.sum(Order.total_amount).label("revenue"),
+            )
+            .filter(
+                Order.branch_id.in_(branch_ids),
+                Order.created_at >= start_of_7_days,
+                Order.created_at < now,
+            )
+            .group_by(
+                func.date(Order.created_at)
+            )
+            .order_by(
+                func.date(Order.created_at)
+            )
+            .all()
+        )
+
+        # =====================================================
+        # CREATE REVENUE MAP
+        # =====================================================
+
+        revenue_map = {
+            row.period: float(row.revenue or 0)
+            for row in revenue_rows
+        }
+
+        # =====================================================
+        # BUILD COMPLETE 7-DAY TREND
+        # =====================================================
+
+        revenue_trend = []
+
+        for i in range(7):
+
+            current_date = (
+                start_of_7_days.date()
+                + timedelta(days=i)
+            )
+
+            revenue_trend.append(
+                {
+                    "label": current_date.strftime("%d %b"),
+                    "date": current_date.isoformat(),
+                    "revenue": revenue_map.get(
+                        current_date,
+                        0.0,
+                    ),
+                }
+            )
+
+        # =====================================================
+        # TOP SELLING ITEMS
+        # Last 7 days
+        # =====================================================
 
         rows = (
             db.query(
                 MenuItem.item_name,
-                func.sum(OrderItem.quantity).label("sales"),
                 func.sum(
-                    OrderItem.quantity * OrderItem.price_at_time
+                    OrderItem.quantity
+                ).label("sales"),
+                func.sum(
+                    OrderItem.quantity
+                    * OrderItem.price_at_time
                 ).label("revenue"),
             )
-            .join(OrderItem, OrderItem.item_id == MenuItem.item_id)
-            .join(Order, Order.order_id == OrderItem.order_id)
-            .filter(Order.branch_id.in_(branch_ids))
-            .group_by(MenuItem.item_name)
-            .order_by(func.sum(OrderItem.quantity).desc())
+            .join(
+                OrderItem,
+                OrderItem.item_id == MenuItem.item_id,
+            )
+            .join(
+                Order,
+                Order.order_id == OrderItem.order_id,
+            )
+            .filter(
+                Order.branch_id.in_(branch_ids),
+                Order.created_at >= start_of_7_days,
+                Order.created_at < now,
+            )
+            .group_by(
+                MenuItem.item_name
+            )
+            .order_by(
+                func.sum(
+                    OrderItem.quantity
+                ).desc()
+            )
             .limit(3)
             .all()
         )
 
         top_items = [
             {
-                "name": r.item_name,
-                "sales": int(r.sales),
-                "revenue": float(r.revenue),
+                "name": row.item_name,
+                "sales": int(row.sales or 0),
+                "revenue": float(row.revenue or 0),
             }
-            for r in rows
+            for row in rows
         ]
+
+        # =====================================================
+        # DEBUG
+        # =====================================================
+
+        print("\n========== DASHBOARD OVERVIEW ==========")
+        print("Branch IDs:", branch_ids)
+        print("Today Start:", start_of_today)
+        print("Now:", now)
+        print("Today's Orders:", total_orders)
+        print("Today's Revenue:", total_revenue)
+        print("Today's AOV:", avg_order_value)
+        print("Revenue Trend:", revenue_trend)
+        print("Top Items:", top_items)
+        print("========================================\n")
+
+        # =====================================================
+        # RESPONSE
+        # =====================================================
 
         return {
             "today_orders": total_orders,
-            "total_revenue": total_revenue,
-            "avg_order_value": round(avg_order_value),
-            "weekly_orders": weekly_orders,
-            "top_items": top_items
+
+            "total_revenue": float(
+                total_revenue
+            ),
+
+            "avg_order_value": round(
+                float(avg_order_value),
+                2,
+            ),
+
+            "revenue_trend": revenue_trend,
+
+            "top_items": top_items,
         }

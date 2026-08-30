@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status,Query,Request, Response
 from sqlalchemy.orm import Session
-
+from datetime import date
 from app.core.database import get_db
 from app.core.security import get_current_staff
 from app.modules.staff.schemas import (
@@ -16,6 +16,8 @@ from app.modules.staff.schemas import (
     StaffResetPasswordResponse,
     StaffLoginResponse,
     StaffRefreshResponse,
+    StaffChangePasswordRequest,
+    StaffChangePasswordResponse
 )
 from app.modules.staff.service import StaffAuthService
 from app.modules.orders.repository import OrderRepository
@@ -175,7 +177,7 @@ def get_my_profile(
     response = {
         "staff_id": staff.staff_id,
         "username": staff.username,
-        "full_name": f"{staff.first_name}{staff.last_name}",
+        "full_name": f"{staff.first_name}{staff.last_name}".strip(),
         "role": role_name,
         "access_scope": access_scope,
         "is_active": staff.is_active,
@@ -187,6 +189,35 @@ def get_my_profile(
         response["branch_id"] = staff.branch_id
 
     return response
+
+# =========================================================
+# CHANGE OWN PASSWORD - SUPER ADMIN
+# =========================================================
+
+@router.post(
+    "/auth/change-password",
+    response_model=StaffChangePasswordResponse,
+)
+def change_password(
+    payload: StaffChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+
+    if current_staff.role.role_name != "SUPER_ADMIN":
+        raise HTTPException(
+            status_code=403,
+            detail="Only Super Admin can change password from this profile.",
+        )
+
+    return StaffAuthService.change_password(
+        db=db,
+        staff=current_staff,
+        new_password=payload.new_password,
+    )
+
+
+
 # =========================================================
 # CREATE VENDOR (SUPER ADMIN ONLY)
 # =========================================================
@@ -325,14 +356,17 @@ def get_users_by_branch(
 def get_reports(
     branch_ids: list[int] = Query(...),
     range: str = Query("month"),
-    db: Session = Depends(get_db)
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
+    db: Session = Depends(get_db),
 ):
     return AdminReportService.get_reports(
         db=db,
         branch_ids=branch_ids,
-        range=range
+        range=range,
+        start_date=start_date,
+        end_date=end_date,
     )
-
 
 # =========================================================
 # Get Overview dashboard (SUPER ADMIN ONLY)
@@ -341,11 +375,11 @@ def get_reports(
 @router.get("/dashboard-overview")
 def get_dashboard_overview(
     branch_ids: list[int] = Query(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return DashboardService.get_overview(
         db=db,
-        branch_ids=branch_ids
+        branch_ids=branch_ids,
     )
 
 # =========================================================

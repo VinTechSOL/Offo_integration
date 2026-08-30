@@ -329,7 +329,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
 
     setTimeout(() => {
       setNotification(null);
-    }, 2500);
+    }, 4300);
   };
 
   /* =======================================================
@@ -779,13 +779,51 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
   return (
     <div className="flex flex-col h-full bg-[#FFF9F2] relative">
 
+
       {/* ===================================================
-          NOTIFICATION
-      =================================================== */}
+    NOTIFICATION / TOAST POPUP
+=================================================== */}
 
       {notification && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm font-semibold py-2 px-4 rounded-full shadow-lg z-50 animate-fade-in-slow text-center max-w-[90%]">
-          {notification}
+        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none transition-all duration-300">
+          <div className="flex items-center gap-3 bg-white/95 backdrop-blur-md border border-orange-200 text-gray-800 py-3.5 px-4 rounded-2xl shadow-xl shadow-orange-950/10 pointer-events-auto ring-1 ring-black/5">
+            {/* Warning Icon Badge */}
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.63-1.516 2.63H3.72c-1.347 0-2.189-1.463-1.516-2.63L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+
+            {/* Message Text */}
+            <p className="text-xs sm:text-sm font-medium leading-snug flex-1 text-gray-700">
+              {notification}
+            </p>
+
+            {/* Manual Dismiss Button */}
+            <button
+              onClick={() => setNotification(null)}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors"
+              aria-label="Close notification"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
+              >
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
@@ -795,22 +833,14 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
 
       <header className="p-4 flex items-center flex-shrink-0">
         <button
-          onClick={() =>
-            navigate(
-              isEditMode
-                ? '/orders'
-                : '/cart',
-            )
-          }
+          onClick={() => navigate(isEditMode ? '/orders' : '/cart')}
           className="p-2"
         >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
 
         <h1 className="text-xl font-bold text-gray-800 flex-grow text-center">
-          {isEditMode
-            ? 'Edit Schedule'
-            : 'Schedule Order'}
+          {isEditMode ? 'Edit Schedule' : 'Schedule Order'}
         </h1>
 
         <div className="w-10" />
@@ -821,60 +851,35 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
       =================================================== */}
 
       <div className="flex-grow p-4 flex flex-col">
-
         {/* =================================================
             EDIT MODE ORDER SUMMARY
         ================================================= */}
 
-        {isEditMode &&
-          orderToEdit && (
-            <div className="mb-4 bg-white p-4 rounded-2xl shadow-sm border">
-              <h3 className="font-bold text-gray-800 text-md mb-2">
-                Editing Schedule for Order #
-                {orderToEdit.id.slice(-5)}
-              </h3>
+        {isEditMode && orderToEdit && (
+          <div className="mb-4 bg-white p-4 rounded-2xl shadow-sm border">
+            <h3 className="font-bold text-gray-800 text-md mb-2">
+              Editing Schedule for Order #{orderToEdit.id.slice(-5)}
+            </h3>
 
-              <div className="text-sm text-gray-600 space-y-1">
-                {orderToEdit.items.map(
-                  ({
-                    item,
-                    quantity,
-                  }) => (
-                    <div
-                      key={item.id}
-                      className="flex justify-between"
-                    >
-                      <span>
-                        {quantity}x{' '}
-                        {item.name}
-                      </span>
+            <div className="text-sm text-gray-600 space-y-1">
+              {orderToEdit.items.map(({ item, quantity }) => (
+                <div key={item.id} className="flex justify-between">
+                  <span>
+                    {quantity}x {item.name}
+                  </span>
 
-                      <span>
-                        ₹
-                        {(
-                          item.price *
-                          quantity
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  ),
-                )}
-              </div>
-
-              <div className="border-t mt-2 pt-2 flex justify-between font-semibold text-gray-700">
-                <span>
-                  Total
-                </span>
-
-                <span>
-                  ₹
-                  {orderToEdit.total.toFixed(
-                    2,
-                  )}
-                </span>
-              </div>
+                  <span>₹{(item.price * quantity).toFixed(2)}</span>
+                </div>
+              ))}
             </div>
-          )}
+
+            <div className="border-t mt-2 pt-2 flex justify-between font-semibold text-gray-700">
+              <span>Total</span>
+
+              <span>₹{orderToEdit.total.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
 
         <p className="font-semibold text-center text-sm text-gray-700 mb-2">
           Please select date and time
@@ -885,29 +890,22 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
         ================================================= */}
 
         <div className="bg-white p-3 rounded-2xl shadow-sm flex-1 flex flex-col">
-
           {/* ===============================================
               MONTH HEADER
           =============================================== */}
 
           <div className="flex justify-between items-center mb-2 px-2">
             <h2 className="text-base font-bold text-orange-500">
-              {currentDate.toLocaleString(
-                'default',
-                {
-                  month: 'long',
-                  year: 'numeric',
-                },
-              )}{' '}
+              {currentDate.toLocaleString('default', {
+                month: 'long',
+                year: 'numeric',
+              })}{' '}
               ›
             </h2>
 
             <div className="flex space-x-1">
-
               <button
-                onClick={
-                  handlePrevMonth
-                }
+                onClick={handlePrevMonth}
                 className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <svg
@@ -927,9 +925,7 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
               </button>
 
               <button
-                onClick={
-                  handleNextMonth
-                }
+                onClick={handleNextMonth}
                 className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <svg
@@ -947,7 +943,6 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
                   />
                 </svg>
               </button>
-
             </div>
           </div>
 
@@ -956,82 +951,39 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
           =============================================== */}
 
           <div className="grid grid-cols-7 gap-y-1 text-center">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+              <div
+                key={index}
+                className="font-semibold text-gray-400 text-xs py-1"
+              >
+                {day}
+              </div>
+            ))}
 
-            {[
-              'S',
-              'M',
-              'T',
-              'W',
-              'T',
-              'F',
-              'S',
-            ].map(
-              (
-                day,
-                index,
-              ) => (
-                <div
+            {calendarGrid.map((day, index) => {
+              const date = day
+                ? new Date(
+                    currentDate.getFullYear(),
+                    currentDate.getMonth(),
+                    day,
+                  )
+                : null;
+
+              const isPast = date && date < today;
+
+              const isSelected =
+                date &&
+                selectedDates.some((selected) => isSameDay(selected, date));
+
+              const dateIsToday = date && isSameDay(date, today);
+
+              return (
+                <button
                   key={index}
-                  className="font-semibold text-gray-400 text-xs py-1"
-                >
-                  {day}
-                </div>
-              ),
-            )}
-
-            {calendarGrid.map(
-              (
-                day,
-                index,
-              ) => {
-
-                const date = day
-                  ? new Date(
-                      currentDate.getFullYear(),
-                      currentDate.getMonth(),
-                      day,
-                    )
-                  : null;
-
-                const isPast =
-                  date &&
-                  date < today;
-
-                const isSelected =
-                  date &&
-                  selectedDates.some(
-                    (selected) =>
-                      isSameDay(
-                        selected,
-                        date,
-                      ),
-                  );
-
-                const dateIsToday =
-                  date &&
-                  isSameDay(
-                    date,
-                    today,
-                  );
-
-                return (
-                  <button
-                    key={index}
-                    disabled={
-                      !!isPast ||
-                      !day
-                    }
-                    onClick={() =>
-                      handleDateClick(
-                        day,
-                      )
-                    }
-                    className={`w-8 h-8 text-sm rounded-full flex items-center justify-center mx-auto font-medium transition-colors duration-200
-                      ${
-                        !day
-                          ? 'bg-transparent'
-                          : ''
-                      }
+                  disabled={!!isPast || !day}
+                  onClick={() => handleDateClick(day)}
+                  className={`w-8 h-8 text-sm rounded-full flex items-center justify-center mx-auto font-medium transition-colors duration-200
+                      ${!day ? 'bg-transparent' : ''}
                       ${
                         isPast
                           ? 'text-gray-300 cursor-not-allowed'
@@ -1043,19 +995,16 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
                           : ''
                       }
                       ${
-                        !isSelected &&
-                        dateIsToday
+                        !isSelected && dateIsToday
                           ? 'border border-orange-500 text-orange-500'
                           : ''
                       }
                     `}
-                  >
-                    {day}
-                  </button>
-                );
-              },
-            )}
-
+                >
+                  {day}
+                </button>
+              );
+            })}
           </div>
 
           {/* ===============================================
@@ -1063,31 +1012,19 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
           =============================================== */}
 
           <div className="border-t mt-3 pt-3">
-
             <TimePicker
-              value={
-                scheduleTime
-              }
-              onChange={
-                handleScheduleTimeChange
-              }
-              selectedDate={
-                selectedDates[0]
-              }
+              value={scheduleTime}
+              onChange={handleScheduleTimeChange}
+              selectedDate={selectedDates[0]}
             />
 
             {/* TODAY RULE MESSAGE */}
 
-            {selectedDates.some(
-              (date) =>
-                isToday(date),
-            ) && (
+            {selectedDates.some((date) => isToday(date)) && (
               <p className="text-xs text-center text-gray-500 mt-2">
-                Orders must be scheduled at
-                least 1 hour in advance.
+                Orders must be scheduled at least 1 hour in advance for same day order.
               </p>
             )}
-
           </div>
 
           {/* ===============================================
@@ -1096,98 +1033,72 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
 
           <div
             className={`mt-auto pt-3 ${
-              isEditMode
-                ? 'opacity-50 pointer-events-none'
-                : ''
+              isEditMode ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-
             <div className="flex items-center justify-between px-2">
-
               <h3 className="font-bold text-base text-gray-700">
                 Repeat weekly
               </h3>
 
               <div className="flex items-center space-x-2">
-
                 {/* YES */}
 
                 <button
-                  onClick={() =>
-                    handleRepeatChange(
-                      'weekly',
-                    )
-                  }
+                  onClick={() => handleRepeatChange('weekly')}
                   className={`flex items-center justify-center space-x-2 w-24 p-3 font-semibold rounded-xl border-2 transition-all duration-200 ${
-                    repeat ===
-                    'weekly'
+                    repeat === 'weekly'
                       ? 'bg-orange-50 border-orange-500 text-orange-600'
                       : 'bg-white border-gray-200 text-gray-700'
                   }`}
                 >
                   <div
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      repeat ===
-                      'weekly'
+                      repeat === 'weekly'
                         ? 'border-orange-500'
                         : 'border-gray-400'
                     }`}
                   >
-                    {repeat ===
-                      'weekly' && (
+                    {repeat === 'weekly' && (
                       <div className="w-2.5 h-2.5 bg-orange-500 rounded-full" />
                     )}
                   </div>
 
-                  <span>
-                    Yes
-                  </span>
+                  <span>Yes</span>
                 </button>
 
                 {/* NO */}
 
                 <button
-                  onClick={() =>
-                    handleRepeatChange(
-                      'none',
-                    )
-                  }
+                  onClick={() => handleRepeatChange('none')}
                   className={`flex items-center justify-center space-x-2 w-24 p-3 font-semibold rounded-xl border-2 transition-all duration-200 ${
-                    repeat ===
-                    'none'
+                    repeat === 'none'
                       ? 'bg-orange-50 border-orange-500 text-orange-600'
                       : 'bg-white border-gray-200 text-gray-700'
                   }`}
                 >
                   <div
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      repeat ===
-                      'none'
+                      repeat === 'none'
                         ? 'border-orange-500'
                         : 'border-gray-400'
                     }`}
                   >
-                    {repeat ===
-                      'none' && (
+                    {repeat === 'none' && (
                       <div className="w-2.5 h-2.5 bg-orange-500 rounded-full" />
                     )}
                   </div>
 
-                  <span>
-                    No
-                  </span>
+                  <span>No</span>
                 </button>
-
               </div>
             </div>
 
             {isEditMode && (
               <p className="text-xs text-center text-gray-500 mt-2">
-                Repeat options are not available
-                when editing a single order.
+                Repeat options are not available when editing a single order.
               </p>
             )}
-
           </div>
         </div>
       </div>
@@ -1197,38 +1108,21 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
       =================================================== */}
 
       <footer className="p-4 border-t bg-white mt-auto">
-
         {/* ===============================================
             SELECTED SUMMARY
         =============================================== */}
 
-        {selectedDates.length >
-          0 && (
+        {selectedDates.length > 0 && (
           <div className="mb-4 bg-[#6F4E37] p-3 rounded-2xl text-white font-semibold space-y-1 shadow-lg animate-fade-in text-sm">
+            <p>Selected dates : {formatSelectedDates(selectedDates)}</p>
 
-            <p>
-              Selected dates :{' '}
-              {formatSelectedDates(
-                selectedDates,
-              )}
-            </p>
+            <p>Selected time : {scheduleTime}</p>
 
-            <p>
-              Selected time :{' '}
-              {scheduleTime}
-            </p>
-
-            {repeat !==
-              'none' &&
-              !isEditMode && (
-                <p>
-                  Repeat :{' '}
-                  <span className="capitalize">
-                    {repeat}
-                  </span>
-                </p>
-              )}
-
+            {repeat !== 'none' && !isEditMode && (
+              <p>
+                Repeat : <span className="capitalize">{repeat}</span>
+              </p>
+            )}
           </div>
         )}
 
@@ -1237,24 +1131,14 @@ const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
         =============================================== */}
 
         <button
-          onClick={
-            isEditMode
-              ? handleUpdate
-              : handleCheckout
-          }
-          disabled={
-            selectedDates.length ===
-            0
-          }
+          onClick={isEditMode ? handleUpdate : handleCheckout}
+          disabled={selectedDates.length === 0}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-xl shadow-md hover:bg-orange-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {isEditMode
             ? 'Update Schedule'
-            : `Checkout - ₹${checkoutTotal.toFixed(
-                2,
-              )}`}
+            : `Checkout - ₹${checkoutTotal.toFixed(2)}`}
         </button>
-
       </footer>
     </div>
   );

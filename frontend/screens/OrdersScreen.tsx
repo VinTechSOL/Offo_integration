@@ -1,15 +1,19 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import BottomNav from "../components/BottomNav";
-import ArrowLeftIcon from "../components/icons/ArrowLeftIcon";
-import type { Order } from "../types";
-import ScrollableContainer from "../components/ScrollableContainer";
-import { createTicketApi, createFeedbackApi, getMyTicketsApi, getMyFeedbackApi } from "@/api/support";
-import { getOrderApi, cancelOrderApi, getMyOrdersApi } from "@/api/order";
-import { mapBackendOrder } from "@/utils/mapOrder";
-import { FeedbackResponse, TicketResponse } from "@/api/support";
-import { generateInvoice } from "@/utils/generateInvoice";
-
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import BottomNav from '../components/BottomNav';
+import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
+import type { Order } from '../types';
+import ScrollableContainer from '../components/ScrollableContainer';
+import {
+  createTicketApi,
+  createFeedbackApi,
+  getMyTicketsApi,
+  getMyFeedbackApi,
+} from '@/api/support';
+import { getOrderApi, cancelOrderApi, getMyOrdersApi } from '@/api/order';
+import { mapBackendOrder } from '@/utils/mapOrder';
+import { FeedbackResponse, TicketResponse } from '@/api/support';
+import { generateInvoice } from '@/utils/generateInvoice';
 
 interface OrderDetailItem {
   item_id: number;
@@ -26,7 +30,7 @@ interface OrderDetail {
   branch_id: number;
   cafe_name?: string | null;
   fssai_license_number?: string | null;
-  order_type: "INSTANT" | "SCHEDULED";
+  order_type: 'INSTANT' | 'SCHEDULED';
   order_status: string;
   payment_status: string;
 
@@ -51,7 +55,6 @@ interface OrderDetail {
   items: OrderDetailItem[];
 }
 
-
 interface OrdersScreenProps {
   orders: Order[];
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
@@ -62,8 +65,11 @@ interface OrdersScreenProps {
 /* ============================
    STATUS PILL
 ============================ */
-const OrderStatusPill: React.FC<{ status: Order["status"]; paymentStatus?: Order["paymentStatus"]; }> = ({ status, paymentStatus }) => {
-  const base = "text-xs font-semibold px-2.5 py-1 rounded-full";
+const OrderStatusPill: React.FC<{
+  status: Order['status'];
+  paymentStatus?: Order['paymentStatus'];
+}> = ({ status, paymentStatus }) => {
+  const base = 'text-xs font-semibold px-2.5 py-1 rounded-full';
   const normalizedPaymentStatus = String(paymentStatus ?? '').toUpperCase();
 
   if (
@@ -76,15 +82,27 @@ const OrderStatusPill: React.FC<{ status: Order["status"]; paymentStatus?: Order
   }
 
   switch (status) {
-    case "Pending":
-      return <span className={`${base} bg-gray-200 text-gray-800`}>Pending</span>;
-    case "Accepted":
-      return <span className={`${base} bg-orange-100 text-orange-800 animate-pulse`}>Accepted</span>;
-    case "Preparing":
-      return <span className={`${base} bg-yellow-100 text-yellow-800 animate-pulse`}>Preparing</span>;
-    case "Ready for Pickup":
+    case 'Pending':
       return (
-        <span className={`${base} bg-orange-100 text-orange-800 relative flex items-center`}>
+        <span className={`${base} bg-gray-200 text-gray-800`}>Pending</span>
+      );
+    case 'Accepted':
+      return (
+        <span className={`${base} bg-orange-100 text-orange-800 animate-pulse`}>
+          Accepted
+        </span>
+      );
+    case 'Preparing':
+      return (
+        <span className={`${base} bg-yellow-100 text-yellow-800 animate-pulse`}>
+          Preparing
+        </span>
+      );
+    case 'Ready for Pickup':
+      return (
+        <span
+          className={`${base} bg-orange-100 text-orange-800 relative flex items-center`}
+        >
           <span className="absolute -left-1 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
@@ -92,15 +110,25 @@ const OrderStatusPill: React.FC<{ status: Order["status"]; paymentStatus?: Order
           <span className="ml-3">Ready</span>
         </span>
       );
-    case "Out for Delivery":
-      return <span className={`${base} bg-indigo-100 text-indigo-800 animate-pulse`}>Out</span>;
-    case "Completed":
-      return <span className={`${base} bg-green-100 text-green-800`}>Completed</span>;
-    case "Cancelled":
-    case "Rejected":
-      return <span className={`${base} bg-red-100 text-red-800`}>{status}</span>;
+    case 'Out for Delivery':
+      return (
+        <span className={`${base} bg-indigo-100 text-indigo-800 animate-pulse`}>
+          Out
+        </span>
+      );
+    case 'Completed':
+      return (
+        <span className={`${base} bg-green-100 text-green-800`}>Completed</span>
+      );
+    case 'Cancelled':
+    case 'Rejected':
+      return (
+        <span className={`${base} bg-red-100 text-red-800`}>{status}</span>
+      );
     default:
-      return <span className={`${base} bg-gray-100 text-gray-800`}>{status}</span>;
+      return (
+        <span className={`${base} bg-gray-100 text-gray-800`}>{status}</span>
+      );
   }
 };
 
@@ -124,7 +152,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
 }) => {
   const [details, setDetails] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
 
   const handleDownloadInvoice = () => {
@@ -148,25 +176,18 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
     const loadOrderDetails = async () => {
       try {
         setLoading(true);
-        setError("");
+        setError('');
 
         const orderData = await getOrderApi(order.id);
-
 
         if (cancelled) return;
 
         setDetails(orderData);
-
       } catch (err) {
-        console.error(
-          "Failed to load order details:",
-          err
-        );
+        console.error('Failed to load order details:', err);
 
         if (!cancelled) {
-          setError(
-            "Unable to load order details. Please try again."
-          );
+          setError('Unable to load order details. Please try again.');
         }
       } finally {
         if (!cancelled) {
@@ -198,9 +219,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
         </header>
 
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-gray-500">
-            Loading order details...
-          </div>
+          <div className="text-gray-500">Loading order details...</div>
         </div>
 
         <BottomNav />
@@ -225,7 +244,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
 
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           <p className="text-red-500 font-medium">
-            {error || "Order details not found"}
+            {error || 'Order details not found'}
           </p>
 
           <button
@@ -262,15 +281,102 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
       <ScrollableContainer className="p-4 space-y-4 pb-24">
         {/* STATUS */}
 
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        {(() => {
+          const normalizedStatus = String(status).toUpperCase();
 
-          <span className="text-green-700 font-semibold">
-            {status === 'COMPLETED'
-              ? 'Order was Completed'
-              : `Order is ${status}`}
-          </span>
-        </div>
+          const statusConfig: Record<
+            string,
+            {
+              container: string;
+              dot: string;
+              text: string;
+              message: string;
+              animate?: boolean;
+            }
+          > = {
+            CREATED: {
+              container: 'bg-gray-50 border-gray-200',
+              dot: 'bg-gray-500',
+              text: 'text-gray-700',
+              message: 'Order is Created',
+            },
+
+            PREPARING: {
+              container: 'bg-yellow-50 border-yellow-200',
+              dot: 'bg-yellow-500',
+              text: 'text-yellow-700',
+              message: 'Order is Preparing',
+              animate: true,
+            },
+
+            READY: {
+              container: 'bg-orange-50 border-orange-200',
+              dot: 'bg-orange-500',
+              text: 'text-orange-700',
+              message: 'Order is Ready for Pickup',
+              animate: true,
+            },
+
+            PICKED_UP: {
+              container: 'bg-blue-50 border-blue-200',
+              dot: 'bg-blue-500',
+              text: 'text-blue-700',
+              message: 'Order was Picked Up',
+            },
+
+            COMPLETED: {
+              container: 'bg-green-50 border-green-200',
+              dot: 'bg-green-500',
+              text: 'text-green-700',
+              message: 'Order was Completed',
+            },
+
+            CANCELLED: {
+              container: 'bg-red-50 border-red-200',
+              dot: 'bg-red-500',
+              text: 'text-red-700',
+              message: 'Order was Cancelled',
+            },
+
+            REJECTED: {
+              container: 'bg-red-50 border-red-200',
+              dot: 'bg-red-500',
+              text: 'text-red-700',
+              message: 'Order was Rejected',
+            },
+
+            ACCEPTED: {
+              container: 'bg-orange-50 border-orange-200',
+              dot: 'bg-orange-500',
+              text: 'text-orange-700',
+              message: 'Order was Accepted',
+              animate: true,
+            },
+          };
+
+          const config = statusConfig[normalizedStatus] ?? {
+            container: 'bg-gray-50 border-gray-200',
+            dot: 'bg-gray-500',
+            text: 'text-gray-700',
+            message: `Order is ${status}`,
+          };
+
+          return (
+            <div
+              className={`${config.container} border rounded-xl p-4 flex items-center gap-3`}
+            >
+              <div
+                className={`w-2 h-2 ${config.dot} rounded-full ${
+                  config.animate ? 'animate-pulse' : ''
+                }`}
+              />
+
+              <span className={`${config.text} font-semibold`}>
+                {config.message}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* RESTAURANT */}
 
@@ -363,15 +469,17 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
               </span>
             </div>
 
-            {details.bill.platform_fee === 0 && details.bill.gst === 0 && (
-              <div className="mt-3 rounded-lg bg-green-50 border border-green-100 px-3 py-2">
-                <p className="text-xs text-green-700 leading-relaxed">
-                  💚 Platform Fee & GST have already been added to another
-                  scheduled order. No additional fee will be charged for
-                  combined orders.
-                </p>
-              </div>
-            )}
+            {details.order_type === 'SCHEDULED' &&
+              details.bill.platform_fee === 0 &&
+              details.bill.gst === 0 && (
+                <div className="mt-3 rounded-lg bg-green-50 border border-green-100 px-3 py-2">
+                  <p className="text-xs text-green-700 leading-relaxed">
+                    💚 Platform Fee & GST have already been added to another
+                    scheduled order. No additional fee will be charged for
+                    combined orders.
+                  </p>
+                </div>
+              )}
 
             <div className="border-t pt-2 flex justify-between">
               <span className="font-bold text-gray-800">Total</span>
@@ -504,7 +612,7 @@ interface TicketFormProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order | null;
-  items: Order["items"];
+  items: Order['items'];
   onSubmit: (data: TicketData) => Promise<void>;
 }
 
@@ -524,30 +632,30 @@ const TicketFormModal: React.FC<TicketFormProps> = ({
   onSubmit,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [issueType, setIssueType] = useState("");
-  const [selectedOrderItemId, setselectedOrderItemId] = useState("");
-  const [description, setDescription] = useState("");
+  const [issueType, setIssueType] = useState('');
+  const [selectedOrderItemId, setselectedOrderItemId] = useState('');
+  const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const issueTypes = [
-    { value: "missing_item", label: "Missing/Incorrect Item" },
-    { value: "food_quality", label: "Food Quality" },
-    { value: "pickup_issue", label: "Pickup Issue" },
-    { value: "payment_billing", label: "Payment/Billing Issue" },
-    { value: "other", label: "Other" },
+    { value: 'missing_item', label: 'Missing/Incorrect Item' },
+    { value: 'food_quality', label: 'Food Quality' },
+    { value: 'pickup_issue', label: 'Pickup Issue' },
+    { value: 'payment_billing', label: 'Payment/Billing Issue' },
+    { value: 'other', label: 'Other' },
   ];
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
-        setError("Image size should be less than 5MB");
+        setError('Image size should be less than 5MB');
         return;
       }
       setImageFile(file);
-      setError("");
+      setError('');
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -763,8 +871,8 @@ const FeedbackFormModal: React.FC<FeedbackFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [foodRating, setFoodRating] = useState(0);
   const [appRating, setAppRating] = useState(0);
-  const [comments, setComments] = useState("");
-  const [error, setError] = useState("");
+  const [comments, setComments] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async () => {
     if (foodRating === 0) {
@@ -946,7 +1054,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
   ticket,
   feedback,
 }) => {
-  const isCancellable = order.backendStatus === "CREATED" && order.paymentStatus !== "FAILED" ;
+  const isCancellable =
+    order.backendStatus === 'CREATED' && order.paymentStatus !== 'FAILED';
   const isCompleted = order.backendStatus === 'COMPLETED';
 
   const isRateable =
@@ -1147,8 +1256,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
   );
 };
 
-
-
 /* ============================
    SUCCESS CONFIRMATION MODAL
 ============================ */
@@ -1171,7 +1278,6 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center shadow-xl">
-
         <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
           <svg
             className="w-8 h-8 text-green-600"
@@ -1188,13 +1294,9 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
           </svg>
         </div>
 
-        <h2 className="text-xl font-bold text-gray-800">
-          {title}
-        </h2>
+        <h2 className="text-xl font-bold text-gray-800">{title}</h2>
 
-        <p className="text-sm text-gray-500 mt-2">
-          {message}
-        </p>
+        <p className="text-sm text-gray-500 mt-2">{message}</p>
 
         <button
           onClick={onClose}
@@ -1202,13 +1304,10 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
         >
           OK
         </button>
-
       </div>
     </div>
   );
 };
-
-
 
 /* ============================
    MAIN ORDERS SCREEN
@@ -1220,7 +1319,10 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   onEditOrderItems,
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"scheduled" | "ongoing" | "past">("ongoing");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'scheduled' | 'ongoing' | 'past'>(
+    'ongoing',
+  );
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -1232,14 +1334,24 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   } | null>(null);
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([]);
-  
+
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('from') === 'success') {
+      setActiveTab('ongoing');
+
+      navigate('/orders', {
+        replace: true,
+      });
+    }
+  }, [searchParams, navigate]);
 
   React.useEffect(() => {
     let cancelled = false;
 
     const loadSupportData = async () => {
       try {
-
         const [ticketsResponse, feedbackResponse] = await Promise.all([
           getMyTicketsApi(),
           getMyFeedbackApi(),
@@ -1266,7 +1378,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
     };
   }, []);
 
-
   const getTicketForOrder = (orderId: string) => {
     return tickets.find(
       (ticket) => String(ticket.order_id) === String(orderId),
@@ -1278,8 +1389,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
       (feedback) => String(feedback.order_id) === String(orderId),
     );
   };
-
-
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1330,9 +1439,9 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   });
 
   const ordersToDisplay =
-    activeTab === "scheduled"
+    activeTab === 'scheduled'
       ? scheduledOrders
-      : activeTab === "ongoing"
+      : activeTab === 'ongoing'
       ? ongoingOrders
       : pastOrders;
 
@@ -1391,10 +1500,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
         image: data.imageFile,
       });
 
-      setTickets((prev) => [
-        createdTicket,
-        ...prev,
-      ])
+      setTickets((prev) => [createdTicket, ...prev]);
 
       setShowTicketForm(false);
       setSelectedOrder(null);
@@ -1461,7 +1567,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
   };
 
   const handleReorder = (order: Order) => {
-    console.log("Reorder order:", order.id);
+    console.log('Reorder order:', order.id);
     // Navigate to cart with order items
     // navigate("/cart", { state: { reorderItems: order.items } });
   };
@@ -1578,7 +1684,13 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
       {/* HEADER */}
       <header className="p-4 flex items-center border-b bg-white sticky top-0 z-10">
         <button
-          onClick={() => navigate('/home', { replace: true })}
+          onClick={() => {
+            if (location.state?.from === '/profile') {
+              navigate('/profile', { replace: true });
+            } else {
+              navigate('/home', { replace: true });
+            }
+          }}
           className="w-1/5"
         >
           <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
