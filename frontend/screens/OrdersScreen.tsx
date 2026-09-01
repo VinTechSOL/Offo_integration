@@ -781,17 +781,55 @@ const TicketFormModal: React.FC<TicketFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Description <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-semibold text-gray-700">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <span
+                className={`text-xs font-medium ${
+                  description.length > 0 && description.trim().length < 10
+                    ? 'text-red-500 font-semibold'
+                    : 'text-gray-400'
+                }`}
+              >
+                {description.trim().length}/10 min characters
+              </span>
+            </div>
+
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Please describe the issue in detail..."
               rows={4}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+              className={`w-full p-3 rounded-lg resize-none transition-colors focus:outline-none ${
+                description.length > 0 && description.trim().length < 10
+                  ? 'border-2 border-red-400 bg-red-50/30 text-gray-900 focus:ring-2 focus:ring-red-400 focus:border-transparent'
+                  : 'border border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent'
+              }`}
             />
-            <p className="text-xs text-gray-400 mt-1">Min 10 characters</p>
+
+            {/* Dynamic Helper / Error Message */}
+            {description.length > 0 && description.trim().length < 10 ? (
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-red-500 font-medium">
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Please enter at least {10 - description.trim().length} more
+                character{10 - description.trim().length === 1 ? '' : 's'}.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">
+                Min 10 characters required
+              </p>
+            )}
           </div>
 
           <div>
@@ -1347,6 +1385,21 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
     }
   }, [searchParams, navigate]);
 
+  useEffect(() => {
+    const tab = location.state?.ordersTab;
+
+    if (tab === 'scheduled' || tab === 'ongoing' || tab === 'past') {
+      setActiveTab(tab);
+
+      navigate(location.pathname, {
+        replace: true,
+        state: {
+          from: location.state?.from,
+        },
+      });
+    }
+  }, [location, navigate]);
+
   React.useEffect(() => {
     let cancelled = false;
 
@@ -1516,10 +1569,13 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
     }
   };
 
-  const handleViewTicket = (ticketId: number) => {
-    navigate(`/support/tickets/${ticketId}`);
-  };
-
+ const handleViewTicket = (ticketId: number) => {
+   navigate(`/support/tickets/${ticketId}`, {
+     state: {
+       ordersTab: activeTab,
+     },
+   });
+ };
   const handleFeedbackSubmit = async (data: FeedbackData) => {
     if (!selectedOrder) {
       throw new Error('No order selected');

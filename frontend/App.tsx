@@ -36,7 +36,7 @@ import FoodItemDetailModal from "./components/FoodItemDetailModal";
 import { useToastStore } from "./store/toastStore";
 import { unlockAudio } from "./utils/sound";
 import { getUserContextDetails } from "./api/userContext";
-import api, {refreshApi} from "./api/client";
+import api, { refreshApi } from "./api/client";
 
 import {
   getActiveCart,
@@ -52,11 +52,22 @@ const App: React.FC = () => {
   const locationRouter = useLocation();
 
   /* =======================
-     STATE
+      STATE
   ======================= */
 
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
+
+  // 'mockup' = centered phone shell on desktop | 'fullscreen' = stretches to fill entire screen
+  const [viewMode, setViewMode] = useState<'mockup' | 'fullscreen'>(() => {
+    return (localStorage.getItem('offo_view_mode') as 'mockup' | 'fullscreen') || 'mockup';
+  });
+
+  const toggleViewMode = () => {
+    const nextMode = viewMode === 'mockup' ? 'fullscreen' : 'mockup';
+    setViewMode(nextMode);
+    localStorage.setItem('offo_view_mode', nextMode);
+  };
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
@@ -76,7 +87,7 @@ const App: React.FC = () => {
   });
 
   /* =======================
-     AUDIO UNLOCK
+      AUDIO UNLOCK
   ======================= */
 
   useEffect(() => {
@@ -91,7 +102,7 @@ const App: React.FC = () => {
   }, []);
 
   /* =======================
-     CART
+      CART
   ======================= */
 
   const loadCart = async () => {
@@ -125,7 +136,6 @@ const App: React.FC = () => {
     const currentQty = existingItem ? existingItem.quantity : 0;
     const newQty = currentQty + delta;
 
-    // 1. Optimistic UI update (Instant UI response)
     if (newQty <= 0) {
       setCart((prev) => prev.filter((c) => c.item.id !== item.id));
     } else {
@@ -140,10 +150,8 @@ const App: React.FC = () => {
       });
     }
 
-    // 2. Sync with Backend
     try {
       if (newQty <= 0) {
-        // If quantity drops to 0 or below, update/delete via updateCartItemApi
         await updateCartItemApi(item.id, 0);
       } else {
         await addToCartApi({
@@ -155,13 +163,11 @@ const App: React.FC = () => {
     } catch (err) {
       console.error('Failed to update cart:', err);
     } finally {
-      // 3. Final sync with database state
       await loadCart();
     }
   };
 
   const updateCartQuantity = async (itemId: number, quantity: number) => {
-    // Optimistic UI update
     if (quantity <= 0) {
       setCart((prev) => prev.filter((c) => c.item.id !== itemId));
     } else {
@@ -190,7 +196,7 @@ const App: React.FC = () => {
   };
 
   /* =======================
-     LOCATION
+      LOCATION
   ======================= */
 
   const refreshLocationFromContext = async () => {
@@ -206,10 +212,8 @@ const App: React.FC = () => {
     return true;
   };
 
-
-
   /* =======================
-   BOOTSTRAP / SESSION RESTORE
+     BOOTSTRAP / SESSION RESTORE
   ======================= */
 
   useEffect(() => {
@@ -218,10 +222,6 @@ const App: React.FC = () => {
     const bootstrap = async () => {
       try {
         const token = localStorage.getItem('access_token');
-
-        // ------------------------------------------------------
-        // CASE 1: Access token already exists
-        // ------------------------------------------------------
 
         if (token) {
           try {
@@ -235,29 +235,15 @@ const App: React.FC = () => {
 
             return;
           } catch (error: any) {
-            // --------------------------------------------------
-            // Existing access token is invalid/expired.
-            //
-            // Remove it and try refresh-session restoration.
-            // --------------------------------------------------
-
             if (error?.response?.status !== 401) {
               throw error;
             }
-
             localStorage.removeItem('access_token');
           }
         }
 
-        // ------------------------------------------------------
-        // CASE 2: No valid access token
-        //
-        // Try the HttpOnly refresh cookie.
-        // ------------------------------------------------------
-
         try {
           const response = await refreshApi.post('/auth/refresh');
-
           const newAccessToken = response.data?.access_token;
 
           if (!newAccessToken) {
@@ -265,10 +251,6 @@ const App: React.FC = () => {
           }
 
           localStorage.setItem('access_token', newAccessToken);
-
-          // ----------------------------------------------------
-          // Session successfully restored
-          // ----------------------------------------------------
 
           const hasContext = await refreshLocationFromContext();
 
@@ -280,32 +262,14 @@ const App: React.FC = () => {
 
           return;
         } catch (error: any) {
-          // ----------------------------------------------------
-          // No refresh session.
-          //
-          // This is NORMAL for a new/unauthenticated user.
-          // Do not show an error.
-          // Do not mark the application offline.
-          // ----------------------------------------------------
-
           if (error?.code === 'ERR_NETWORK') {
             if (mounted) {
               setIsOffline(true);
             }
-
             return;
           }
 
-          // 401 from /auth/refresh simply means:
-          // user is not logged in.
-
           localStorage.removeItem('access_token');
-
-          // Do NOT redirect here.
-          //
-          // Let the existing router show:
-          // /onboarding
-          // /login
         }
       } finally {
         if (mounted) {
@@ -322,7 +286,7 @@ const App: React.FC = () => {
   }, []);
 
   /* =======================
-     ROUTE EFFECTS
+      ROUTE EFFECTS
   ======================= */
 
   useEffect(() => {
@@ -347,10 +311,6 @@ const App: React.FC = () => {
     let isMounted = true;
     let interval: number | undefined;
 
-    // ============================================================
-    // MERGE ORDERS BY ID
-    // ============================================================
-
     const mergeOrdersById = (
       currentOrders: Order[],
       incomingOrders: Order[],
@@ -368,21 +328,15 @@ const App: React.FC = () => {
       return Array.from(orderMap.values());
     };
 
-    // ============================================================
-    // LOAD COMPLETE ORDER HISTORY
-    // ============================================================
-
     const loadHistoryOnce = async () => {
       try {
         const history = await getMyOrdersApi();
-
         if (!isMounted) return;
 
         const mappedHistory: Order[] = history.map(
           (order: any): Order => mapBackendOrder(order),
         );
 
-        // Remove duplicate order IDs from backend response
         const uniqueHistory = Array.from(
           new Map(
             mappedHistory.map((order) => [String(order.id), order]),
@@ -395,14 +349,9 @@ const App: React.FC = () => {
       }
     };
 
-    // ============================================================
-    // LOAD ACTIVE ORDERS
-    // ============================================================
-
     const pollActiveOnly = async () => {
       try {
         const active = await getMyActiveOrdersApi();
-
         if (!isMounted) return;
 
         const mappedActive: Order[] = active.map(
@@ -414,10 +363,6 @@ const App: React.FC = () => {
         console.error('Active polling failed', err);
       }
     };
-
-    // ============================================================
-    // POLLING
-    // ============================================================
 
     const startPolling = () => {
       if (!interval) {
@@ -432,10 +377,6 @@ const App: React.FC = () => {
       }
     };
 
-    // ============================================================
-    // TAB / APP VISIBILITY
-    // ============================================================
-
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         pollActiveOnly();
@@ -445,37 +386,20 @@ const App: React.FC = () => {
       }
     };
 
-    // ============================================================
-    // INITIAL LOAD
-    // ============================================================
-
     const initializeOrders = async () => {
       await loadHistoryOnce();
-
       if (!isMounted) return;
-
-      // Get latest status for active orders
       await pollActiveOnly();
-
       if (!isMounted) return;
-
-      // Start live status polling
       startPolling();
     };
 
     initializeOrders();
-
     document.addEventListener('visibilitychange', handleVisibility);
-
-    // ============================================================
-    // CLEANUP
-    // ============================================================
 
     return () => {
       isMounted = false;
-
       stopPolling();
-
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [locationRouter.pathname]);
@@ -490,7 +414,7 @@ const App: React.FC = () => {
   }, []);
 
   /* =======================
-     ORDER HANDLERS
+      ORDER HANDLERS
   ======================= */
 
   const handleUpdateOrder = (updated: Order) => {
@@ -502,7 +426,7 @@ const App: React.FC = () => {
   };
 
   /* =======================
-     OFFLINE / LOADER
+      OFFLINE / LOADER
   ======================= */
 
   if (isOffline) {
@@ -514,12 +438,34 @@ const App: React.FC = () => {
   }
 
   /* =======================
-     UI - Sticky Mobile View (App Doesn't Move)
+      UI CONTAINER
   ======================= */
 
+  const isMockup = viewMode === 'mockup';
+
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#e5d1bc] flex justify-center items-center overflow-hidden">
-      <div className="relative bg-[#F3DDCA] overflow-hidden w-full h-full max-w-full sm:max-w-[390px] sm:max-h-[844px] sm:rounded-[2rem] sm:shadow-2xl sm:border-0.5 sm:border-slate-800">
+    <div className={`fixed inset-0 w-full h-full bg-[#e5d1bc] flex justify-center items-center overflow-hidden`}>
+      {/* Floating Toggle: Appears on desktop widths (> 640px) */}
+      <div className="hidden sm:block fixed bottom-4 right-4 z-[9999]">
+        <button
+          onClick={toggleViewMode}
+          title="Toggle view between phone mockup and full screen"
+          className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md hover:bg-slate-950 text-white text-xs font-semibold px-3 py-2 rounded-full shadow-xl border border-slate-700/50 transition-transform active:scale-95"
+        >
+          <span>{isMockup ? '📱 Phone Shell' : '🖥 Full Screen'}</span>
+          <span className="bg-orange-500/20 text-orange-400 text-[10px] px-1.5 py-0.5 rounded-full border border-orange-500/30">
+            Fix UI
+          </span>
+        </button>
+      </div>
+
+      <div
+        className={`relative bg-[#F3DDCA] overflow-hidden w-full h-full transition-all duration-300 ${
+          isMockup
+            ? 'sm:max-w-[400px] sm:max-h-[850px] sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[6px] sm:border-slate-800'
+            : 'max-w-full max-h-full rounded-none shadow-none border-none'
+        }`}
+      >
         {/* Scrollable Content */}
         <div className="w-full h-full bg-[#F3DDCA] overflow-y-auto overflow-x-hidden">
           <Routes>
@@ -605,18 +551,12 @@ const App: React.FC = () => {
                       (a, c) => a + c.item.price * c.quantity,
                       0,
                     );
-
                     const packagingFee = 0;
                     const deliveryFee = 0;
                     const convenienceFee = 5;
                     const gst = Number((convenienceFee * 0.18).toFixed(2));
-
                     const total =
-                      subtotal +
-                      packagingFee +
-                      deliveryFee +
-                      convenienceFee +
-                      gst;
+                      subtotal + packagingFee + deliveryFee + convenienceFee + gst;
 
                     setOrderDetails({
                       items: cart,
@@ -633,18 +573,12 @@ const App: React.FC = () => {
                       (a, c) => a + c.item.price * c.quantity,
                       0,
                     );
-
                     const packagingFee = 0;
                     const deliveryFee = 0;
                     const convenienceFee = 5;
                     const gst = Number((convenienceFee * 0.18).toFixed(2));
-
                     const total =
-                      subtotal +
-                      packagingFee +
-                      deliveryFee +
-                      convenienceFee +
-                      gst;
+                      subtotal + packagingFee + deliveryFee + convenienceFee + gst;
 
                     setOrderDetails({
                       items: cart,

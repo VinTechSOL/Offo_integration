@@ -112,6 +112,10 @@ const StatusPill: React.FC<{ status: OrderStatus }> = ({ status }) => {
 
 
 const UpdateStatusButtons: React.FC<{ order: Order; onStatusChange: (orderId: string, newStatus: OrderStatus) => void; onRequestCancel: (orderId: string) => void; }> = ({ order, onStatusChange, onRequestCancel }) => {
+
+    // If no handlers are provided (like in CRM history view), do not render buttons
+    if (!onStatusChange || !onRequestCancel) return null;
+
     const handleAccept = () => onStatusChange(order.id, OrderStatus.Preparing);
     const handleReject = () => onRequestCancel(order.id);
     const handleReady = () => onStatusChange(order.id, OrderStatus.Ready);
@@ -132,7 +136,7 @@ const UpdateStatusButtons: React.FC<{ order: Order; onStatusChange: (orderId: st
         case OrderStatus.Ready:
             return <button onClick={handlePickedUp} className={`${buttonBaseClass} bg-blue-500 hover:bg-blue-600 w-full`}>Picked up</button>;
         default:
-            return <span className="text-text-secondary text-sm font-semibold pr-4">--</span>;
+            return null;
     }
 };
 

@@ -207,7 +207,7 @@ const LocationScreen: React.FC<LocationScreenProps> = ({ onConfirm }) => {
           </select>
         </div>
 
-        <div className="flex items-center my-4">
+        {/* <div className="flex items-center my-4">
           <div className="flex-grow border-t" />
           <span className="mx-3 text-gray-500 font-semibold">OR</span>
           <div className="flex-grow border-t" />
@@ -219,7 +219,7 @@ const LocationScreen: React.FC<LocationScreenProps> = ({ onConfirm }) => {
           className="w-full border-2 border-orange-500 text-orange-500 font-bold py-3 rounded-xl"
         >
           {isLocating ? "Detecting..." : "Use My Current Location"}
-        </button>
+        </button> */}
 
         {detectedLocation && (
           <p className="text-center text-sm text-gray-600 mt-2">

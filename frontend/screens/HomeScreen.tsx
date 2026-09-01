@@ -377,8 +377,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               </div>
 
               <span
-                className={`px-3 py-1 text-xs rounded-full text-white ${
-                  cafe.is_open ? 'bg-green-500' : 'bg-red-500'
+                className={`inline-flex items-center px-4 py-1.5 text-sm font-medium tracking-wide rounded-full text-white shadow-sm ${
+                  cafe.is_open ? 'bg-emerald-600' : 'bg-rose-600'
                 }`}
               >
                 {cafe.is_open ? 'Open' : 'Closed'}
