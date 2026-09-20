@@ -8,7 +8,7 @@ import {
 import type { OrderDetails } from "../types";
 import CheckIcon from "../components/icons/CheckIcon";
 import { getOrderApi } from "../api/order";
-import generateInvoice from "../utils/generateInvoice";
+import { generateReceipt} from '@/utils/generateInvoice';
 
 interface SuccessScreenProps {
   clearCart: () => void;
@@ -153,7 +153,7 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({
         );
       }
 
-      generateInvoice(order);
+      generateReceipt(order);
     } catch (error) {
       console.error(
         "Failed to generate invoice:",
@@ -203,8 +203,8 @@ const SuccessScreen: React.FC<SuccessScreenProps> = ({
           className="underline hover:text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isDownloadingInvoice
-            ? "Generating Invoice..."
-            : "Download Invoice"}
+            ? "Generating Receipt..."
+            : "Download Receipt"}
         </button>
       </p>
 

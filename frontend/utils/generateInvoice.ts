@@ -1,30 +1,25 @@
-import jsPDF from "jspdf";
 
-interface InvoiceItem {
+interface ReceiptItem {
   item_id: number;
   name: string;
   quantity: number;
   price_at_time: number;
-  image_url?: string | null;
 }
 
-interface InvoiceDetails {
+interface ReceiptDetails {
   order_id: number;
 
-  order_type?: string;
-  order_status?: string;
-  payment_status?: string;
+  cafe_name?: string | null;
+  fssai_license_number?: string | null;
+
+  order_type: 'INSTANT' | 'SCHEDULED';
+  order_status: string;
+  payment_status: string;
+
+  scheduled_time?: string | null;
 
   created_at: string;
   updated_at?: string | null;
-
-  cafe_id: number;
-  cafe_name?: string | null;
-  branch_id: number;
-
-  fssai_license_number?: string | null;
-
-  scheduled_time?: string | null;
 
   bill: {
     subtotal: number;
@@ -36,689 +31,378 @@ interface InvoiceDetails {
 
   payment: {
     status?: string;
-    intent_status?: string | null;
-    gateway?: string | null;
     transaction_id?: string | null;
     paid_at?: string | null;
   };
 
-  items: InvoiceItem[];
+  items: ReceiptItem[];
 }
 
 /* ============================================================
    HELPERS
 ============================================================ */
 
+const RECEIPT_WIDTH = 40;
+
+const separator = (): string => {
+  return '='.repeat(RECEIPT_WIDTH);
+};
+
+const dashSeparator = (): string => {
+  return '-'.repeat(RECEIPT_WIDTH);
+};
+
 const formatAmount = (amount: number): string => {
-  return `INR ${Number(amount ?? 0).toFixed(2)}`;
+  return `₹${Number(amount ?? 0).toFixed(2)}`;
 };
 
 const formatDateTime = (
   dateString?: string | null,
 ): string => {
   if (!dateString) {
-    return "N/A";
+    return 'N/A';
   }
 
   const date = new Date(dateString);
 
   if (Number.isNaN(date.getTime())) {
-    return "N/A";
+    return 'N/A';
   }
 
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+  return date
+    .toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+    .replace(',', ',');
+};
+
+const formatDate = (
+  dateString?: string | null,
+): string => {
+  if (!dateString) {
+    return 'N/A';
+  }
+
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A';
+  }
+
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+const formatTime = (
+  dateString?: string | null,
+): string => {
+  if (!dateString) {
+    return 'N/A';
+  }
+
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A';
+  }
+
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
     hour12: true,
   });
 };
 
 const safeText = (
   value?: string | null,
-  fallback = "N/A",
+  fallback = 'N/A',
 ): string => {
   if (!value || !value.trim()) {
     return fallback;
   }
 
-  return value;
+  return value.trim();
+};
+
+const padRight = (
+  text: string,
+  length: number,
+): string => {
+  if (text.length >= length) {
+    return text.slice(0, length);
+  }
+
+  return text + ' '.repeat(length - text.length);
+};
+
+const padLeft = (
+  text: string,
+  length: number,
+): string => {
+  if (text.length >= length) {
+    return text.slice(0, length);
+  }
+
+  return ' '.repeat(length - text.length) + text;
+};
+
+const centerText = (
+  text: string,
+): string => {
+  if (text.length >= RECEIPT_WIDTH) {
+    return text.slice(0, RECEIPT_WIDTH);
+  }
+
+  const totalPadding = RECEIPT_WIDTH - text.length;
+  const leftPadding = Math.floor(totalPadding / 2);
+  const rightPadding = totalPadding - leftPadding;
+
+  return (
+    ' '.repeat(leftPadding) +
+    text +
+    ' '.repeat(rightPadding)
+  );
 };
 
 /* ============================================================
-   MAIN INVOICE GENERATOR
+   MAIN RECEIPT GENERATOR
 ============================================================ */
 
-export const generateInvoice = (
-  details: InvoiceDetails,
+export const generateReceipt = (
+  details: ReceiptDetails,
 ): void => {
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
-
-  /* ==========================================================
-     PAGE SETTINGS
-  ========================================================== */
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  const marginLeft = 18;
-  const marginRight = 18;
-
-  const contentWidth =
-    pageWidth - marginLeft - marginRight;
-
-  /* ==========================================================
-     OFFO BRAND COLORS
-  ========================================================== */
-
-  const OFFO_ORANGE: [number, number, number] = [
-    249,
-    115,
-    22,
-  ];
-
-  const OFFO_LIGHT_ORANGE: [number, number, number] = [
-    255,
-    247,
-    237,
-  ];
-
-  const DARK: [number, number, number] = [
-    31,
-    41,
-    55,
-  ];
-
-  const GRAY: [number, number, number] = [
-    107,
-    114,
-    128,
-  ];
-
-  const LIGHT_GRAY: [number, number, number] = [
-    229,
-    231,
-    235,
-  ];
-
-  const WHITE: [number, number, number] = [
-    255,
-    255,
-    255,
-  ];
-
-  const GREEN: [number, number, number] = [
-    22,
-    163,
-    74,
-  ];
+  const lines: string[] = [];
 
   /* ==========================================================
      HEADER
   ========================================================== */
 
-  let y = 18;
-
-  // OFFO
-  pdf.setTextColor(...OFFO_ORANGE);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(24);
-
-  pdf.text(
-    "OFFO.",
-    pageWidth / 2,
-    y,
-    {
-      align: "center",
-    },
-  );
-
-  y += 7;
-
-  // Tagline
-  pdf.setTextColor(...GRAY);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-
-  pdf.text(
-    "Order Food From Office.",
-    pageWidth / 2,
-    y,
-    {
-      align: "center",
-    },
-  );
-
-  y += 13;
-
-  // Invoice title
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(16);
-
-  pdf.text(
-    "INVOICE",
-    pageWidth / 2,
-    y,
-    {
-      align: "center",
-    },
-  );
-
-  y += 12;
+  lines.push(separator());
+  lines.push(centerText('OFFO'));
+  lines.push(centerText('Order Food From Office.'));
+  lines.push(separator());
+  lines.push(centerText('ORDER RECEIPT'));
+  lines.push('');
 
   /* ==========================================================
-     ORDER INFORMATION BOX
+     ORDER DETAILS
   ========================================================== */
 
-  pdf.setFillColor(...OFFO_LIGHT_ORANGE);
-
-  pdf.roundedRect(
-    marginLeft,
-    y,
-    contentWidth,
-    38,
-    3,
-    3,
-    "F",
+  lines.push(
+    `${padRight('Order ID', 16)}: #${details.order_id}`,
   );
 
-  const infoX = marginLeft + 5;
-  const infoRight = pageWidth - marginRight - 5;
-
-  // Left information
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(9);
-
-  pdf.text(
-    `Order ID: #${details.order_id}`,
-    infoX,
-    y + 8,
+  lines.push(
+    `${padRight('Order Type', 16)}: ${
+      details.order_type === 'SCHEDULED'
+        ? 'Scheduled Order'
+        : 'Instant Order'
+    }`,
   );
 
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(...GRAY);
-
-  pdf.text(
-    `Order Date: ${formatDateTime(details.created_at)}`,
-    infoX,
-    y + 14,
+  lines.push(
+    `${padRight('Cafe', 16)}: ${safeText(
+      details.cafe_name,
+      'N/A',
+    )}`,
   );
 
-  // Cafe
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
-
-  pdf.text(
-    safeText(details.cafe_name, "Cafe"),
-    infoX,
-    y + 23,
+  lines.push(
+    `${padRight('Order Date', 16)}: ${formatDateTime(
+      details.created_at,
+    )}`,
   );
 
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(...GRAY);
-  pdf.setFontSize(9);
-
-  
-
-  // FSSAI
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8.5);
-
-  pdf.text(
-    "FSSAI License No.",
-    infoRight - 48,
-    y + 8,
+  lines.push(
+    `${padRight('Order Status', 16)}: ${safeText(
+      details.order_status,
+    ).toUpperCase()}`,
   );
 
-  pdf.setFont("helvetica", "normal");
+  if (details.order_type === 'SCHEDULED') {
+    lines.push(
+      `${padRight('Scheduled For', 16)}: ${formatDateTime(
+        details.scheduled_time,
+      )}`,
+    );
+  }
 
-  pdf.text(
-    safeText(
-      details.fssai_license_number,
-      "Not available",
-    ),
-    infoRight,
-    y + 8,
-    {
-      align: "right",
-    },
-  );
-
-  y += 47;
+  lines.push('');
 
   /* ==========================================================
-     ITEMS TABLE HEADER
+     ORDER ITEMS
   ========================================================== */
 
-  const tableHeaderHeight = 9;
+  lines.push('ORDER ITEMS');
+  lines.push(dashSeparator());
 
-  pdf.setFillColor(...OFFO_ORANGE);
+  if (details.items.length === 0) {
+    lines.push('No items available');
+  } else {
+    details.items.forEach((item) => {
+      const quantity = Number(item.quantity);
+      const price = Number(item.price_at_time);
+      const itemTotal = quantity * price;
 
-  pdf.roundedRect(
-    marginLeft,
-    y,
-    contentWidth,
-    tableHeaderHeight,
-    2,
-    2,
-    "F",
-  );
+      const itemName = `${quantity} × ${item.name}`;
 
-  pdf.setTextColor(...WHITE);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(9);
-
-  pdf.text(
-    "Items",
-    marginLeft + 4,
-    y + 6,
-  );
-
-  pdf.text(
-    "Amount",
-    pageWidth - marginRight - 4,
-    y + 6,
-    {
-      align: "right",
-    },
-  );
-
-  y += tableHeaderHeight;
-
-  /* ==========================================================
-     ITEMS
-  ========================================================== */
-
-  const itemRowHeight = 9;
-
-  details.items.forEach((item, index) => {
-    const rowY = y;
-
-    // Alternating subtle background
-    if (index % 2 === 0) {
-      pdf.setFillColor(250, 250, 250);
-
-      pdf.rect(
-        marginLeft,
-        rowY,
-        contentWidth,
-        itemRowHeight,
-        "F",
+      lines.push(
+        `${padRight(itemName, 27)}${padLeft(
+          formatAmount(itemTotal),
+          13,
+        )}`,
       );
-    }
 
-    pdf.setTextColor(...DARK);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
+      lines.push(
+        `  ${formatAmount(price)} each`,
+      );
+    });
+  }
 
-    const itemText =
-      `${item.quantity} × ${item.name}`;
-
-    pdf.text(
-      itemText,
-      marginLeft + 4,
-      rowY + 6,
-    );
-
-    const itemTotal =
-      Number(item.price_at_time) *
-      Number(item.quantity);
-
-    pdf.text(
-      formatAmount(itemTotal),
-      pageWidth - marginRight - 4,
-      rowY + 6,
-      {
-        align: "right",
-      },
-    );
-
-    y += itemRowHeight;
-  });
-
-  /* ==========================================================
-     ITEMS BOTTOM BORDER
-  ========================================================== */
-
-  pdf.setDrawColor(...LIGHT_GRAY);
-
-  pdf.line(
-    marginLeft,
-    y,
-    pageWidth - marginRight,
-    y,
-  );
-
-  y += 7;
+  lines.push(dashSeparator());
 
   /* ==========================================================
      BILL SUMMARY
   ========================================================== */
 
-  const labelX = marginLeft + 4;
-  const amountX = pageWidth - marginRight - 4;
-
-  pdf.setFontSize(9);
-
-  // Items Total
-  pdf.setTextColor(...GRAY);
-  pdf.setFont("helvetica", "normal");
-
-  pdf.text(
-    "Items Total",
-    labelX,
-    y,
+  lines.push(
+    `${padRight('Items Total', 27)}${padLeft(
+      formatAmount(details.bill.subtotal),
+      13,
+    )}`,
   );
 
-  pdf.setTextColor(...DARK);
-
-  pdf.text(
-    formatAmount(details.bill.subtotal),
-    amountX,
-    y,
-    {
-      align: "right",
-    },
+  lines.push(
+    `${padRight('Platform Fee', 27)}${padLeft(
+      formatAmount(details.bill.platform_fee),
+      13,
+    )}`,
   );
 
-  y += 7;
-
-  // Platform Fee
-  pdf.setTextColor(...GRAY);
-
-  pdf.text(
-    "Platform Fee",
-    labelX,
-    y,
+  lines.push(
+    `${padRight('GST', 27)}${padLeft(
+      formatAmount(details.bill.gst),
+      13,
+    )}`,
   );
 
-  pdf.setTextColor(...DARK);
 
-  pdf.text(
-    formatAmount(details.bill.platform_fee),
-    amountX,
-    y,
-    {
-      align: "right",
-    },
+  lines.push(dashSeparator());
+
+  lines.push(
+    `${padRight('TOTAL', 27)}${padLeft(
+      formatAmount(details.bill.total),
+      13,
+    )}`,
   );
 
-  y += 7;
-
-  // GST
-  pdf.setTextColor(...GRAY);
-
-  pdf.text(
-    "GST (18%)",
-    labelX,
-    y,
-  );
-
-  pdf.setTextColor(...DARK);
-
-  pdf.text(
-    formatAmount(details.bill.gst),
-    amountX,
-    y,
-    {
-      align: "right",
-    },
-  );
-
-  y += 5;
-
-  /* ==========================================================
-     TOTAL PAID
-  ========================================================== */
-
-  pdf.setFillColor(...OFFO_LIGHT_ORANGE);
-
-  pdf.roundedRect(
-    marginLeft,
-    y,
-    contentWidth,
-    13,
-    2,
-    2,
-    "F",
-  );
-
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
-
-  pdf.text(
-    "Total Paid",
-    labelX,
-    y + 8,
-  );
-
-  pdf.setTextColor(...OFFO_ORANGE);
-  pdf.setFontSize(12);
-
-  pdf.text(
-    formatAmount(details.bill.total),
-    amountX,
-    y + 8,
-    {
-      align: "right",
-    },
-  );
-
-  y += 21;
+  lines.push('');
 
   /* ==========================================================
      PAYMENT DETAILS
   ========================================================== */
 
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
+  lines.push('PAYMENT DETAILS');
+  lines.push(dashSeparator());
 
-  pdf.text(
-    "Payment Details",
-    marginLeft,
-    y,
+  lines.push(
+    `${padRight('Payment Mode', 16)}: UPI`,
   );
 
-  y += 7;
-
-  const paymentBoxHeight = 30;
-
-  pdf.setFillColor(249, 250, 251);
-
-  pdf.roundedRect(
-    marginLeft,
-    y,
-    contentWidth,
-    paymentBoxHeight,
-    2,
-    2,
-    "F",
+  lines.push(
+    `${padRight('Payment Status', 16)}: ${safeText(
+      details.payment_status,
+    ).toUpperCase()}`,
   );
 
-  const paymentX = marginLeft + 5;
-  const paymentValueX =
-    pageWidth - marginRight - 5;
-
-  // Payment Method
-  pdf.setTextColor(...GRAY);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-
-  pdf.text(
-    "Payment Method",
-    paymentX,
-    y + 8,
-  );
-
-  pdf.setTextColor(...DARK);
-  pdf.setFont("helvetica", "bold");
-
-  // Always show UPI
-  pdf.text(
-    "UPI",
-    paymentValueX,
-    y + 8,
-    {
-      align: "right",
-    },
-  );
-
-  // Payment Date & Time
-  pdf.setTextColor(...GRAY);
-  pdf.setFont("helvetica", "normal");
-
-  pdf.text(
-    "Payment Date & Time",
-    paymentX,
-    y + 16,
-  );
-
-  pdf.setTextColor(...DARK);
-
-  pdf.text(
-    formatDateTime(details.payment.paid_at),
-    paymentValueX,
-    y + 16,
-    {
-      align: "right",
-    },
-  );
-
-  // Transaction ID
-  if (details.payment.transaction_id) {
-    pdf.setTextColor(...GRAY);
-
-    pdf.text(
-      "Transaction ID",
-      paymentX,
-      y + 24,
+  if (details.payment.paid_at) {
+    lines.push(
+      `${padRight('Payment Date', 16)}: ${formatDate(
+        details.payment.paid_at,
+      )}`,
     );
 
-    pdf.setTextColor(...DARK);
-    pdf.setFontSize(8);
-
-    pdf.text(
-      details.payment.transaction_id,
-      paymentValueX,
-      y + 24,
-      {
-        align: "right",
-      },
+    lines.push(
+      `${padRight('Payment Time', 16)}: ${formatTime(
+        details.payment.paid_at,
+      )}`,
     );
   }
 
-  y += paymentBoxHeight + 12;
+  if (details.payment.transaction_id) {
+    lines.push(
+      `${padRight('Transaction ID', 16)}: ${
+        details.payment.transaction_id
+      }`,
+    );
+  }
+
+  lines.push('');
 
   /* ==========================================================
-     SCHEDULED ORDER NOTE
+     FSSAI
   ========================================================== */
 
-  // If this order has no platform fee, it means the fee was
-  // already included in another scheduled order.
-  if (
-    Number(details.bill.platform_fee) === 0 &&
-    Number(details.bill.gst) === 0
-  ) {
-    pdf.setFillColor(...OFFO_LIGHT_ORANGE);
+  if (details.fssai_license_number) {
+    lines.push(dashSeparator());
 
-    pdf.roundedRect(
-      marginLeft,
-      y,
-      contentWidth,
-      20,
-      2,
-      2,
-      "F",
+    lines.push(
+      `${padRight('FSSAI License', 16)}: ${
+        details.fssai_license_number
+      }`,
     );
 
-    pdf.setTextColor(...OFFO_ORANGE);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(8.5);
-
-    pdf.text(
-      "Fee Note",
-      marginLeft + 5,
-      y + 7,
-    );
-
-    pdf.setTextColor(...GRAY);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8);
-
-    pdf.text(
-      "Platform Fee + GST were already included",
-      marginLeft + 5,
-      y + 13,
-    );
-
-    pdf.text(
-      "in another scheduled order. No extra fee was charged.",
-      marginLeft + 5,
-      y + 17,
-    );
-
-    y += 27;
+    lines.push('');
   }
 
   /* ==========================================================
      FOOTER
   ========================================================== */
 
-  const footerY = pageHeight - 20;
-
-  pdf.setDrawColor(...LIGHT_GRAY);
-
-  pdf.line(
-    marginLeft,
-    footerY - 5,
-    pageWidth - marginRight,
-    footerY - 5,
+  lines.push(separator());
+  lines.push(
+    centerText('Thank you for ordering with OFFO.'),
   );
-
-  pdf.setTextColor(...GRAY);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-
-  pdf.text(
-    "Thank you for ordering with OFFO.",
-    pageWidth / 2,
-    footerY + 1,
-    {
-      align: "center",
-    },
+  lines.push(
+    centerText('Order Food From Office.'),
   );
-
-  pdf.setTextColor(...OFFO_ORANGE);
-  pdf.setFont("helvetica", "bold");
-
-  pdf.text(
-    "Order Food From Office.",
-    pageWidth / 2,
-    footerY + 6,
-    {
-      align: "center",
-    },
-  );
+  lines.push(separator());
 
   /* ==========================================================
-     SAVE
+     DOWNLOAD TXT FILE
   ========================================================== */
 
-  pdf.save(
-    `OFFO-Invoice-${details.order_id}.pdf`,
+  const receiptText = lines.join('\n');
+
+  const blob = new Blob(
+    [receiptText],
+    {
+      type: 'text/plain;charset=utf-8',
+    },
   );
+
+  const url = URL.createObjectURL(blob);
+
+  const anchor = document.createElement('a');
+
+  anchor.href = url;
+  anchor.download = `OFFO-Receipt-${details.order_id}.txt`;
+
+  document.body.appendChild(anchor);
+
+  anchor.click();
+
+  document.body.removeChild(anchor);
+
+  URL.revokeObjectURL(url);
 };
 
-export default generateInvoice;
+export default generateReceipt;

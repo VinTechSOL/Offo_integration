@@ -16,9 +16,7 @@ export const CustomerRow: React.FC<CustomerRowProps> = ({
         {/* Customer Info (Name, Phone) */}
         <div className="sm:col-span-5">
           <p className="font-bold text-lg text-text-primary">{customer.name}</p>
-          {customer.phone && (
-            <p className="text-xs text-text-secondary mt-0.5">{customer.phone}</p>
-          )}
+          
         </div>
 
         {/* Order Stats - Center aligned */}

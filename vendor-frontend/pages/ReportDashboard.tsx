@@ -10,7 +10,6 @@ import { StatCard } from "../components/StatCard";
 type ReportView =
   | "overview"
   | "menu-performance"
-  | "customer-insights";
 
 
 const ReportTabs: React.FC<{
@@ -42,10 +41,7 @@ const ReportTabs: React.FC<{
       key: "menu-performance",
       label: "Menu Performance",
     },
-    {
-      key: "customer-insights",
-      label: "Customer Insights",
-    },
+    
   ];
 
   return (
@@ -81,8 +77,6 @@ export const ReportsDashboard: React.FC = () => {
   const [menuPerformance, setMenuPerformance] =
     useState<any[]>([]);
 
-  const [customerInsights, setCustomerInsights] =
-    useState<any[]>([]);
 
   const [loading, setLoading] =
     useState(false);
@@ -130,20 +124,18 @@ export const ReportsDashboard: React.FC = () => {
       const [
         overviewRes,
         menuRes,
-        customerRes,
+
       ] = await Promise.all([
         ReportsApi.getOverview(params),
 
         ReportsApi.getMenuPerformance(params),
 
-        ReportsApi.getCustomerInsights(params),
       ]);
 
       setOverview(overviewRes);
 
       setMenuPerformance(menuRes);
 
-      setCustomerInsights(customerRes);
 
     } catch (err) {
 
@@ -307,53 +299,7 @@ export const ReportsDashboard: React.FC = () => {
           </div>
         );
 
-      // =====================
-      // CUSTOMER INSIGHTS
-      // =====================
-
-      case "customer-insights":
-
-        return (
-
-          <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
-
-            <h3 className="text-xl font-bold">
-              Most Frequent Customers
-            </h3>
-
-            {customerInsights.map((customer) => (
-
-              <div
-                key={customer.user_id}
-                className="flex items-center p-3 rounded-md bg-gray-50 border"
-              >
-
-                <div className="flex-1">
-
-                  <p className="font-semibold text-lg">
-                    {customer.name}
-                  </p>
-
-                </div>
-
-                <div className="text-right">
-
-                  <p className="font-bold text-lg">
-                    {customer.total_orders}
-                  </p>
-
-                  <p className="text-sm">
-                    Total Orders
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-
-      default:
-
-        return null;
+      
     }
   };
 

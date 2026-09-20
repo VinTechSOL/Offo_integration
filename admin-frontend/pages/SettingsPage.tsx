@@ -126,14 +126,6 @@ export const SettingsPage: React.FC = () => {
               minutes before its scheduled time.
             </p>
 
-            <ReadonlyField
-              label="Scheduled Order Grace Period"
-              value="5 minutes"
-            />
-
-            <p className="text-xs text-gray-500 -mt-4">
-              Grace period allowed for processing a scheduled order.
-            </p>
 
             <LockedNote />
 

@@ -1,3 +1,4 @@
+
 import api from "./client";
 
 
@@ -75,7 +76,7 @@ export interface TicketResponse {
 export interface CreateFeedbackPayload {
   order_id: string;
 
-  food_rating: number;
+  food_rating?: number;
 
   app_rating: number;
 
@@ -88,7 +89,7 @@ export interface FeedbackResponse {
 
   order_id: number;
 
-  food_rating: number;
+  food_rating?: number;
 
   app_rating: number;
 

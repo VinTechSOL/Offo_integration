@@ -468,7 +468,11 @@ export const BranchForm: React.FC<BranchFormProps> = ({
       return 'Closing time must be later than opening time.';
     }
 
-    if (form.ownerPhoneNumber && !/^[0-9]{10}$/.test(form.ownerPhoneNumber)) {
+    if (!form.ownerPhoneNumber.trim()) {
+      return 'Owner phone number is required.';
+    }
+
+    if (!/^[0-9]{10}$/.test(form.ownerPhoneNumber)) {
       return 'Owner phone number must contain 10 digits.';
     }
 
@@ -944,7 +948,7 @@ export const BranchForm: React.FC<BranchFormProps> = ({
         />
 
         <div>
-          <label className="text-sm font-semibold">Owner Phone Number</label>
+          <label className="text-sm font-semibold">Owner Phone Number *</label>
 
           <input
             type="tel"

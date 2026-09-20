@@ -13,7 +13,7 @@ import {
 import { getOrderApi, cancelOrderApi, getMyOrdersApi } from '@/api/order';
 import { mapBackendOrder } from '@/utils/mapOrder';
 import { FeedbackResponse, TicketResponse } from '@/api/support';
-import { generateInvoice } from '@/utils/generateInvoice';
+import { generateReceipt} from '@/utils/generateInvoice';
 
 interface OrderDetailItem {
   item_id: number;
@@ -161,10 +161,10 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
     try {
       setDownloadingInvoice(true);
 
-      generateInvoice(details);
+      generateReceipt(details);
     } catch (error) {
-      console.error('Failed to generate invoice:', error);
-      alert('Unable to download invoice. Please try again.');
+      console.error('Failed to generate receipt:', error);
+      alert('Unable to download receipt. Please try again.');
     } finally {
       setDownloadingInvoice(false);
     }
@@ -283,6 +283,13 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
 
         {(() => {
           const normalizedStatus = String(status).toUpperCase();
+          const normalizedPaymentStatus = String(
+            details.payment_status ?? '',
+          ).toUpperCase();
+
+          const isPaymentFailed =
+            normalizedPaymentStatus === 'FAILED' ||
+            normalizedPaymentStatus === 'CANCELLED';
 
           const statusConfig: Record<
             string,
@@ -335,7 +342,9 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
               container: 'bg-red-50 border-red-200',
               dot: 'bg-red-500',
               text: 'text-red-700',
-              message: 'Order was Cancelled',
+              message: isPaymentFailed
+                ? 'Order was not placed '
+                : 'Order was Cancelled',
             },
 
             REJECTED: {
@@ -354,12 +363,19 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
             },
           };
 
-          const config = statusConfig[normalizedStatus] ?? {
-            container: 'bg-gray-50 border-gray-200',
-            dot: 'bg-gray-500',
-            text: 'text-gray-700',
-            message: `Order is ${status}`,
-          };
+          const config = isPaymentFailed
+            ? {
+                container: 'bg-red-50 border-red-200',
+                dot: 'bg-red-500',
+                text: 'text-red-700',
+                message: 'Order was not placed due to payment failure',
+              }
+            : statusConfig[normalizedStatus] ?? {
+                container: 'bg-gray-50 border-gray-200',
+                dot: 'bg-gray-500',
+                text: 'text-gray-700',
+                message: `Order is ${status}`,
+              };
 
           return (
             <div
@@ -574,7 +590,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
           disabled={downloadingInvoice}
           className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {downloadingInvoice ? 'Generating Invoice...' : '↓ Download Invoice'}
+          {downloadingInvoice ? 'Generating Receipt...' : '↓ Download Receipt'}
         </button>
 
         {/* FSSAI */}
@@ -895,7 +911,7 @@ interface FeedbackFormProps {
 }
 
 interface FeedbackData {
-  foodRating: number;
+  foodRating?: number;
   appRating: number;
   comments: string;
 }
@@ -913,7 +929,9 @@ const FeedbackFormModal: React.FC<FeedbackFormProps> = ({
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (foodRating === 0) {
+    const isCompleted = order?.backendStatus === 'COMPLETED';
+
+    if (isCompleted && foodRating === 0) {
       setError('Please rate the food');
       return;
     }
@@ -933,7 +951,7 @@ const FeedbackFormModal: React.FC<FeedbackFormProps> = ({
       setError('');
 
       await onSubmit({
-        foodRating,
+        foodRating: isCompleted ? foodRating : undefined,
         appRating,
         comments: comments.trim(),
       });
@@ -990,28 +1008,31 @@ const FeedbackFormModal: React.FC<FeedbackFormProps> = ({
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              How was the food? <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setFoodRating(star)}
-                  className="text-3xl transition-transform hover:scale-125"
-                >
-                  <span
-                    className={
-                      star <= foodRating ? 'text-yellow-400' : 'text-gray-300'
-                    }
+          {order?.backendStatus === 'COMPLETED' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                How was the food? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFoodRating(star)}
+                    className="text-3xl transition-transform hover:scale-125"
                   >
-                    ★
-                  </span>
-                </button>
-              ))}
+                    <span
+                      className={
+                        star <= foodRating ? 'text-yellow-400' : 'text-gray-300'
+                      }
+                    >
+                      ★
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1096,32 +1117,45 @@ const OrderCard: React.FC<OrderCardProps> = ({
     order.backendStatus === 'CREATED' && order.paymentStatus !== 'FAILED';
   const isCompleted = order.backendStatus === 'COMPLETED';
 
-  const isRateable =
-    order.backendStatus === 'COMPLETED' ||
-    order.backendStatus === 'CANCELLED' ||
-    order.backendStatus === 'REJECTED';
-
   const paymentStatus = String(order.paymentStatus ?? '').toUpperCase();
 
   const isPaymentFailed =
     paymentStatus === 'FAILED' || paymentStatus === 'CANCELLED';
+
+  const isRateable =
+    !isPaymentFailed &&
+    (
+      order.backendStatus === 'COMPLETED' ||
+      order.backendStatus === 'CANCELLED' ||
+      order.backendStatus === 'REJECTED'
+    );
 
   return (
     <div
       className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => onPress(order)}
     >
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="font-bold text-gray-800">{order.cafe || 'Cafe'}</h3>
-          <p className="text-xs text-gray-500">
-            #{order.id} · {order.date.toLocaleString('en-GB')}
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-gray-800 break-words">
+            {order.cafe || 'Cafe'}
+          </h3>
+
+          <p className="text-xs text-gray-500 leading-4">
+            #{order.id} · {order.date.toLocaleDateString('en-GB')},{' '}
+            {order.date.toLocaleTimeString('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
           </p>
         </div>
-        <OrderStatusPill
-          status={order.status}
-          paymentStatus={order.paymentStatus}
-        />
+
+        <div className="shrink-0">
+          <OrderStatusPill
+            status={order.status}
+            paymentStatus={order.paymentStatus}
+          />
+        </div>
       </div>
 
       <div className="mt-3 border-t pt-3">
@@ -1264,16 +1298,20 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-1"
               >
                 <span className="text-sm font-semibold text-gray-700">
-                  Food:
+                  {isCompleted ? 'Food:' : 'App:'}
                 </span>
 
                 <span className="text-sm tracking-tight">
-                  {'★'.repeat(feedback.food_rating)}
-                  {'☆'.repeat(5 - feedback.food_rating)}
+                  {isCompleted
+                    ? '★'.repeat(feedback.food_rating ?? 0)
+                    : '★'.repeat(feedback.app_rating)}
+                  {isCompleted
+                    ? '☆'.repeat(5 - (feedback.food_rating ?? 0))
+                    : '☆'.repeat(5 - feedback.app_rating)}
                 </span>
 
                 <span className="text-xs text-gray-500 ml-1">
-                  {feedback.food_rating}/5
+                  {isCompleted ? (feedback.food_rating ?? 0 ) : feedback.app_rating}/5
                 </span>
               </div>
             ) : (
@@ -1581,10 +1619,16 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
       throw new Error('No order selected');
     }
 
+    const isCompleted = selectedOrder.backendStatus === 'COMPLETED';
+
     const createdFeedback = await createFeedbackApi({
       order_id: selectedOrder.id,
 
-      food_rating: data.foodRating,
+      // The backend currently requires food_rating >= 1.
+      // Keep the food rating hidden for cancelled/rejected orders,
+      // but send the minimum valid value so the existing backend
+      // validation is not triggered.
+      food_rating: isCompleted ? data.foodRating! : 1,
 
       app_rating: data.appRating,
 
@@ -1823,3 +1867,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({
 };
 
 export default OrdersScreen;
+
+
+
+
