@@ -446,7 +446,7 @@ const App: React.FC = () => {
   return (
     <div className={`fixed inset-0 w-full h-full bg-[#e5d1bc] flex justify-center items-center overflow-hidden`}>
       {/* Floating Toggle: Appears on desktop widths (> 640px) */}
-      <div className="hidden sm:block fixed bottom-4 right-4 z-[9999]">
+      <div className="hidden sm:block fixed bottom-20 right-4 z-[9999]">
         <button
           onClick={toggleViewMode}
           title="Toggle view between phone mockup and full screen"
@@ -468,6 +468,16 @@ const App: React.FC = () => {
       >
         {/* Scrollable Content */}
         <div className="w-full h-full bg-[#F3DDCA] overflow-y-auto overflow-x-hidden">
+          {(locationRouter.pathname === '/home' ||
+            locationRouter.pathname === '/menu' ||
+            locationRouter.pathname === '/cart') && (
+            <div className="relative z-[50] h-10 w-full shrink-0 flex items-center justify-center bg-[#FFF9F2]">
+              <span className="text-2xl font-extrabold tracking-tight text-orange-500 leading-none select-none">
+                OFFO.
+              </span>
+            </div>
+          )}
+
           <Routes>
             <Route path="/" element={<Navigate to="/onboarding" replace />} />
 

@@ -235,7 +235,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess}) => {
                     </span>
                     <input
                       type="tel"
-                      placeholder="9876543210"
+                      placeholder="Enter phone number"
                       value={phone}
                       maxLength={10}
                       onChange={(e) => {

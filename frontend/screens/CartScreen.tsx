@@ -202,7 +202,7 @@ const CartScreen: React.FC<CartScreenProps> = ({ cart, updateCartQuantity, setOr
             />
             <div className="flex-grow ml-4">
               <p className="font-bold text-gray-800">{item.name}</p>
-              <p className="text-xs text-gray-400">({item.cafe})</p>
+              {/* <p className="text-xs text-gray-400">({item.cafe})</p> */}
               {/* <button onClick={() => handleRemoveItem(item.id)} className="text-xs text-red-500">Remove</button> */}
             </div>
             <div className="text-right">
